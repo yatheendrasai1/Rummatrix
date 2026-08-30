@@ -575,6 +575,25 @@
     white-space: nowrap;
   }
   .tv-meta b { color: var(--green); }
+  .tv-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin-left: 0.6vw;
+    width: clamp(20px, 2.2vw, 28px);
+    height: clamp(20px, 2.2vw, 28px);
+    border-radius: 50%;
+    background: var(--orange);
+    color: #140900;
+    border: none;
+    font-size: clamp(14px, 1.8vw, 20px);
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .tv-add-btn:hover { background: #ff7d3d; }
   .tv-exit-btn {
     flex: none;
     background: transparent;
@@ -630,7 +649,7 @@
     color: var(--muted);
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 30cqh;
+    font-size: min(30cqh, 45cqw);
   }
 
   .tv-scrim {
@@ -671,7 +690,7 @@
     font-family: var(--font-body);
     font-weight: 700;
     color: #fff;
-    font-size: 6.5cqh;
+    font-size: min(6.5cqh, 15cqw);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -683,10 +702,54 @@
     font-weight: 700;
     color: var(--green);
     line-height: 1;
-    font-size: 19cqh;
+    /* Sized off whichever dimension is tighter — cqh alone looks great on wide
+       landscape tiles, but on a narrow, tall mobile-portrait tile it would blow
+       past the tile's width, so cap it against the container's width too. */
+    font-size: min(19cqh, 26cqw);
     text-shadow: 0 0.4cqh 1cqh rgba(0,0,0,0.9), 0 0.15cqh 0.4cqh rgba(0,0,0,0.95);
   }
   .tv-tile.out .tv-score { color: var(--orange); }
+
+  /* Pulse/glow the tile and pop the number whenever a score actually changes,
+     so an update reads clearly on a TV from across a room. */
+  @keyframes tvTileFlash {
+    0% { box-shadow: 0 0 0 0 rgba(51,225,138,0); }
+    20% { box-shadow: 0 0 4cqh 0.6cqh rgba(51,225,138,0.6); }
+    100% { box-shadow: 0 0 0 0 rgba(51,225,138,0); }
+  }
+  .tv-tile.tv-tile-updated { animation: tvTileFlash 1s ease-out; }
+
+  @keyframes tvScorePop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+  .tv-score.tv-score-updated { animation: tvScorePop 0.7s cubic-bezier(.34,1.56,.64,1); }
+
+  /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
+     just moved on top of the score grid instead of navigating away. */
+  .tv-add-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0,0,0,0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3vh 3vw;
+  }
+  .tv-add-modal[hidden] { display: none; }
+  .tv-add-modal-card {
+    width: min(90vw, 640px);
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .tv-add-modal-card .panel { margin: 0 !important; }
+  .tv-add-done-btn { width: 100%; margin-top: 10px; }
 
   @media (max-width: 600px) {
     body { padding: 12px; }
@@ -804,7 +867,7 @@
       <div id="playerNamesDisplay"></div>
     </div>
 
-    <div class="panel" style="margin:0 0 18px; padding:14px 16px;">
+    <div class="panel" id="recordMatchPanel" style="margin:0 0 18px; padding:14px 16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
         <h2 style="margin-bottom:0;">Record Match #<span id="entryMatchNum"></span></h2>
         <button class="btn-ghost" id="testDumpBtn" type="button" style="font-size:10px; padding:6px 12px; border-style:dashed;" title="Dev/testing only — appends 10 random valid rounds">🧪 Test Dump ×10</button>
@@ -849,10 +912,16 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
+
+  <div class="tv-add-modal" id="tvAddModal" hidden>
+    <div class="tv-add-modal-card" id="tvAddModalCard">
+      <button type="button" class="btn-ghost tv-add-done-btn" id="tvAddDoneBtn">✓ Done — Back to TV Mode</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -924,6 +993,11 @@
   const tvMatchNum = document.getElementById('tvMatchNum');
   const tvSetNum = document.getElementById('tvSetNum');
   const tvMaxPoints = document.getElementById('tvMaxPoints');
+  const tvAddScoreBtn = document.getElementById('tvAddScoreBtn');
+  const tvAddModal = document.getElementById('tvAddModal');
+  const tvAddModalCard = document.getElementById('tvAddModalCard');
+  const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
+  const recordMatchPanel = document.getElementById('recordMatchPanel');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1413,8 +1487,13 @@
     matchEvents.push(fullEvents);
     saveActiveGame();
     renderAll();
-    const firstActive = document.getElementById(`entry-${activeIdx[0]}`);
-    if (firstActive) firstActive.focus();
+    if (!tvAddModal.hidden) {
+      // Recorded from the TV Mode overlay — close it so the animated score update shows.
+      closeTvAddModal();
+    } else {
+      const firstActive = document.getElementById(`entry-${activeIdx[0]}`);
+      if (firstActive) firstActive.focus();
+    }
   });
 
   exportCsvBtn.addEventListener('click', () => {
@@ -1480,6 +1559,11 @@
 
   // ---------- TV MODE ----------
 
+  // Where the Record Match panel normally lives, so it can be moved into the TV
+  // add-score modal and back out again without losing its place in the page.
+  const recordMatchPanelHome = { parent: recordMatchPanel.parentNode, next: recordMatchPanel.nextSibling };
+  let tvPrevTotals = null; // last-rendered totals, to detect which scores just changed
+
   function tvGridShape(n) {
     // Keep it to one row up through 4 players; beyond that, split into two rows so
     // each tile stays large and legible rather than shrinking into a long strip.
@@ -1504,13 +1588,14 @@
         ? `<img class="tv-photo" src="${url}" alt="">`
         : `<span class="tv-photo-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
       const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? '<span class="tv-tag">Out</span>' : '');
-      return `<div class="tv-tile ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''}">
+      const changed = !!(tvPrevTotals && tvPrevTotals[pIdx] !== undefined && tvPrevTotals[pIdx] !== totals[pIdx]);
+      return `<div class="tv-tile ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'tv-tile-updated' : ''}">
         ${photo}
         <div class="tv-scrim"></div>
         ${tag}
         <div class="tv-overlay">
           <div class="tv-name">${escapeHtml(name)}</div>
-          <div class="tv-score">${totals[pIdx]}</div>
+          <div class="tv-score ${changed ? 'tv-score-updated' : ''}">${totals[pIdx]}</div>
         </div>
       </div>`;
     }).join('');
@@ -1518,6 +1603,7 @@
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
     tvMaxPoints.textContent = maxPoints ?? '—';
+    tvPrevTotals = totals.slice();
   }
 
   function exitTvMode() {
@@ -1530,6 +1616,7 @@
   }
 
   tvModeBtn.addEventListener('click', () => {
+    tvPrevTotals = null; // don't animate every tile just because TV Mode opened
     renderTvScreen();
     tvScreen.hidden = false;
     document.documentElement.style.overflow = 'hidden';
@@ -1542,13 +1629,44 @@
   tvExitBtn.addEventListener('click', exitTvMode);
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !tvScreen.hidden) exitTvMode();
+    if (e.key !== 'Escape') return;
+    if (!tvAddModal.hidden) { closeTvAddModal(); return; }
+    if (!tvScreen.hidden) exitTvMode();
   });
 
   // If the browser exits fullscreen on its own (its own Escape handling, or the
   // viewer switching apps), make sure the overlay closes with it.
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement && !tvScreen.hidden) tvScreen.hidden = true;
+  });
+
+  // ---------- TV MODE: add a match without leaving the screen ----------
+  // Reuses the exact same Record Match panel (inputs, event buttons, validation,
+  // Test Dump) by moving it into an overlay on top of the TV grid, then moving it
+  // back to its normal spot in the game screen when done.
+
+  function openTvAddModal() {
+    tvAddModalCard.insertBefore(recordMatchPanel, tvAddDoneBtn);
+    tvAddModal.hidden = false;
+    const firstInput = entryGrid.querySelector('input[type="number"]:not(:disabled)');
+    if (firstInput) firstInput.focus();
+  }
+
+  function closeTvAddModal() {
+    const anchor = recordMatchPanelHome.next;
+    if (anchor && anchor.parentNode === recordMatchPanelHome.parent) {
+      recordMatchPanelHome.parent.insertBefore(recordMatchPanel, anchor);
+    } else {
+      recordMatchPanelHome.parent.appendChild(recordMatchPanel);
+    }
+    tvAddModal.hidden = true;
+  }
+
+  tvAddScoreBtn.addEventListener('click', openTvAddModal);
+  tvAddDoneBtn.addEventListener('click', closeTvAddModal);
+
+  tvAddModal.addEventListener('click', (e) => {
+    if (e.target === tvAddModal) closeTvAddModal(); // click on the dimmed backdrop
   });
 
   // ---------- MID-GAME PLAYER RENAME ----------
