@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050b08">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Rummy Score Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -139,6 +143,17 @@
   }
 
   .player-fields { display: grid; gap: 12px; }
+
+  .event-points-grid { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 12px; }
+  .event-points-sublabel {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
   input[type="text"], input[type="number"] {
     width: 100%;
     background: var(--bg);
@@ -151,6 +166,7 @@
     transition: border-color 0.15s ease;
   }
   input[type="text"]:focus, input[type="number"]:focus { border-color: var(--green); }
+  .csv-file-input { flex: 1 1 200px; min-width: 0; max-width: 260px; color: var(--muted); font-family: var(--font-mono); font-size: 13px; }
 
   .player-names-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .player-name-chip {
@@ -232,7 +248,7 @@
   .set-block[open] summary::before { transform: rotate(90deg); }
   .set-block[open] summary { margin-bottom: 10px; }
 
-  .match-log-scroll { overflow-x: auto; }
+  .match-log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .match-log-table { display: grid; gap: 6px; min-width: fit-content; }
   .match-log-header, .match-log-row {
     display: grid; align-items: center; gap: 8px;
@@ -346,10 +362,14 @@
     line-height: 1;
     padding: 3px 5px;
     cursor: pointer;
-    opacity: 0;
     transition: opacity 0.12s ease, color 0.12s ease;
   }
-  .match-log-row:hover .edit-btn { opacity: 1; }
+  /* Hover-to-reveal only makes sense on devices with a real hover state (mouse/trackpad) —
+     on touchscreens there is no hover, so keep the edit button visible there always. */
+  @media (hover: hover) and (pointer: fine) {
+    .icon-btn.edit-btn { opacity: 0; }
+    .match-log-row:hover .edit-btn { opacity: 1; }
+  }
   .icon-btn:hover { color: var(--orange); }
   .row-actions { display: flex; gap: 2px; }
   .row-actions .icon-btn { opacity: 1; }
@@ -360,7 +380,7 @@
   .ml-edit-input {
     width: 100%;
     padding: 4px 6px;
-    font-size: 15px;
+    font-size: 16px;
     text-align: center;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -410,10 +430,35 @@
 
   footer { text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
 
-  @media (max-width: 560px) {
+  @media (max-width: 600px) {
+    body { padding: 12px; }
+    .hud-bar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+    .brand { font-size: 13px; letter-spacing: 2px; }
     .panel { padding: 20px 16px; }
-    .entry-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    h1 { font-size: 22px; }
+    .sub { font-size: 14px; margin-bottom: 18px; }
+    .game-meta { font-size: 13px; gap: 8px 14px; }
+    .game-meta b { font-size: 16px; }
+
+    .event-points-grid { grid-template-columns: 1fr; }
+
+    .entry-grid { flex-direction: column; }
+    .entry-row { flex: 1 1 auto; max-width: none; flex-direction: column; align-items: stretch; gap: 6px; }
     .entry-row label { min-width: unset; }
+    .event-btn { font-size: 11px; padding: 7px 9px; }
+
+    .summary-card { padding: 14px; }
+    .summary-stats { gap: 14px; }
+    .stat { min-width: 44px; }
+
+    .match-log-header, .match-log-row { padding: 8px 10px; font-size: 15px; }
+    .icon-btn { padding: 6px 8px; font-size: 15px; }
+
+    .actions-row .btn-ghost, .actions-row .btn-primary { flex: 1 1 140px; }
+  }
+
+  @media (max-width: 380px) {
+    .hex-btn { width: 46px; height: 46px; font-size: 16px; }
   }
 </style>
 </head>
@@ -442,7 +487,25 @@
 
     <div class="field-group">
       <label>Max Points (elimination limit)</label>
-      <input type="number" id="maxPointsInput" min="1" step="1" placeholder="e.g. 200" style="max-width:200px;">
+      <input type="number" id="maxPointsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 200" style="max-width:200px;">
+    </div>
+
+    <div class="field-group">
+      <label>Event Points (optional — leave blank for defaults)</label>
+      <div class="event-points-grid">
+        <div>
+          <span class="event-points-sublabel">Drop (D)</span>
+          <input type="number" id="dropPointsInput" min="1" step="1" inputmode="numeric" placeholder="21">
+        </div>
+        <div>
+          <span class="event-points-sublabel">Middle Drop (MD)</span>
+          <input type="number" id="mdropPointsInput" min="1" step="1" inputmode="numeric" placeholder="41">
+        </div>
+        <div>
+          <span class="event-points-sublabel">Full Count (FC)</span>
+          <input type="number" id="fullPointsInput" min="1" step="1" inputmode="numeric" placeholder="80">
+        </div>
+      </div>
     </div>
 
     <div class="error-text" id="setupError"></div>
@@ -455,7 +518,7 @@
       <label>Or Import an Existing Game (CSV)</label>
       <p class="sub" style="margin:0 0 12px; font-size:13px;">Header row: <code>matches,player1,player2,…</code> — each following row is one round's scores. Enter Max Points above first.</p>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <input type="file" id="importCsvInput" accept=".csv" style="max-width:220px;">
+        <input type="file" id="importCsvInput" accept=".csv" class="csv-file-input">
         <button class="btn-ghost" id="importCsvBtn" type="button" style="padding:10px 18px; font-size:12px;">📥 Import &amp; Start</button>
       </div>
     </div>
@@ -499,7 +562,7 @@
 
     <div class="board-section">
       <h2>Match Log</h2>
-      <p class="sub" style="margin:-6px 0 14px; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted);">D = Drop (21) · MD = Middle Drop (41) · FC = Full Count (80) · R = Rummy (0)</p>
+      <p class="sub" id="eventLegendText" style="margin:-6px 0 14px; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted);"></p>
       <div id="matchLogList"></div>
     </div>
 
@@ -520,12 +583,16 @@
 
 <script>
   const MIN_PLAYERS = 2, MAX_PLAYERS = 7;
-  const EVENTS = [
-    { key: 'drop',   label: 'Drop',    code: 'D',  points: 21 },
-    { key: 'mdrop',  label: 'M. Drop', code: 'MD', points: 41 },
-    { key: 'full',   label: 'Full',    code: 'FC', points: 80 },
-    { key: 'rummy',  label: 'Rummy',   code: 'R',  points: 0 }
-  ];
+  const DEFAULT_DROP_POINTS = 21, DEFAULT_MDROP_POINTS = 41, DEFAULT_FULL_POINTS = 80;
+
+  function buildEvents(dropPts, mdropPts, fullPts) {
+    return [
+      { key: 'drop',  label: 'Drop',        code: 'D',  points: dropPts },
+      { key: 'mdrop', label: 'Middle Drop', code: 'MD', points: mdropPts },
+      { key: 'full',  label: 'Full Count',  code: 'FC', points: fullPts },
+      { key: 'rummy', label: 'Rummy',       code: 'R',  points: 0 }
+    ];
+  }
 
   let playerCount = null;
   let players = [];      // finalized names, set at game start
@@ -537,6 +604,8 @@
   let gameHistory = [];          // archive of games ended this session (in-memory only)
   let renamingPlayers = false;   // whether the mid-game player-rename form is open
   let renameError = '';          // validation message shown while renaming players
+  let EVENTS = buildEvents(DEFAULT_DROP_POINTS, DEFAULT_MDROP_POINTS, DEFAULT_FULL_POINTS);
+  let maxRoundPoints = DEFAULT_FULL_POINTS;  // cap for a single round's score — the configured Full Count value
 
   const setupScreen = document.getElementById('setupScreen');
   const gameScreen = document.getElementById('gameScreen');
@@ -547,6 +616,9 @@
   const setupError = document.getElementById('setupError');
   const startBtn = document.getElementById('startBtn');
   const maxPointsInput = document.getElementById('maxPointsInput');
+  const dropPointsInput = document.getElementById('dropPointsInput');
+  const mdropPointsInput = document.getElementById('mdropPointsInput');
+  const fullPointsInput = document.getElementById('fullPointsInput');
   const importCsvInput = document.getElementById('importCsvInput');
   const importCsvBtn = document.getElementById('importCsvBtn');
   const gameHistorySection = document.getElementById('gameHistorySection');
@@ -556,6 +628,7 @@
   const setNumDisplay = document.getElementById('setNumDisplay');
   const setSizeNote = document.getElementById('setSizeNote');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const eventLegendText = document.getElementById('eventLegendText');
   const renamePlayersBtn = document.getElementById('renamePlayersBtn');
   const playerNamesDisplay = document.getElementById('playerNamesDisplay');
   const summaryList = document.getElementById('summaryList');
@@ -607,6 +680,27 @@
     setupError.textContent = '';
   }
 
+  // Reads the optional Drop / Middle Drop / Full Count inputs, falling back to the
+  // defaults when left blank. Throws with a user-facing message on invalid input.
+  function readEventPointsConfig() {
+    const parseOne = (inputEl, defaultVal, label) => {
+      const raw = inputEl.value.trim();
+      if (raw === '') return defaultVal;
+      const val = Number(raw);
+      if (Number.isNaN(val) || !Number.isInteger(val) || val <= 0) {
+        throw new Error(`${label} must be a positive whole number.`);
+      }
+      return val;
+    };
+    const dropPts = parseOne(dropPointsInput, DEFAULT_DROP_POINTS, 'Drop points');
+    const mdropPts = parseOne(mdropPointsInput, DEFAULT_MDROP_POINTS, 'Middle Drop points');
+    const fullPts = parseOne(fullPointsInput, DEFAULT_FULL_POINTS, 'Full Count points');
+    if (!(dropPts < mdropPts && mdropPts < fullPts)) {
+      throw new Error('Event points must increase: Drop < Middle Drop < Full Count.');
+    }
+    return { dropPts, mdropPts, fullPts };
+  }
+
   startBtn.addEventListener('click', () => {
     setupError.textContent = '';
     if (!playerCount) {
@@ -632,6 +726,14 @@
       return;
     }
 
+    let eventPts;
+    try {
+      eventPts = readEventPointsConfig();
+    } catch (err) {
+      setupError.textContent = err.message;
+      return;
+    }
+
     players = names;
     setSize = players.length;
     matches = [];
@@ -640,6 +742,8 @@
     editErrorMsg = '';
     renamingPlayers = false;
     renameError = '';
+    EVENTS = buildEvents(eventPts.dropPts, eventPts.mdropPts, eventPts.fullPts);
+    maxRoundPoints = eventPts.fullPts;
 
     setupScreen.hidden = true;
     gameScreen.hidden = false;
@@ -676,8 +780,9 @@
       const input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
-      input.max = '80';
+      input.max = String(maxRoundPoints);
       input.step = '1';
+      input.inputMode = 'numeric';
       input.id = `entry-${i}`;
       input.placeholder = outFlags[i] ? 'OUT' : 'pts';
       if (outFlags[i]) input.disabled = true;
@@ -703,7 +808,7 @@
         b.dataset.key = ev.key;
         b.dataset.points = ev.points;
         b.title = `${ev.label} (${ev.points} pts)`;
-        b.textContent = ev.code;
+        b.textContent = ev.key === 'rummy' ? ev.code : `${ev.code} ${ev.points}`;
         if (outFlags[i]) b.disabled = true;
         b.addEventListener('click', () => {
           input.value = ev.points;
@@ -743,13 +848,13 @@
     const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
     if (activeIdx.length < 2) return null;
     const rummyIdx = activeIdx[Math.floor(Math.random() * activeIdx.length)];
-    const eventPool = [21, 41, 80];
+    const eventPool = EVENTS.filter(ev => ev.key !== 'rummy').map(ev => ev.points);
     return players.map((_, i) => {
       if (outFlags[i]) return null;
       if (i === rummyIdx) return 0;
       return Math.random() < 0.6
         ? eventPool[Math.floor(Math.random() * eventPool.length)]
-        : 1 + Math.floor(Math.random() * 79);
+        : 1 + Math.floor(Math.random() * (maxRoundPoints - 1));
     });
   }
 
@@ -791,8 +896,8 @@
       entryError.textContent = 'Scores must be whole numbers, 0 or higher.';
       return;
     }
-    if (activeScores.some(s => s > 80)) {
-      entryError.textContent = 'A score cannot exceed 80 points (Full Count) per round.';
+    if (activeScores.some(s => s > maxRoundPoints)) {
+      entryError.textContent = `A score cannot exceed ${maxRoundPoints} points (Full Count) per round.`;
       return;
     }
     const zeroCount = activeScores.filter(s => s === 0).length;
@@ -860,6 +965,9 @@
     playerFields.innerHTML = '';
     playerFieldsWrap.hidden = true;
     maxPointsInput.value = '';
+    dropPointsInput.value = '';
+    mdropPointsInput.value = '';
+    fullPointsInput.value = '';
     importCsvInput.value = '';
     setupError.textContent = '';
     gameScreen.hidden = true;
@@ -953,10 +1061,18 @@
       return;
     }
 
+    let eventPts;
+    try {
+      eventPts = readEventPointsConfig();
+    } catch (err) {
+      setupError.textContent = err.message;
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const { playerNames, matches: importedMatches } = parseGameCsv(String(reader.result));
+        const { playerNames, matches: importedMatches } = parseGameCsv(String(reader.result), eventPts.fullPts);
         players = playerNames;
         setSize = players.length;
         matches = importedMatches;
@@ -966,6 +1082,8 @@
         editErrorMsg = '';
         renamingPlayers = false;
         renameError = '';
+        EVENTS = buildEvents(eventPts.dropPts, eventPts.mdropPts, eventPts.fullPts);
+        maxRoundPoints = eventPts.fullPts;
 
         setupScreen.hidden = true;
         gameScreen.hidden = false;
@@ -1064,8 +1182,8 @@
       renderBoards();
       return;
     }
-    if (enteredScores.some(s => s > 80)) {
-      editErrorMsg = 'A score cannot exceed 80 points (Full Count) per round.';
+    if (enteredScores.some(s => s > maxRoundPoints)) {
+      editErrorMsg = `A score cannot exceed ${maxRoundPoints} points (Full Count) per round.`;
       renderBoards();
       return;
     }
@@ -1102,6 +1220,7 @@
     setNumDisplay.textContent = currentSet;
     setSizeNote.textContent = `${setSize} match${setSize === 1 ? '' : 'es'} per set`;
     entryMatchNum.textContent = nextMatchNum;
+    eventLegendText.textContent = EVENTS.map(ev => `${ev.code} = ${ev.label} (${ev.points})`).join(' · ');
 
     renderPlayerNames();
     buildEntryGrid();
@@ -1193,7 +1312,7 @@
       if (i === editingMatchIndex) {
         const editCells = players.map((_, pIdx) => {
           if (m[pIdx] === null) return `<span class="ml-cell ml-out">OUT</span>`;
-          return `<span class="ml-cell"><input type="number" class="ml-edit-input" min="0" max="80" step="1" value="${m[pIdx]}" data-pidx="${pIdx}"></span>`;
+          return `<span class="ml-cell"><input type="number" class="ml-edit-input" min="0" max="${maxRoundPoints}" step="1" inputmode="numeric" value="${m[pIdx]}" data-pidx="${pIdx}"></span>`;
         }).join('');
         matchLogHtml += `<div class="match-log-row editing ${isNewSet ? 'set-boundary' : ''}" style="grid-template-columns:${cols}" data-match-index="${i}">
           <span class="ml-cell ml-label match-label-cell">
@@ -1277,7 +1396,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function parseGameCsv(text) {
+  function parseGameCsv(text, roundCap) {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length < 2) throw new Error('CSV needs a header row plus at least one round.');
 
@@ -1303,8 +1422,8 @@
 
     parsedMatches.forEach((m, idx) => {
       m.forEach(v => {
-        if (v !== null && (Number.isNaN(v) || v < 0 || !Number.isInteger(v) || v > 80)) {
-          throw new Error(`Row ${idx + 2} has an invalid score. Scores must be whole numbers 0–80, or blank if the player was already out.`);
+        if (v !== null && (Number.isNaN(v) || v < 0 || !Number.isInteger(v) || v > roundCap)) {
+          throw new Error(`Row ${idx + 2} has an invalid score. Scores must be whole numbers 0–${roundCap}, or blank if the player was already out.`);
         }
       });
     });
@@ -1315,7 +1434,8 @@
   function matchLogLabel(score) {
     if (score === null) return 'OUT';
     const ev = EVENTS.find(e => e.points === score);
-    return ev ? ev.code : String(score);
+    if (!ev) return String(score);
+    return ev.key === 'rummy' ? ev.code : `${ev.code} ${ev.points}`;
   }
 
   renderGameHistory();
