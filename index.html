@@ -152,23 +152,16 @@
   }
   input[type="text"]:focus, input[type="number"]:focus { border-color: var(--green); }
 
-  .quick-add {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    margin: 18px 0 26px;
-    font-size: 14px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
-  }
-  .chip {
-    background: transparent;
-    border: 1px dashed var(--border);
-    color: var(--green);
+  .player-names-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .player-name-chip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 7px 14px;
     font-family: var(--font-mono);
-    font-size: 14px;
-    padding: 6px 12px;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    font-size: 13px;
+    color: var(--white);
   }
-  .chip:hover { border-color: var(--green); background: rgba(51,225,138,0.08); }
-  .chip:disabled { opacity: 0.3; cursor: not-allowed; }
+  .player-rename-grid { display: grid; gap: 10px; margin-bottom: 14px; }
 
   .error-text { color: var(--orange); font-size: 14px; margin: -10px 0 16px; font-family: var(--font-mono); min-height: 16px; }
 
@@ -447,13 +440,6 @@
       <div class="player-fields" id="playerFields"></div>
     </div>
 
-    <div class="quick-add" id="quickAdd" hidden>
-      <span>Quick add:</span>
-      <button class="chip" data-name="Yatheendra">Yatheendra</button>
-      <button class="chip" data-name="Kavya">Kavya</button>
-      <button class="chip" data-name="Bharathi">Bharathi</button>
-    </div>
-
     <div class="field-group">
       <label>Max Points (elimination limit)</label>
       <input type="number" id="maxPointsInput" min="1" step="1" placeholder="e.g. 200" style="max-width:200px;">
@@ -486,6 +472,14 @@
       <div>MATCH <b id="matchNumDisplay">1</b></div>
       <div>SET <b id="setNumDisplay">1</b> · <span id="setSizeNote"></span></div>
       <div>MAX <b id="maxPointsDisplay">-</b></div>
+    </div>
+
+    <div class="board-section">
+      <h2 style="display:flex; align-items:center; justify-content:space-between;">
+        Players
+        <button class="btn-ghost" id="renamePlayersBtn" type="button" style="font-size:10px; padding:5px 10px;">✎ Rename</button>
+      </h2>
+      <div id="playerNamesDisplay"></div>
     </div>
 
     <div class="panel" style="margin:0 0 18px; padding:14px 16px;">
@@ -526,7 +520,6 @@
 
 <script>
   const MIN_PLAYERS = 2, MAX_PLAYERS = 7;
-  const QUICK_NAMES = ['Yatheendra', 'Kavya', 'Bharathi'];
   const EVENTS = [
     { key: 'drop',   label: 'Drop',    code: 'D',  points: 21 },
     { key: 'mdrop',  label: 'M. Drop', code: 'MD', points: 41 },
@@ -542,6 +535,8 @@
   let editErrorMsg = '';         // validation message shown while editing a match
   let maxPoints = null;          // elimination limit for the game
   let gameHistory = [];          // archive of games ended this session (in-memory only)
+  let renamingPlayers = false;   // whether the mid-game player-rename form is open
+  let renameError = '';          // validation message shown while renaming players
 
   const setupScreen = document.getElementById('setupScreen');
   const gameScreen = document.getElementById('gameScreen');
@@ -549,7 +544,6 @@
   const countSelector = document.getElementById('countSelector');
   const playerFieldsWrap = document.getElementById('playerFieldsWrap');
   const playerFields = document.getElementById('playerFields');
-  const quickAdd = document.getElementById('quickAdd');
   const setupError = document.getElementById('setupError');
   const startBtn = document.getElementById('startBtn');
   const maxPointsInput = document.getElementById('maxPointsInput');
@@ -562,6 +556,8 @@
   const setNumDisplay = document.getElementById('setNumDisplay');
   const setSizeNote = document.getElementById('setSizeNote');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const renamePlayersBtn = document.getElementById('renamePlayersBtn');
+  const playerNamesDisplay = document.getElementById('playerNamesDisplay');
   const summaryList = document.getElementById('summaryList');
   const setBreakdownList = document.getElementById('setBreakdownList');
   const matchLogList = document.getElementById('matchLogList');
@@ -608,22 +604,8 @@
       playerFields.appendChild(input);
     }
     playerFieldsWrap.hidden = false;
-    quickAdd.hidden = false;
     setupError.textContent = '';
   }
-
-  quickAdd.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const inputs = [...playerFields.querySelectorAll('input')];
-      const target = inputs.find(i => i.value.trim() === '');
-      if (target) {
-        target.value = chip.dataset.name;
-        const idx = inputs.indexOf(target);
-        const next = inputs[idx + 1];
-        if (next) next.focus();
-      }
-    });
-  });
 
   startBtn.addEventListener('click', () => {
     setupError.textContent = '';
@@ -656,6 +638,8 @@
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
     editErrorMsg = '';
+    renamingPlayers = false;
+    renameError = '';
 
     setupScreen.hidden = true;
     gameScreen.hidden = false;
@@ -870,10 +854,11 @@
     maxPoints = null;
     editingMatchIndex = null;
     editErrorMsg = '';
+    renamingPlayers = false;
+    renameError = '';
     [...countSelector.children].forEach(b => b.classList.remove('selected'));
     playerFields.innerHTML = '';
     playerFieldsWrap.hidden = true;
-    quickAdd.hidden = true;
     maxPointsInput.value = '';
     importCsvInput.value = '';
     setupError.textContent = '';
@@ -882,6 +867,76 @@
     statusText.textContent = 'STANDBY';
     renderGameHistory();
   });
+
+  // ---------- MID-GAME PLAYER RENAME ----------
+
+  renamePlayersBtn.addEventListener('click', () => {
+    renamingPlayers = true;
+    renameError = '';
+    renderPlayerNames();
+  });
+
+  playerNamesDisplay.addEventListener('click', (e) => {
+    if (e.target.id === 'saveRenameBtn') {
+      saveRenamedPlayers();
+    } else if (e.target.id === 'cancelRenameBtn') {
+      renamingPlayers = false;
+      renameError = '';
+      renderPlayerNames();
+    }
+  });
+
+  playerNamesDisplay.addEventListener('keydown', (e) => {
+    if (!e.target.classList.contains('rename-input')) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveRenamedPlayers();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      renamingPlayers = false;
+      renameError = '';
+      renderPlayerNames();
+    }
+  });
+
+  function saveRenamedPlayers() {
+    const inputs = [...playerNamesDisplay.querySelectorAll('.rename-input')];
+    const names = inputs.map(inp => inp.value.trim());
+
+    if (names.some(n => n === '')) {
+      renameError = 'Every player needs a name.';
+      renderPlayerNames();
+      return;
+    }
+    const lower = names.map(n => n.toLowerCase());
+    if (new Set(lower).size !== lower.length) {
+      renameError = 'Player names must be unique.';
+      renderPlayerNames();
+      return;
+    }
+
+    players = names;
+    renamingPlayers = false;
+    renameError = '';
+    renderAll();
+  }
+
+  function renderPlayerNames() {
+    if (renamingPlayers) {
+      const rows = players.map((name, i) =>
+        `<input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">`
+      ).join('');
+      playerNamesDisplay.innerHTML = `
+        <div class="player-rename-grid">${rows}</div>
+        <div class="error-text">${escapeHtml(renameError)}</div>
+        <div class="actions-row" style="margin-top:0;">
+          <button class="btn-primary" id="saveRenameBtn" type="button" style="padding:9px 18px; font-size:12px;">Save Names</button>
+          <button class="btn-ghost" id="cancelRenameBtn" type="button" style="padding:9px 18px; font-size:12px;">Cancel</button>
+        </div>`;
+    } else {
+      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map(n => `<span class="player-name-chip">${escapeHtml(n)}</span>`).join('')}</div>`;
+    }
+  }
 
   // ---------- IMPORT & START ----------
 
@@ -909,6 +964,8 @@
         playerCount = players.length;
         editingMatchIndex = null;
         editErrorMsg = '';
+        renamingPlayers = false;
+        renameError = '';
 
         setupScreen.hidden = true;
         gameScreen.hidden = false;
@@ -1046,6 +1103,7 @@
     setSizeNote.textContent = `${setSize} match${setSize === 1 ? '' : 'es'} per set`;
     entryMatchNum.textContent = nextMatchNum;
 
+    renderPlayerNames();
     buildEntryGrid();
     renderBoards();
   }
@@ -1182,6 +1240,10 @@
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
   }
 
   function getTotals(matchList) {
