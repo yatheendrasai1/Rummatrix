@@ -531,6 +531,150 @@
 
   footer { text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
 
+  /* ---------- TV MODE ---------- */
+  /* A single, no-scroll, high-contrast screen showing every player's score at once —
+     sized in viewport units (with container-query units layered on top where
+     supported) so it scales cleanly to any TV or projector, regardless of player
+     count or aspect ratio. */
+  .tv-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background:
+      radial-gradient(ellipse at top, #0a1a12 0%, var(--bg) 65%);
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    box-sizing: border-box;
+    padding: 1.6vh 1.6vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4vh;
+  }
+  .tv-screen[hidden] { display: none; }
+  .tv-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .tv-brand {
+    font-family: var(--font-display);
+    color: var(--orange);
+    letter-spacing: 3px;
+    font-size: clamp(13px, 2vw, 22px);
+    white-space: nowrap;
+  }
+  .tv-brand span { color: var(--green); }
+  .tv-meta {
+    font-family: var(--font-mono);
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-size: clamp(11px, 1.3vw, 18px);
+    white-space: nowrap;
+  }
+  .tv-meta b { color: var(--green); }
+  .tv-exit-btn {
+    flex: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: clamp(26px, 3vw, 38px);
+    height: clamp(26px, 3vw, 38px);
+    font-size: clamp(13px, 1.6vw, 18px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tv-exit-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+  .tv-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    gap: 1.4vh 1.4vw;
+  }
+
+  .tv-tile {
+    container-type: size;
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: linear-gradient(160deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 1.4vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1vh;
+  }
+  .tv-tile.lead { border-color: var(--orange); }
+  .tv-tile.out { opacity: 0.45; }
+
+  .tv-tag {
+    position: absolute;
+    top: 1.2vh;
+    right: 1.2vw;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.4vh 1vw;
+    border-radius: 999px;
+    font-size: clamp(9px, 1.8cqh, 16px);
+    background: rgba(255,106,31,0.12);
+    color: var(--orange);
+    border: 1px solid var(--orange);
+  }
+
+  .tv-avatar {
+    flex: none;
+    border-radius: 50%;
+    object-fit: cover;
+    width: 30cqh;
+    height: 30cqh;
+    max-width: 40cqw;
+    max-height: 40cqw;
+  }
+  .tv-avatar-placeholder {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    width: 30cqh;
+    height: 30cqh;
+    max-width: 40cqw;
+    max-height: 40cqw;
+    font-size: 14cqh;
+  }
+  .tv-name {
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: var(--white);
+    font-size: 7cqh;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .tv-score {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    font-size: 18cqh;
+  }
+  .tv-tile.out .tv-score { color: var(--orange); }
+
   @media (max-width: 600px) {
     body { padding: 12px; }
     .hud-bar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
@@ -676,6 +820,7 @@
     </div>
 
     <div class="actions-row">
+      <button class="btn-ghost" id="tvModeBtn">📺 TV Mode</button>
       <button class="btn-ghost" id="undoBtn">↺ Undo Last Match</button>
       <button class="btn-ghost" id="exportCsvBtn">⬇ Export CSV</button>
       <button class="btn-ghost danger" id="endGameBtn">⏻ End Game</button>
@@ -685,6 +830,16 @@
   </section>
 
   <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
+</div>
+
+<!-- TV MODE — a single, no-scroll screen sized for casting to a TV -->
+<div class="tv-screen" id="tvScreen" hidden>
+  <div class="tv-header">
+    <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b></span>
+    <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
+  </div>
+  <div class="tv-grid" id="tvGrid"></div>
 </div>
 
 <script>
@@ -749,6 +904,13 @@
   const undoBtn = document.getElementById('undoBtn');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const endGameBtn = document.getElementById('endGameBtn');
+  const tvModeBtn = document.getElementById('tvModeBtn');
+  const tvScreen = document.getElementById('tvScreen');
+  const tvGrid = document.getElementById('tvGrid');
+  const tvExitBtn = document.getElementById('tvExitBtn');
+  const tvMatchNum = document.getElementById('tvMatchNum');
+  const tvSetNum = document.getElementById('tvSetNum');
+  const tvMaxPoints = document.getElementById('tvMaxPoints');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1303,6 +1465,76 @@
     renderGameHistory();
   });
 
+  // ---------- TV MODE ----------
+
+  function tvGridShape(n) {
+    // Keep it to one row up through 4 players; beyond that, split into two rows so
+    // each tile stays large and legible rather than shrinking into a long strip.
+    if (n <= 4) return { cols: n, rows: 1 };
+    return { cols: Math.ceil(n / 2), rows: 2 };
+  }
+
+  function renderTvScreen() {
+    const totals = getTotals(matches);
+    const outFlags = getOutFlags(totals);
+    const activeTotals = totals.filter((_, i) => !outFlags[i]);
+    const minActiveTotal = activeTotals.length ? Math.min(...activeTotals) : null;
+    const { cols, rows } = tvGridShape(players.length);
+    tvGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    tvGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+    tvGrid.innerHTML = players.map((name, pIdx) => {
+      const isOut = outFlags[pIdx];
+      const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
+      const url = playerAvatars[pIdx];
+      const avatar = url
+        ? `<img class="tv-avatar" src="${url}" alt="">`
+        : `<span class="tv-avatar-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
+      const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? '<span class="tv-tag">Out</span>' : '');
+      return `<div class="tv-tile ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''}">
+        ${tag}
+        ${avatar}
+        <div class="tv-name">${escapeHtml(name)}</div>
+        <div class="tv-score">${totals[pIdx]}</div>
+      </div>`;
+    }).join('');
+
+    tvMatchNum.textContent = matches.length + 1;
+    tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
+    tvMaxPoints.textContent = maxPoints ?? '—';
+  }
+
+  function exitTvMode() {
+    tvScreen.hidden = true;
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => { /* already exited or unsupported */ });
+    }
+  }
+
+  tvModeBtn.addEventListener('click', () => {
+    renderTvScreen();
+    tvScreen.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => { /* fullscreen not permitted here — overlay still works windowed */ });
+    }
+  });
+
+  tvExitBtn.addEventListener('click', exitTvMode);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !tvScreen.hidden) exitTvMode();
+  });
+
+  // If the browser exits fullscreen on its own (its own Escape handling, or the
+  // viewer switching apps), make sure the overlay closes with it.
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && !tvScreen.hidden) tvScreen.hidden = true;
+  });
+
   // ---------- MID-GAME PLAYER RENAME ----------
 
   renamePlayersBtn.addEventListener('click', () => {
@@ -1672,6 +1904,8 @@
     }).join('');
 
     summaryList.innerHTML = summaryHtml;
+
+    if (!tvScreen.hidden) renderTvScreen();
 
     if (matches.length === 0) {
       setBreakdownList.innerHTML = '<p class="empty-note">No matches yet.</p>';
