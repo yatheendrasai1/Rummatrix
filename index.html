@@ -143,6 +143,60 @@
   }
 
   .player-fields { display: grid; gap: 12px; }
+  .player-field-row { display: flex; align-items: center; gap: 12px; }
+  .player-field-row .player-name-input { flex: 1; min-width: 0; }
+
+  .player-avatar-wrap { position: relative; flex: none; }
+  .avatar-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 0;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s ease;
+  }
+  .avatar-btn:hover { border-color: var(--green); }
+  .avatar-circle { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .avatar-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .avatar-placeholder {
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: var(--muted);
+  }
+  .avatar-clear-btn {
+    position: absolute; top: -4px; right: -4px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #140900;
+    border: 1px solid var(--bg);
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .player-avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .player-avatar-placeholder {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+  .avatar-xs { width: 22px; height: 22px; font-size: 11px; }
+  .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
 
   .event-points-grid { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 12px; }
   .event-points-sublabel {
@@ -170,9 +224,12 @@
 
   .player-names-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .player-name-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     background: var(--panel);
     border: 1px solid var(--border);
-    padding: 7px 14px;
+    padding: 6px 14px 6px 6px;
     font-family: var(--font-mono);
     font-size: 13px;
     color: var(--white);
@@ -406,7 +463,8 @@
     border: 1px solid var(--border);
   }
   .entry-row-top { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
-  .entry-row label { margin: 0; color: var(--white); text-transform: none; letter-spacing: 0; font-size: 14px; font-family: var(--font-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry-row label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--white); text-transform: none; letter-spacing: 0; font-size: 14px; font-family: var(--font-body); font-weight: 600; }
+  .entry-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .entry-row input[type="number"] { width: 100%; flex: none; padding: 8px 10px; font-size: 16px; text-align: center; }
   .event-btns { display: flex; gap: 4px; flex-wrap: wrap; }
   .event-btn {
@@ -482,6 +540,7 @@
 
     <div class="field-group" id="playerFieldsWrap" hidden>
       <label>Player Names</label>
+      <p class="sub" style="margin:-4px 0 12px; font-size:13px;">Tap a player's circle to add a profile picture (optional).</p>
       <div class="player-fields" id="playerFields"></div>
     </div>
 
@@ -596,6 +655,7 @@
 
   let playerCount = null;
   let players = [];      // finalized names, set at game start
+  let playerAvatars = []; // data URLs (or null) indexed the same as players — set on the setup screen
   let matches = [];      // array of arrays: matches[i][playerIdx] = score
   let setSize = 0;
   let editingMatchIndex = null;  // index of the match currently open for inline editing
@@ -654,7 +714,7 @@
   function saveActiveGame() {
     try {
       localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify({
-        players, matches, setSize, maxPoints, playerCount,
+        players, playerAvatars, matches, setSize, maxPoints, playerCount,
         eventPoints: {
           dropPts: EVENTS.find(e => e.key === 'drop').points,
           mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -699,19 +759,134 @@
     countSelector.appendChild(b);
   }
 
+  // Reads an image file, center-crops it to a square, and downsizes it to a small
+  // JPEG data URL — keeps avatars light enough to live comfortably in localStorage.
+  function readAvatarFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith('image/')) {
+        reject(new Error('Please choose an image file.'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 128;
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => reject(new Error('Could not read that image.'));
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('Could not read that file.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function avatarInitial(i) {
+    const nameInput = document.getElementById(`player-input-${i}`);
+    const val = nameInput ? nameInput.value.trim() : (players[i] || '');
+    return val ? val[0].toUpperCase() : String(i + 1);
+  }
+
+  // Builds the avatar markup used wherever a player's name is shown in-game.
+  // Avatars are our own canvas-generated data URLs, not user-supplied markup, so
+  // they're safe to interpolate directly.
+  function avatarHtml(i, sizeClass) {
+    const url = playerAvatars[i];
+    if (url) return `<img class="player-avatar ${sizeClass}" src="${url}" alt="">`;
+    const initial = players[i] ? players[i][0].toUpperCase() : '?';
+    return `<span class="player-avatar player-avatar-placeholder ${sizeClass}" aria-hidden="true">${escapeHtml(initial)}</span>`;
+  }
+
+  // Updates one player's avatar preview in place on the setup screen (picker button + clear button).
+  function updateAvatarPreview(i) {
+    const circle = playerFields.querySelector(`.avatar-circle[data-idx="${i}"]`);
+    const clearBtn = playerFields.querySelector(`.avatar-clear-btn[data-idx="${i}"]`);
+    if (!circle) return;
+    const url = playerAvatars[i];
+    circle.innerHTML = url
+      ? `<img src="${url}" alt="">`
+      : `<span class="avatar-placeholder">${escapeHtml(avatarInitial(i))}</span>`;
+    if (clearBtn) clearBtn.hidden = !url;
+  }
+
   function selectPlayerCount(n) {
     playerCount = n;
     [...countSelector.children].forEach(b => b.classList.toggle('selected', Number(b.textContent) === n));
 
-    const existing = [...playerFields.querySelectorAll('input')].map(i => i.value);
+    const existingNames = [...playerFields.querySelectorAll('.player-name-input')].map(i => i.value);
+    const existingAvatars = playerAvatars.slice();
     playerFields.innerHTML = '';
+    playerAvatars = [];
+
     for (let i = 0; i < n; i++) {
+      playerAvatars[i] = existingAvatars[i] || null;
+
+      const row = document.createElement('div');
+      row.className = 'player-field-row';
+
+      const avatarWrap = document.createElement('div');
+      avatarWrap.className = 'player-avatar-wrap';
+
+      const avatarBtn = document.createElement('button');
+      avatarBtn.type = 'button';
+      avatarBtn.className = 'avatar-btn';
+      avatarBtn.title = 'Set profile picture';
+      avatarBtn.setAttribute('aria-label', 'Set profile picture');
+      const circle = document.createElement('span');
+      circle.className = 'avatar-circle';
+      circle.dataset.idx = i;
+      avatarBtn.appendChild(circle);
+
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'avatar-clear-btn';
+      clearBtn.dataset.idx = i;
+      clearBtn.title = 'Remove picture';
+      clearBtn.textContent = '×';
+      clearBtn.hidden = true;
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playerAvatars[i] = null;
+        updateAvatarPreview(i);
+      });
+
+      avatarBtn.addEventListener('click', () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          readAvatarFile(file).then(dataUrl => {
+            playerAvatars[i] = dataUrl;
+            setupError.textContent = '';
+            updateAvatarPreview(i);
+          }).catch(err => {
+            setupError.textContent = err.message || 'Could not load that image.';
+          });
+        });
+        fileInput.click();
+      });
+
+      avatarWrap.appendChild(avatarBtn);
+      avatarWrap.appendChild(clearBtn);
+
       const input = document.createElement('input');
       input.type = 'text';
+      input.className = 'player-name-input';
       input.placeholder = `Player ${i + 1} name`;
       input.maxLength = 20;
-      input.value = existing[i] || '';
+      input.value = existingNames[i] || '';
       input.id = `player-input-${i}`;
+      input.addEventListener('input', () => { if (!playerAvatars[i]) updateAvatarPreview(i); });
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -719,7 +894,11 @@
           if (next) next.focus(); else startBtn.click();
         }
       });
-      playerFields.appendChild(input);
+
+      row.appendChild(avatarWrap);
+      row.appendChild(input);
+      playerFields.appendChild(row);
+      updateAvatarPreview(i);
     }
     playerFieldsWrap.hidden = false;
     setupError.textContent = '';
@@ -752,7 +931,7 @@
       setupError.textContent = 'Select a player count first.';
       return;
     }
-    const inputs = [...playerFields.querySelectorAll('input')];
+    const inputs = [...playerFields.querySelectorAll('.player-name-input')];
     const names = inputs.map(i => i.value.trim());
 
     if (names.some(n => n === '')) {
@@ -815,7 +994,7 @@
 
       const label = document.createElement('label');
       label.setAttribute('for', `entry-${i}`);
-      label.textContent = name;
+      label.innerHTML = `${avatarHtml(i, 'avatar-xs')}<span class="entry-name-text">${escapeHtml(name)}</span>`;
       if (outFlags[i]) {
         const badge = document.createElement('span');
         badge.className = 'out-badge';
@@ -1005,6 +1184,7 @@
     clearActiveGame();
     matches = [];
     players = [];
+    playerAvatars = [];
     playerCount = null;
     setSize = 0;
     maxPoints = null;
@@ -1094,7 +1274,7 @@
           <button class="btn-ghost" id="cancelRenameBtn" type="button" style="padding:9px 18px; font-size:12px;">Cancel</button>
         </div>`;
     } else {
-      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map(n => `<span class="player-name-chip">${escapeHtml(n)}</span>`).join('')}</div>`;
+      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map((n, i) => `<span class="player-name-chip">${avatarHtml(i, 'avatar-sm')}${escapeHtml(n)}</span>`).join('')}</div>`;
     }
   }
 
@@ -1126,6 +1306,7 @@
       try {
         const { playerNames, matches: importedMatches } = parseGameCsv(String(reader.result), eventPts.fullPts);
         players = playerNames;
+        playerAvatars = players.map(() => null); // CSV imports don't carry profile pictures
         setSize = players.length;
         matches = importedMatches;
         maxPoints = maxPointsVal;
@@ -1314,7 +1495,7 @@
 
       return `<div class="summary-card ${isOut ? 'out' : ''}">
         <div class="summary-card-top">
-          <div class="summary-name">${escapeHtml(name)}${isOut ? '<span class="out-badge">OUT</span>' : ''}${isLeader ? '<span class="leader-badge">★ LEAD</span>' : ''}</div>
+          <div class="summary-name">${avatarHtml(pIdx, 'avatar-sm')}${escapeHtml(name)}${isOut ? '<span class="out-badge">OUT</span>' : ''}${isLeader ? '<span class="leader-badge">★ LEAD</span>' : ''}</div>
           <div class="summary-stats">
             <div class="stat"><span class="stat-value ${isOut ? 'status-out' : ''}">${totals[pIdx]}</span><span class="stat-label">Total</span></div>
             <div class="stat"><span class="stat-value ${pctRaw >= 90 ? 'status-out' : ''}">${pctDisplay}</span><span class="stat-label">Exhausted</span></div>
@@ -1503,6 +1684,7 @@
 
     const ep = saved.eventPoints || {};
     players = saved.players;
+    playerAvatars = Array.isArray(saved.playerAvatars) ? saved.playerAvatars : players.map(() => null);
     matches = saved.matches;
     setSize = saved.setSize || players.length;
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
