@@ -601,7 +601,7 @@
   let editingMatchIndex = null;  // index of the match currently open for inline editing
   let editErrorMsg = '';         // validation message shown while editing a match
   let maxPoints = null;          // elimination limit for the game
-  let gameHistory = [];          // archive of games ended this session (in-memory only)
+  let gameHistory = [];          // archive of ended games — persisted to localStorage
   let renamingPlayers = false;   // whether the mid-game player-rename form is open
   let renameError = '';          // validation message shown while renaming players
   let EVENTS = buildEvents(DEFAULT_DROP_POINTS, DEFAULT_MDROP_POINTS, DEFAULT_FULL_POINTS);
@@ -642,6 +642,51 @@
   const undoBtn = document.getElementById('undoBtn');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const endGameBtn = document.getElementById('endGameBtn');
+
+  // ---------- PERSISTENCE (localStorage) ----------
+  // Keeps the in-progress game and the ended-game archive across page reloads.
+  // Wrapped in try/catch since localStorage can throw (private browsing, quota,
+  // disabled storage) — persistence is a nice-to-have, not a hard requirement.
+
+  const ACTIVE_GAME_KEY = 'rummatrix.activeGame.v1';
+  const HISTORY_KEY = 'rummatrix.gameHistory.v1';
+
+  function saveActiveGame() {
+    try {
+      localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify({
+        players, matches, setSize, maxPoints, playerCount,
+        eventPoints: {
+          dropPts: EVENTS.find(e => e.key === 'drop').points,
+          mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
+          fullPts: maxRoundPoints
+        }
+      }));
+    } catch (err) { /* ignore — persistence is best-effort */ }
+  }
+
+  function clearActiveGame() {
+    try { localStorage.removeItem(ACTIVE_GAME_KEY); } catch (err) { /* ignore */ }
+  }
+
+  function loadActiveGame() {
+    try {
+      const raw = localStorage.getItem(ACTIVE_GAME_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) { return null; }
+  }
+
+  function saveGameHistory() {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(gameHistory)); } catch (err) { /* ignore */ }
+  }
+
+  function loadGameHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) { return []; }
+  }
 
   // ---------- SETUP SCREEN ----------
 
@@ -744,6 +789,7 @@
     renameError = '';
     EVENTS = buildEvents(eventPts.dropPts, eventPts.mdropPts, eventPts.fullPts);
     maxRoundPoints = eventPts.fullPts;
+    saveActiveGame();
 
     setupScreen.hidden = true;
     gameScreen.hidden = false;
@@ -868,6 +914,7 @@
       matches.push(m);
     }
     entryError.textContent = '';
+    saveActiveGame();
     renderAll();
   });
 
@@ -916,6 +963,7 @@
     });
 
     matches.push(fullScores);
+    saveActiveGame();
     renderAll();
     const firstActive = document.getElementById(`entry-${activeIdx[0]}`);
     if (firstActive) firstActive.focus();
@@ -931,6 +979,7 @@
     matches.pop();
     editingMatchIndex = null;
     editErrorMsg = '';
+    saveActiveGame();
     renderAll();
   });
 
@@ -950,8 +999,10 @@
         winner: winnerName,
         endedAt: new Date().toLocaleString()
       });
+      saveGameHistory();
     }
 
+    clearActiveGame();
     matches = [];
     players = [];
     playerCount = null;
@@ -1026,6 +1077,7 @@
     players = names;
     renamingPlayers = false;
     renameError = '';
+    saveActiveGame();
     renderAll();
   }
 
@@ -1084,6 +1136,7 @@
         renameError = '';
         EVENTS = buildEvents(eventPts.dropPts, eventPts.mdropPts, eventPts.fullPts);
         maxRoundPoints = eventPts.fullPts;
+        saveActiveGame();
 
         setupScreen.hidden = true;
         gameScreen.hidden = false;
@@ -1207,6 +1260,7 @@
     matches[idx] = updated;
     editingMatchIndex = null;
     editErrorMsg = '';
+    saveActiveGame();
     renderAll();
   }
 
@@ -1438,7 +1492,36 @@
     return ev.key === 'rummy' ? ev.code : `${ev.code} ${ev.points}`;
   }
 
-  renderGameHistory();
+  // ---------- INIT: restore from localStorage ----------
+
+  gameHistory = loadGameHistory();
+
+  (function restoreActiveGame() {
+    const saved = loadActiveGame();
+    if (!saved || !Array.isArray(saved.players) || saved.players.length < MIN_PLAYERS || !Array.isArray(saved.matches)) {
+      renderGameHistory();
+      return;
+    }
+
+    const ep = saved.eventPoints || {};
+    players = saved.players;
+    matches = saved.matches;
+    setSize = saved.setSize || players.length;
+    maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
+    playerCount = saved.playerCount || players.length;
+    EVENTS = buildEvents(ep.dropPts || DEFAULT_DROP_POINTS, ep.mdropPts || DEFAULT_MDROP_POINTS, ep.fullPts || DEFAULT_FULL_POINTS);
+    maxRoundPoints = ep.fullPts || DEFAULT_FULL_POINTS;
+    editingMatchIndex = null;
+    editErrorMsg = '';
+    renamingPlayers = false;
+    renameError = '';
+
+    setupScreen.hidden = true;
+    gameScreen.hidden = false;
+    statusText.textContent = 'GAME ACTIVE';
+    maxPointsDisplay.textContent = maxPoints;
+    renderAll();
+  })();
 </script>
 </body>
 </html>
