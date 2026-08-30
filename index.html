@@ -1487,9 +1487,7 @@
 
   function matchLogLabel(score) {
     if (score === null) return 'OUT';
-    const ev = EVENTS.find(e => e.points === score);
-    if (!ev) return String(score);
-    return ev.key === 'rummy' ? ev.code : `${ev.code} ${ev.points}`;
+    return String(score);
   }
 
   // ---------- INIT: restore from localStorage ----------
