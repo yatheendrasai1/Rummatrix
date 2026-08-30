@@ -366,41 +366,61 @@
   .history-date { font-family: var(--font-mono); color: var(--muted); font-size: 12px; letter-spacing: 0.5px; }
   .history-meta { font-family: var(--font-mono); font-size: 13px; color: var(--white); margin-top: 4px; }
 
-  /* summary cards */
+  /* summary cards — big photo on the left, info stacked on the right */
   .summary-card {
+    display: flex;
+    align-items: stretch;
     background: var(--panel);
     border: 1px solid var(--border);
-    padding: 16px 18px;
+    border-radius: 16px;
+    overflow: hidden;
     margin-bottom: 12px;
   }
   .summary-card.out { opacity: 0.55; }
-  .summary-card-top {
-    display: flex; align-items: center;
-    gap: 12px; margin-bottom: 14px;
-  }
-  .summary-avatar-col {
+
+  .summary-photo-col {
     flex: 0 0 40%;
     max-width: 40%;
     min-width: 0;
+    min-height: 128px;
+    background: var(--panel-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .avatar-photo { width: 100%; height: 100%; border-radius: 0; font-size: 34px; }
+
+  .summary-info-col {
+    flex: 1 1 60%;
+    min-width: 0;
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 10px;
   }
-  .avatar-lg { width: 56px; height: 56px; font-size: 20px; }
+
+  .summary-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-pill {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .tag-pill.tag-lead { background: rgba(255,106,31,0.12); color: var(--orange); border: 1px solid var(--orange); }
+  .tag-pill.tag-out { background: rgba(255,106,31,0.1); color: var(--orange); border: 1px solid var(--orange); }
+  .tag-pill.tag-neutral { background: rgba(127,168,149,0.1); color: var(--muted); border: 1px solid var(--border); }
+
   .summary-name {
-    font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--white);
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
+    font-family: var(--font-body); font-weight: 700; font-size: 20px; color: var(--white);
     word-break: break-word;
   }
-  .leader-badge {
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
-    color: var(--orange); border: 1px solid var(--orange); padding: 2px 6px;
-  }
-  .summary-stats-col { flex: 0 0 60%; max-width: 60%; min-width: 0; }
-  .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
-  .stat { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+
+  .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
+  .stat { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
   .stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--white); }
   .stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
 
@@ -518,10 +538,11 @@
     .entry-row label { min-width: unset; }
     .event-btn { font-size: 11px; padding: 7px 9px; }
 
-    .summary-card { padding: 14px; }
-    .summary-card-top { gap: 8px; }
-    .summary-stats { gap: 10px 8px; }
-    .avatar-lg { width: 44px; height: 44px; font-size: 16px; }
+    .summary-photo-col { min-height: 108px; }
+    .avatar-photo { font-size: 26px; }
+    .summary-info-col { padding: 12px 14px; gap: 8px; }
+    .summary-name { font-size: 17px; }
+    .summary-stats { gap: 8px 12px; }
 
     .match-log-header, .match-log-row { padding: 8px 10px; font-size: 15px; }
     .icon-btn { padding: 6px 8px; font-size: 15px; }
@@ -1507,26 +1528,29 @@
       const markerPct = Math.max(0, Math.min(100, pctRaw));
 
       return `<div class="summary-card ${isOut ? 'out' : ''}">
-        <div class="summary-card-top">
-          <div class="summary-avatar-col">
-            ${avatarHtml(pIdx, 'avatar-lg')}
-            <div class="summary-name">${escapeHtml(name)}${isOut ? '<span class="out-badge">OUT</span>' : ''}${isLeader ? '<span class="leader-badge">★ LEAD</span>' : ''}</div>
-          </div>
-          <div class="summary-stats-col">
-            <div class="summary-stats">
-              <div class="stat"><span class="stat-value ${isOut ? 'status-out' : ''}">${totals[pIdx]}</span><span class="stat-label">Total</span></div>
-              <div class="stat"><span class="stat-value">${rummies[pIdx]}</span><span class="stat-label">Rummies</span></div>
-              <div class="stat"><span class="stat-value">${drops[pIdx]}</span><span class="stat-label">Drops</span></div>
-              <div class="stat"><span class="stat-value">${fulls[pIdx]}</span><span class="stat-label">Full</span></div>
-            </div>
-          </div>
+        <div class="summary-photo-col">
+          ${avatarHtml(pIdx, 'avatar-photo')}
         </div>
-        <div class="summary-timeline">
-          <div class="timeline-track">
-            <div class="timeline-fill ${isOut ? 'out' : ''}" style="width:${markerPct}%"></div>
-            <div class="timeline-marker ${isOut ? 'out' : ''}" style="left:${markerPct}%"></div>
+        <div class="summary-info-col">
+          <div class="summary-tags">
+            ${isLeader ? '<span class="tag-pill tag-lead">★ Lead</span>' : ''}
+            ${isOut ? '<span class="tag-pill tag-out">Out</span>' : ''}
+            ${(!isLeader && !isOut) ? '<span class="tag-pill tag-neutral">In Play</span>' : ''}
           </div>
-          <div class="timeline-scale"><span>0</span><span>${maxPoints ?? '—'}</span></div>
+          <div class="summary-name">${escapeHtml(name)}</div>
+          <div class="summary-stats">
+            <div class="stat"><span class="stat-value ${isOut ? 'status-out' : ''}">${totals[pIdx]}</span><span class="stat-label">Total</span></div>
+            <div class="stat"><span class="stat-value">${rummies[pIdx]}</span><span class="stat-label">Rummies</span></div>
+            <div class="stat"><span class="stat-value">${drops[pIdx]}</span><span class="stat-label">Drops</span></div>
+            <div class="stat"><span class="stat-value">${fulls[pIdx]}</span><span class="stat-label">Full</span></div>
+          </div>
+          <div class="summary-timeline">
+            <div class="timeline-track">
+              <div class="timeline-fill ${isOut ? 'out' : ''}" style="width:${markerPct}%"></div>
+              <div class="timeline-marker ${isOut ? 'out' : ''}" style="left:${markerPct}%"></div>
+            </div>
+            <div class="timeline-scale"><span>0</span><span>${maxPoints ?? '—'}</span></div>
+          </div>
         </div>
       </div>`;
     }).join('');
