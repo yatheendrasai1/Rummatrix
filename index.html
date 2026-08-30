@@ -144,7 +144,8 @@
 
   .player-fields { display: grid; gap: 12px; }
   .player-field-row { display: flex; align-items: center; gap: 12px; }
-  .player-field-row .player-name-input { flex: 1; min-width: 0; }
+  .player-field-row .player-name-input,
+  .player-field-row .rename-input { flex: 1; min-width: 0; }
 
   .player-avatar-wrap { position: relative; flex: none; }
   .avatar-btn {
@@ -641,7 +642,7 @@
     <div class="board-section">
       <h2 style="display:flex; align-items:center; justify-content:space-between;">
         Players
-        <button class="btn-ghost" id="renamePlayersBtn" type="button" style="font-size:10px; padding:5px 10px;">✎ Rename</button>
+        <button class="btn-ghost" id="renamePlayersBtn" type="button" style="font-size:10px; padding:5px 10px;">✎ Edit Players</button>
       </h2>
       <div id="playerNamesDisplay"></div>
     </div>
@@ -838,9 +839,12 @@
     });
   }
 
+  // Looks for a live name input for index i in either the setup screen's player
+  // fields or the mid-game "Edit Players" form, falling back to the saved name.
   function avatarInitial(i) {
-    const nameInput = document.getElementById(`player-input-${i}`);
-    const val = nameInput ? nameInput.value.trim() : (players[i] || '');
+    const setupInput = document.getElementById(`player-input-${i}`);
+    const editInput = playerNamesDisplay.querySelector(`.rename-input[data-pidx="${i}"]`);
+    const val = (setupInput && setupInput.value.trim()) || (editInput && editInput.value.trim()) || (players[i] || '');
     return val ? val[0].toUpperCase() : String(i + 1);
   }
 
@@ -854,16 +858,42 @@
     return `<span class="player-avatar player-avatar-placeholder ${sizeClass}" aria-hidden="true">${escapeHtml(initial)}</span>`;
   }
 
-  // Updates one player's avatar preview in place on the setup screen (picker button + clear button).
-  function updateAvatarPreview(i) {
-    const circle = playerFields.querySelector(`.avatar-circle[data-idx="${i}"]`);
-    const clearBtn = playerFields.querySelector(`.avatar-clear-btn[data-idx="${i}"]`);
-    if (!circle) return;
+  // Inner markup for an avatar-picker circle (setup screen or mid-game edit form).
+  function avatarCircleInnerHtml(i) {
     const url = playerAvatars[i];
-    circle.innerHTML = url
-      ? `<img src="${url}" alt="">`
-      : `<span class="avatar-placeholder">${escapeHtml(avatarInitial(i))}</span>`;
-    if (clearBtn) clearBtn.hidden = !url;
+    return url ? `<img src="${url}" alt="">` : `<span class="avatar-placeholder">${escapeHtml(avatarInitial(i))}</span>`;
+  }
+
+  // Updates one player's avatar preview in place (picker button + clear button) within
+  // whichever avatar-picker form is currently showing it — the setup screen's player
+  // fields by default, or the mid-game "Edit Players" form when editing there.
+  function updateAvatarPreview(i, container = playerFields) {
+    const circle = container.querySelector(`.avatar-circle[data-idx="${i}"]`);
+    const clearBtn = container.querySelector(`.avatar-clear-btn[data-idx="${i}"]`);
+    if (!circle) return;
+    circle.innerHTML = avatarCircleInnerHtml(i);
+    if (clearBtn) clearBtn.hidden = !playerAvatars[i];
+  }
+
+  // Opens an image picker and applies the chosen photo to playerAvatars[i], then
+  // refreshes the given preview container. Shared by the setup screen and the
+  // mid-game "Edit Players" form.
+  function pickAvatarFor(i, container, onError) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      readAvatarFile(file).then(dataUrl => {
+        playerAvatars[i] = dataUrl;
+        updateAvatarPreview(i, container);
+        onError('');
+      }).catch(err => {
+        onError(err.message || 'Could not load that image.');
+      });
+    });
+    fileInput.click();
   }
 
   function selectPlayerCount(n) {
@@ -908,21 +938,7 @@
       });
 
       avatarBtn.addEventListener('click', () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.addEventListener('change', () => {
-          const file = fileInput.files[0];
-          if (!file) return;
-          readAvatarFile(file).then(dataUrl => {
-            playerAvatars[i] = dataUrl;
-            setupError.textContent = '';
-            updateAvatarPreview(i);
-          }).catch(err => {
-            setupError.textContent = err.message || 'Could not load that image.';
-          });
-        });
-        fileInput.click();
+        pickAvatarFor(i, playerFields, (msg) => { setupError.textContent = msg; });
       });
 
       avatarWrap.appendChild(avatarBtn);
@@ -1298,11 +1314,49 @@
   playerNamesDisplay.addEventListener('click', (e) => {
     if (e.target.id === 'saveRenameBtn') {
       saveRenamedPlayers();
-    } else if (e.target.id === 'cancelRenameBtn') {
+      return;
+    }
+    if (e.target.id === 'cancelRenameBtn') {
       renamingPlayers = false;
       renameError = '';
       renderPlayerNames();
+      return;
     }
+    const clearBtn = e.target.closest('.avatar-clear-btn');
+    if (clearBtn) {
+      const i = Number(clearBtn.dataset.idx);
+      playerAvatars[i] = null;
+      updateAvatarPreview(i, playerNamesDisplay);
+      saveActiveGame();
+      buildEntryGrid();
+      renderBoards();
+      return;
+    }
+    const avatarBtn = e.target.closest('.avatar-btn');
+    if (avatarBtn) {
+      const i = Number(avatarBtn.dataset.idx);
+      pickAvatarFor(i, playerNamesDisplay, (msg) => {
+        renameError = msg;
+        if (!msg) {
+          // Update the error text in place rather than a full re-render, so any
+          // not-yet-saved edits to other players' names aren't reset mid-session.
+          const errDiv = playerNamesDisplay.querySelector('.error-text');
+          if (errDiv) errDiv.textContent = '';
+          saveActiveGame();
+          buildEntryGrid();
+          renderBoards();
+        } else {
+          const errDiv = playerNamesDisplay.querySelector('.error-text');
+          if (errDiv) errDiv.textContent = msg;
+        }
+      });
+    }
+  });
+
+  playerNamesDisplay.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('rename-input')) return;
+    const i = Number(e.target.dataset.pidx);
+    if (!playerAvatars[i]) updateAvatarPreview(i, playerNamesDisplay);
   });
 
   playerNamesDisplay.addEventListener('keydown', (e) => {
@@ -1343,8 +1397,16 @@
 
   function renderPlayerNames() {
     if (renamingPlayers) {
-      const rows = players.map((name, i) =>
-        `<input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">`
+      const rows = players.map((name, i) => `
+        <div class="player-field-row">
+          <div class="player-avatar-wrap">
+            <button type="button" class="avatar-btn" data-idx="${i}" title="Set profile picture" aria-label="Set profile picture">
+              <span class="avatar-circle" data-idx="${i}">${avatarCircleInnerHtml(i)}</span>
+            </button>
+            <button type="button" class="avatar-clear-btn" data-idx="${i}" title="Remove picture" ${playerAvatars[i] ? '' : 'hidden'}>×</button>
+          </div>
+          <input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">
+        </div>`
       ).join('');
       playerNamesDisplay.innerHTML = `
         <div class="player-rename-grid">${rows}</div>
