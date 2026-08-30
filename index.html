@@ -794,8 +794,11 @@
     countSelector.appendChild(b);
   }
 
-  // Reads an image file, center-crops it to a square, and downsizes it to a small
-  // JPEG data URL — keeps avatars light enough to live comfortably in localStorage.
+  // Reads an image file and downsizes it (preserving aspect ratio, never upscaling)
+  // to a JPEG data URL — keeps avatars light enough for localStorage while staying
+  // sharp enough for the large photo shown in the player summary card. Cropping to
+  // fit a circle or a rectangle is left to CSS object-fit at display time, since the
+  // same image is shown at very different shapes across the app.
   function readAvatarFile(file) {
     return new Promise((resolve, reject) => {
       if (!file || !file.type.startsWith('image/')) {
@@ -806,15 +809,15 @@
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const size = 128;
-          const side = Math.min(img.width, img.height);
-          const sx = (img.width - side) / 2;
-          const sy = (img.height - side) / 2;
+          const maxEdge = 640;
+          const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
           const canvas = document.createElement('canvas');
-          canvas.width = size;
-          canvas.height = size;
-          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
         };
         img.onerror = () => reject(new Error('Could not read that image.'));
         img.src = reader.result;
