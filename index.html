@@ -375,19 +375,32 @@
   }
   .summary-card.out { opacity: 0.55; }
   .summary-card-top {
-    display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 12px; margin-bottom: 14px;
+    display: flex; align-items: center;
+    gap: 12px; margin-bottom: 14px;
   }
+  .summary-avatar-col {
+    flex: 0 0 40%;
+    max-width: 40%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+  .avatar-lg { width: 56px; height: 56px; font-size: 20px; }
   .summary-name {
-    font-family: var(--font-body); font-weight: 700; font-size: 19px; color: var(--white);
-    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--white);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
+    word-break: break-word;
   }
   .leader-badge {
     font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
     color: var(--orange); border: 1px solid var(--orange); padding: 2px 6px;
   }
-  .summary-stats { display: flex; gap: 20px; flex-wrap: wrap; }
-  .stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+  .summary-stats-col { flex: 0 0 60%; max-width: 60%; min-width: 0; }
+  .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
+  .stat { display: flex; flex-direction: column; align-items: center; min-width: 0; }
   .stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--white); }
   .stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
 
@@ -506,8 +519,9 @@
     .event-btn { font-size: 11px; padding: 7px 9px; }
 
     .summary-card { padding: 14px; }
-    .summary-stats { gap: 14px; }
-    .stat { min-width: 44px; }
+    .summary-card-top { gap: 8px; }
+    .summary-stats { gap: 10px 8px; }
+    .avatar-lg { width: 44px; height: 44px; font-size: 16px; }
 
     .match-log-header, .match-log-row { padding: 8px 10px; font-size: 15px; }
     .icon-btn { padding: 6px 8px; font-size: 15px; }
@@ -1490,18 +1504,21 @@
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const pctRaw = maxPoints ? (totals[pIdx] / maxPoints) * 100 : 0;
-      const pctDisplay = maxPoints ? `${Math.min(999, Math.round(pctRaw))}%` : '—';
       const markerPct = Math.max(0, Math.min(100, pctRaw));
 
       return `<div class="summary-card ${isOut ? 'out' : ''}">
         <div class="summary-card-top">
-          <div class="summary-name">${avatarHtml(pIdx, 'avatar-sm')}${escapeHtml(name)}${isOut ? '<span class="out-badge">OUT</span>' : ''}${isLeader ? '<span class="leader-badge">★ LEAD</span>' : ''}</div>
-          <div class="summary-stats">
-            <div class="stat"><span class="stat-value ${isOut ? 'status-out' : ''}">${totals[pIdx]}</span><span class="stat-label">Total</span></div>
-            <div class="stat"><span class="stat-value ${pctRaw >= 90 ? 'status-out' : ''}">${pctDisplay}</span><span class="stat-label">Exhausted</span></div>
-            <div class="stat"><span class="stat-value">${rummies[pIdx]}</span><span class="stat-label">Rummies</span></div>
-            <div class="stat"><span class="stat-value">${drops[pIdx]}</span><span class="stat-label">Drops</span></div>
-            <div class="stat"><span class="stat-value">${fulls[pIdx]}</span><span class="stat-label">Full</span></div>
+          <div class="summary-avatar-col">
+            ${avatarHtml(pIdx, 'avatar-lg')}
+            <div class="summary-name">${escapeHtml(name)}${isOut ? '<span class="out-badge">OUT</span>' : ''}${isLeader ? '<span class="leader-badge">★ LEAD</span>' : ''}</div>
+          </div>
+          <div class="summary-stats-col">
+            <div class="summary-stats">
+              <div class="stat"><span class="stat-value ${isOut ? 'status-out' : ''}">${totals[pIdx]}</span><span class="stat-label">Total</span></div>
+              <div class="stat"><span class="stat-value">${rummies[pIdx]}</span><span class="stat-label">Rummies</span></div>
+              <div class="stat"><span class="stat-value">${drops[pIdx]}</span><span class="stat-label">Drops</span></div>
+              <div class="stat"><span class="stat-value">${fulls[pIdx]}</span><span class="stat-label">Full</span></div>
+            </div>
           </div>
         </div>
         <div class="summary-timeline">
