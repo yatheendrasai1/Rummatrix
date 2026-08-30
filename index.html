@@ -281,6 +281,15 @@
   }
   .game-meta b { color: var(--green); font-size: 19px; }
 
+  .summary-meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: none;
+  }
+  .summary-meta b { color: var(--green); font-size: 14px; }
+
   /* score-table-wrap kept for backward compatibility with earlier styles */
   .score-table-wrap { overflow-x: auto; margin-bottom: 22px; }
 
@@ -318,11 +327,11 @@
     color: var(--muted);
     font-size: 12px;
     letter-spacing: 1px;
-    text-transform: uppercase;
   }
   .match-log-row { background: var(--panel); font-size: 17px; font-weight: 600; color: var(--white); }
   .match-log-row.set-boundary { border-top: 2px solid var(--green); margin-top: 6px; }
   .ml-cell { text-align: center; white-space: nowrap; }
+  .ml-avg { font-size: 11px; color: var(--muted); opacity: 0.75; font-weight: 400; }
   .ml-label { text-align: left; color: var(--muted); }
   .ml-cell.rummy-score { color: var(--green); font-weight: 700; }
   .ml-cell.ml-out { color: var(--muted); font-style: italic; }
@@ -626,9 +635,7 @@
   <!-- GAME SCREEN -->
   <section class="panel" id="gameScreen" hidden>
     <div class="game-meta">
-      <div>MATCH <b id="matchNumDisplay">1</b></div>
-      <div>SET <b id="setNumDisplay">1</b> · <span id="setSizeNote"></span></div>
-      <div>MAX <b id="maxPointsDisplay">-</b></div>
+      <div>SET <b id="setNumDisplay">1</b></div>
     </div>
 
     <div class="board-section">
@@ -650,13 +657,15 @@
     </div>
 
     <div class="board-section">
-      <h2>Player Summary</h2>
+      <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
+        <span>Player Summary</span>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · MAX <b id="maxPointsDisplay">-</b></span>
+      </h2>
       <div id="summaryList"></div>
     </div>
 
     <div class="board-section">
       <h2>Match Log</h2>
-      <p class="sub" id="eventLegendText" style="margin:-6px 0 14px; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted);"></p>
       <div id="matchLogList"></div>
     </div>
 
@@ -670,6 +679,8 @@
       <button class="btn-ghost" id="exportCsvBtn">⬇ Export CSV</button>
       <button class="btn-ghost danger" id="endGameBtn">⏻ End Game</button>
     </div>
+
+    <p class="sub" id="eventLegendText" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
   </section>
 
   <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
@@ -692,6 +703,7 @@
   let players = [];      // finalized names, set at game start
   let playerAvatars = []; // data URLs (or null) indexed the same as players — set on the setup screen
   let matches = [];      // array of arrays: matches[i][playerIdx] = score
+  let matchEvents = [];  // array of arrays: matchEvents[i][playerIdx] = event key ('drop'/'mdrop'/'full'/'rummy') actually pressed, or null for a manually-typed value
   let setSize = 0;
   let editingMatchIndex = null;  // index of the match currently open for inline editing
   let editErrorMsg = '';         // validation message shown while editing a match
@@ -721,7 +733,6 @@
 
   const matchNumDisplay = document.getElementById('matchNumDisplay');
   const setNumDisplay = document.getElementById('setNumDisplay');
-  const setSizeNote = document.getElementById('setSizeNote');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
   const eventLegendText = document.getElementById('eventLegendText');
   const renamePlayersBtn = document.getElementById('renamePlayersBtn');
@@ -749,7 +760,7 @@
   function saveActiveGame() {
     try {
       localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify({
-        players, playerAvatars, matches, setSize, maxPoints, playerCount,
+        players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount,
         eventPoints: {
           dropPts: EVENTS.find(e => e.key === 'drop').points,
           mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -999,6 +1010,7 @@
     players = names;
     setSize = players.length;
     matches = [];
+    matchEvents = [];
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
     editErrorMsg = '';
@@ -1049,7 +1061,7 @@
       input.id = `entry-${i}`;
       input.placeholder = outFlags[i] ? 'OUT' : 'pts';
       if (outFlags[i]) input.disabled = true;
-      input.addEventListener('input', () => { syncEventSelection(row); updateTestDumpState(); });
+      input.addEventListener('input', () => { delete input.dataset.eventKey; syncEventSelection(row); updateTestDumpState(); });
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1075,6 +1087,7 @@
         if (outFlags[i]) b.disabled = true;
         b.addEventListener('click', () => {
           input.value = ev.points;
+          input.dataset.eventKey = ev.key;
           syncEventSelection(row);
           updateTestDumpState();
           input.focus();
@@ -1088,15 +1101,15 @@
     updateTestDumpState();
   }
 
-  // Highlights the event button matching the row's current input value (if any)
+  // Highlights the event button actually pressed for this row (tracked via the input's
+  // data-event-key) — a manually-typed value that happens to match a preset never
+  // shows a button as selected, since it wasn't actually pressed.
   function syncEventSelection(row) {
     const input = row.querySelector('input[type="number"]');
-    const val = input.value.trim();
+    const tag = input.dataset.eventKey || '';
     row.querySelectorAll('.event-btn').forEach(b => {
-      b.classList.toggle('selected', val !== '' && Number(val) === Number(b.dataset.points) && b.dataset.points !== '' );
+      b.classList.toggle('selected', tag !== '' && b.dataset.key === tag);
     });
-    // Only highlight one match at a time — prefer an exact points match, but avoid
-    // ambiguity between Rummy(0) and an empty/zero manual entry by requiring non-empty val.
   }
 
   // Test Dump is only safe to use on a completely untouched round — disable it the
@@ -1107,18 +1120,37 @@
     testDumpBtn.disabled = anyFilled || inputs.length < 2;
   }
 
+  // A manually-typed value is only unambiguous enough to credit as an event for Rummy
+  // (0 — the only way to score it) and Full Count (the configured max — same reasoning
+  // as pressing the FC button). Drop/Middle Drop point values are never inferred this
+  // way since they need an actual button press to prove that's what happened.
+  function inferManualEventTag(score) {
+    if (score === 0) return 'rummy';
+    if (score === maxRoundPoints) return 'full';
+    return null;
+  }
+
   function generateRandomMatch(outFlags) {
     const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
     if (activeIdx.length < 2) return null;
     const rummyIdx = activeIdx[Math.floor(Math.random() * activeIdx.length)];
-    const eventPool = EVENTS.filter(ev => ev.key !== 'rummy').map(ev => ev.points);
-    return players.map((_, i) => {
-      if (outFlags[i]) return null;
-      if (i === rummyIdx) return 0;
-      return Math.random() < 0.6
-        ? eventPool[Math.floor(Math.random() * eventPool.length)]
-        : 1 + Math.floor(Math.random() * (maxRoundPoints - 1));
+    const eventChoices = EVENTS.filter(ev => ev.key !== 'rummy');
+    const scores = [];
+    const events = [];
+    players.forEach((_, i) => {
+      if (outFlags[i]) { scores.push(null); events.push(null); return; }
+      if (i === rummyIdx) { scores.push(0); events.push('rummy'); return; }
+      if (Math.random() < 0.6) {
+        const ev = eventChoices[Math.floor(Math.random() * eventChoices.length)];
+        scores.push(ev.points);
+        events.push(ev.key);
+      } else {
+        const val = 1 + Math.floor(Math.random() * (maxRoundPoints - 1));
+        scores.push(val);
+        events.push(inferManualEventTag(val));
+      }
     });
+    return { scores, events };
   }
 
   testDumpBtn.addEventListener('click', () => {
@@ -1126,9 +1158,10 @@
     for (let k = 0; k < 10; k++) {
       const totals = getTotals(matches);
       const outFlags = getOutFlags(totals);
-      const m = generateRandomMatch(outFlags);
-      if (!m) break; // fewer than 2 active players remain — stop generating more rounds
-      matches.push(m);
+      const result = generateRandomMatch(outFlags);
+      if (!result) break; // fewer than 2 active players remain — stop generating more rounds
+      matches.push(result.scores);
+      matchEvents.push(result.events);
     }
     entryError.textContent = '';
     saveActiveGame();
@@ -1178,8 +1211,15 @@
       if (outFlags[i]) return null;
       return activeScores[activeIdx.indexOf(i)];
     });
+    const fullEvents = players.map((_, i) => {
+      if (outFlags[i]) return null;
+      const score = activeScores[activeIdx.indexOf(i)];
+      const inp = document.getElementById(`entry-${i}`);
+      return (inp && inp.dataset.eventKey) || inferManualEventTag(score);
+    });
 
     matches.push(fullScores);
+    matchEvents.push(fullEvents);
     saveActiveGame();
     renderAll();
     const firstActive = document.getElementById(`entry-${activeIdx[0]}`);
@@ -1194,6 +1234,7 @@
   undoBtn.addEventListener('click', () => {
     if (matches.length === 0) return;
     matches.pop();
+    matchEvents.pop();
     editingMatchIndex = null;
     editErrorMsg = '';
     saveActiveGame();
@@ -1221,6 +1262,7 @@
 
     clearActiveGame();
     matches = [];
+    matchEvents = [];
     players = [];
     playerAvatars = [];
     playerCount = null;
@@ -1355,6 +1397,8 @@
         renameError = '';
         EVENTS = buildEvents(eventPts.dropPts, eventPts.mdropPts, eventPts.fullPts);
         maxRoundPoints = eventPts.fullPts;
+        // CSV rows carry no button-press provenance — only Rummy/Full Count can be inferred from the value alone.
+        matchEvents = importedMatches.map(m => m.map(v => v === null ? null : inferManualEventTag(v)));
         saveActiveGame();
 
         setupScreen.hidden = true;
@@ -1471,12 +1515,18 @@
       return;
     }
 
+    const updatedEvents = (matchEvents[idx] || players.map(() => null)).slice();
     inputs.forEach(inp => {
       const pIdx = Number(inp.dataset.pidx);
-      updated[pIdx] = Number(inp.value.trim());
+      const score = Number(inp.value.trim());
+      updated[pIdx] = score;
+      // Editing always types a raw number — never a button press — so re-derive the
+      // tag the same way a manual entry would (unambiguous Rummy/Full only).
+      updatedEvents[pIdx] = inferManualEventTag(score);
     });
 
     matches[idx] = updated;
+    matchEvents[idx] = updatedEvents;
     editingMatchIndex = null;
     editErrorMsg = '';
     saveActiveGame();
@@ -1491,7 +1541,6 @@
 
     matchNumDisplay.textContent = nextMatchNum;
     setNumDisplay.textContent = currentSet;
-    setSizeNote.textContent = `${setSize} match${setSize === 1 ? '' : 'es'} per set`;
     entryMatchNum.textContent = nextMatchNum;
     eventLegendText.textContent = EVENTS.map(ev => `${ev.code} = ${ev.label} (${ev.points})`).join(' · ');
 
@@ -1512,8 +1561,10 @@
 
     // --- Player Summary: card per player, always visible even before the first match ---
     const rummies = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 0).length);
-    const drops = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 21).length);
-    const fulls = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 80).length);
+    // Drops only count an actually-pressed Drop/Middle Drop button — a manually-typed
+    // matching value doesn't carry that tag (see inferManualEventTag).
+    const drops = players.map((_, pIdx) => matchEvents.filter(evRow => evRow && (evRow[pIdx] === 'drop' || evRow[pIdx] === 'mdrop')).length);
+    const fulls = players.map((_, pIdx) => matches.filter(m => m[pIdx] === maxRoundPoints).length);
     const activeTotals = totals.filter((_, i) => !outFlags[i]);
     const minActiveTotal = activeTotals.length ? Math.min(...activeTotals) : null;
 
@@ -1623,11 +1674,13 @@
     });
     matchLogHtml += `</div></div>`;
 
-    // --- Overall total + average, appended under the Match Log ---
+    // --- Overall total, appended under the Match Log — average shown faded in brackets alongside it ---
     matchLogHtml += `<div class="match-log-scroll" style="margin-top:14px;"><div class="match-log-table">`;
     matchLogHtml += `<div class="match-log-header" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Overall</span>${players.map(name => `<span class="ml-cell">${escapeHtml(name)}</span>`).join('')}</div>`;
-    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Total</span>${totals.map((t, pIdx) => `<span class="ml-cell ${(!outFlags[pIdx] && minActiveTotal !== null && t === minActiveTotal) ? 'rummy-score' : ''}">${t}</span>`).join('')}</div>`;
-    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Avg</span>${totals.map(t => `<span class="ml-cell">${(matches.length ? t / matches.length : 0).toFixed(1)}</span>`).join('')}</div>`;
+    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Total</span>${totals.map((t, pIdx) => {
+      const avg = (matches.length ? t / matches.length : 0).toFixed(1);
+      return `<span class="ml-cell ${(!outFlags[pIdx] && minActiveTotal !== null && t === minActiveTotal) ? 'rummy-score' : ''}">${t} <span class="ml-avg">(${avg})</span></span>`;
+    }).join('')}</div>`;
     matchLogHtml += `</div></div>`;
 
     setBreakdownList.innerHTML = setBreakdownHtml;
@@ -1730,6 +1783,7 @@
     players = saved.players;
     playerAvatars = Array.isArray(saved.playerAvatars) ? saved.playerAvatars : players.map(() => null);
     matches = saved.matches;
+    matchEvents = Array.isArray(saved.matchEvents) ? saved.matchEvents : matches.map(m => m.map(() => null));
     setSize = saved.setSize || players.length;
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
     playerCount = saved.playerCount || players.length;
