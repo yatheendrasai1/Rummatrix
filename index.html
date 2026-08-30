@@ -597,6 +597,9 @@
     gap: 1.4vh 1.4vw;
   }
 
+  /* Full-bleed photo tile — the avatar fills the whole tile, with name + score
+     overlaid at the bottom (scrim + text-shadow so they stay legible over any
+     photo, bright or dark), similar to a sports "full time" scoreboard card. */
   .tv-tile {
     container-type: size;
     position: relative;
@@ -606,14 +609,36 @@
     background: linear-gradient(160deg, var(--panel-2), var(--panel));
     border: 1px solid var(--border);
     border-radius: 1.4vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1vh;
   }
   .tv-tile.lead { border-color: var(--orange); }
-  .tv-tile.out { opacity: 0.45; }
+  .tv-tile.out { opacity: 0.5; }
+
+  .tv-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .tv-photo-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 30cqh;
+  }
+
+  .tv-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 38%, rgba(0,0,0,0) 65%);
+    pointer-events: none;
+  }
 
   .tv-tag {
     position: absolute;
@@ -625,53 +650,41 @@
     padding: 0.4vh 1vw;
     border-radius: 999px;
     font-size: clamp(9px, 1.8cqh, 16px);
-    background: rgba(255,106,31,0.12);
-    color: var(--orange);
+    background: rgba(255,106,31,0.85);
+    color: #140900;
     border: 1px solid var(--orange);
   }
 
-  .tv-avatar {
-    flex: none;
-    border-radius: 50%;
-    object-fit: cover;
-    width: 30cqh;
-    height: 30cqh;
-    max-width: 40cqw;
-    max-height: 40cqw;
-  }
-  .tv-avatar-placeholder {
-    flex: none;
+  .tv-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2cqh 3cqw 3cqh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-weight: 700;
-    width: 30cqh;
-    height: 30cqh;
-    max-width: 40cqw;
-    max-height: 40cqw;
-    font-size: 14cqh;
+    gap: 0.5cqh;
+    text-align: center;
   }
   .tv-name {
     font-family: var(--font-body);
     font-weight: 700;
-    color: var(--white);
-    font-size: 7cqh;
-    max-width: 90%;
+    color: #fff;
+    font-size: 6.5cqh;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-align: center;
+    text-shadow: 0 0.3cqh 0.8cqh rgba(0,0,0,0.9), 0 0.1cqh 0.3cqh rgba(0,0,0,0.9);
   }
   .tv-score {
     font-family: var(--font-mono);
     font-weight: 700;
     color: var(--green);
     line-height: 1;
-    font-size: 18cqh;
+    font-size: 19cqh;
+    text-shadow: 0 0.4cqh 1cqh rgba(0,0,0,0.9), 0 0.15cqh 0.4cqh rgba(0,0,0,0.95);
   }
   .tv-tile.out .tv-score { color: var(--orange); }
 
@@ -1487,15 +1500,18 @@
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const url = playerAvatars[pIdx];
-      const avatar = url
-        ? `<img class="tv-avatar" src="${url}" alt="">`
-        : `<span class="tv-avatar-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
+      const photo = url
+        ? `<img class="tv-photo" src="${url}" alt="">`
+        : `<span class="tv-photo-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
       const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? '<span class="tv-tag">Out</span>' : '');
       return `<div class="tv-tile ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''}">
+        ${photo}
+        <div class="tv-scrim"></div>
         ${tag}
-        ${avatar}
-        <div class="tv-name">${escapeHtml(name)}</div>
-        <div class="tv-score">${totals[pIdx]}</div>
+        <div class="tv-overlay">
+          <div class="tv-name">${escapeHtml(name)}</div>
+          <div class="tv-score">${totals[pIdx]}</div>
+        </div>
       </div>`;
     }).join('');
 
