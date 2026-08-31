@@ -10,7 +10,7 @@
 <title>Rummy Score Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Bangers&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #050b08;
@@ -751,6 +751,7 @@
   .tv-exit-btn:hover { border-color: var(--orange); color: var(--orange); }
 
   .tv-grid {
+    position: relative;
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
@@ -870,33 +871,51 @@
   /* Round-winner spotlight — the winning tile zooms in slightly (rising above its
      neighbors) while every other tile eases down a touch, then both settle back to
      normal size; a golden band sweeps diagonally across the winner's tile at the
-     same time, clipped to its rounded corners since the tile has overflow:hidden. */
+     same time, clipped to its rounded corners since the tile has overflow:hidden;
+     and the whole background behind the grid dims to make the spotlighted tile pop. */
   @keyframes tvWinnerZoom {
     0%, 100% { transform: scale(1); z-index: 1; }
-    25%, 70% { transform: scale(1.12); z-index: 5; }
+    12%, 82% { transform: scale(1.12); z-index: 5; }
   }
-  .tv-tile-winner { animation: tvWinnerZoom 1.7s ease-in-out; }
+  .tv-tile-winner { animation: tvWinnerZoom 3.4s ease-in-out; }
 
   @keyframes tvOthersShrink {
     0%, 100% { transform: scale(1); opacity: 1; }
-    25%, 70% { transform: scale(0.9); opacity: 0.75; }
+    12%, 82% { transform: scale(0.9); opacity: 0.75; }
   }
-  .tv-tile-shrink { animation: tvOthersShrink 1.7s ease-in-out; }
+  .tv-tile-shrink { animation: tvOthersShrink 3.4s ease-in-out; }
 
+  .tv-dim-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background: rgba(0,0,0,0);
+  }
+  .tv-dim-overlay.tv-dim-active { animation: tvDimPulse 3.4s ease-in-out; }
+  @keyframes tvDimPulse {
+    0%, 100% { background: rgba(0,0,0,0); }
+    12%, 82% { background: rgba(0,0,0,0.6); }
+  }
+
+  /* A richer, warmer gold than a plain pale-yellow sweep — an amber fringe around
+     a bright gold-white core — swept twice for a shimmering effect. */
   .tv-shine {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background: linear-gradient(115deg,
-      transparent 35%,
-      rgba(255,215,64,0) 42%,
-      rgba(255,224,120,0.9) 50%,
-      rgba(255,215,64,0) 58%,
-      transparent 65%);
+      transparent 28%,
+      rgba(255,166,0,0) 36%,
+      rgba(255,183,0,0.65) 43%,
+      rgba(255,225,140,0.98) 50%,
+      rgba(255,183,0,0.65) 57%,
+      rgba(255,166,0,0) 64%,
+      transparent 72%);
     background-size: 250% 250%;
     background-position: -120% -120%;
     opacity: 0;
-    animation: tvShineSweep 1.2s ease-out;
+    animation: tvShineSweep 1.7s ease-out 2;
     mix-blend-mode: screen;
   }
   @keyframes tvShineSweep {
@@ -904,6 +923,36 @@
     12% { opacity: 1; }
     75% { opacity: 1; }
     100% { background-position: 120% 120%; opacity: 0; }
+  }
+
+  /* "Rummy!" pops onto the winning tile in an action-comic style, then fades back
+     out — entirely within its own 2s window, shorter than the full 3.4s spotlight. */
+  .tv-rummy-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-family: 'Bangers', cursive;
+    font-weight: 400;
+    font-size: clamp(32px, 11cqh, 90px);
+    letter-spacing: 2px;
+    color: #ffd400;
+    -webkit-text-stroke: 0.12cqh #7a3d00;
+    text-shadow:
+      0 0 0.4cqh rgba(255,255,255,0.85),
+      0.12cqh 0.12cqh 0 rgba(122,61,0,0.9),
+      0 0.6cqh 1.4cqh rgba(0,0,0,0.85);
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    animation: tvRummyPop 2s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes tvRummyPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-14deg); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(6deg); }
+    25% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+    75% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-3deg); }
   }
 
   /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
@@ -2311,8 +2360,9 @@
           <div class="tv-name">${escapeHtml(name)}</div>
           <div class="tv-score ${changed ? 'tv-score-updated' : ''}">${totals[pIdx]}</div>
         </div>
+        ${isWinner ? '<div class="tv-rummy-text">Rummy!</div>' : ''}
       </div>`;
-    }).join('');
+    }).join('') + `<div class="tv-dim-overlay ${winnerIdx !== null ? 'tv-dim-active' : ''}"></div>`;
 
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
