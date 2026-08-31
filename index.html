@@ -1114,16 +1114,45 @@
   let announceEnabled = false;
   try { announceEnabled = localStorage.getItem(ANNOUNCE_PREF_KEY) === 'true'; } catch (err) { /* ignore */ }
 
+  // Prefer an Indian-English voice if the device/browser has one installed (common
+  // on Android, and on Windows/Chrome with Indian language packs) — otherwise this
+  // stays null and speech just uses the browser's default voice. getVoices() often
+  // loads asynchronously on first page load, so we also re-check on voiceschanged.
+  let preferredVoice = null;
+  function pickPreferredVoice() {
+    const voices = speechSynthesis.getVoices();
+    preferredVoice =
+      voices.find(v => v.lang && v.lang.toLowerCase() === 'en-in') ||
+      voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en-in')) ||
+      voices.find(v => /india|indian/i.test(v.name)) ||
+      null;
+  }
+  if (speechSupported) {
+    pickPreferredVoice();
+    speechSynthesis.addEventListener('voiceschanged', pickPreferredVoice);
+  }
+
+  function makeUtterance(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    if (preferredVoice) {
+      try {
+        u.voice = preferredVoice;
+        u.lang = preferredVoice.lang;
+      } catch (err) { /* fall back to the default voice rather than losing the announcement */ }
+    }
+    return u;
+  }
+
   function speak(text) {
     if (!speechSupported) return;
     speechSynthesis.cancel();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    speechSynthesis.speak(makeUtterance(text));
   }
 
   function speakSequence(texts) {
     if (!speechSupported || texts.length === 0) return;
     speechSynthesis.cancel();
-    texts.forEach(t => speechSynthesis.speak(new SpeechSynthesisUtterance(t)));
+    texts.forEach(t => speechSynthesis.speak(makeUtterance(t)));
   }
 
   const SPOKEN_DIGITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
