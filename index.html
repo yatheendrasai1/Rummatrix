@@ -1104,15 +1104,11 @@
 
   const CONGRATS_PHRASES = [
     '{name}, congratulations!',
-    'Rummy! {name} takes the round!',
-    'Well played, {name}!',
-    '{name} wins it in style!',
+    '{name}, thaggedhe leyy!',
+    '{name}, is back!',
+    'You are super {name}',
     'Nice one, {name}!',
-    'And {name} goes out clean!',
-    'That is Rummy for {name}!',
-    '{name} seals the round!',
-    'Take a bow, {name}!',
-    '{name} strikes again!'
+    'Evari kodithey simma tirigi mind block ayipodho vaalley {name}'
   ];
 
   let announceEnabled = false;
@@ -1610,7 +1606,7 @@
     matchEvents.push(fullEvents);
     saveActiveGame();
     const winnerIdx = fullScores.findIndex(s => s === 0);
-    if (winnerIdx !== -1) announceRoundWinner(players[winnerIdx]);
+    if (winnerIdx !== -1) setTimeout(() => announceRoundWinner(players[winnerIdx]), 3000);
     renderAll();
     if (!tvAddModal.hidden) {
       // Recorded from the TV Mode overlay — close it so the animated score update shows.
