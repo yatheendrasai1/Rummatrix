@@ -933,7 +933,7 @@
     background-size: 250% 250%;
     background-position: -120% -120%;
     opacity: 0;
-    animation: tvShineSweep 1.7s ease-out 2;
+    animation: tvShineSweep 2.7s ease-out 2;
     mix-blend-mode: screen;
   }
   @keyframes tvShineSweep {
@@ -944,7 +944,7 @@
   }
 
   /* "Rummy!" pops onto the winning tile in an action-comic style, then fades back
-     out — entirely within its own 2s window, shorter than the full 3.4s spotlight. */
+     out — over its own 6s window (independent of the 3.4s tile zoom/dim). */
   .tv-rummy-text {
     position: absolute;
     top: 50%;
@@ -952,8 +952,9 @@
     font-family: 'Bangers', cursive;
     font-weight: 400;
     /* Sized off whichever dimension is tighter, same reasoning as .tv-score — on a
-       narrow, tall portrait tile, sizing purely off height blows way past the width. */
-    font-size: clamp(20px, min(11cqh, 17cqw), 90px);
+       narrow, tall portrait tile, sizing purely off height blows way past the width.
+       (40% larger than the original size, same aspect-ratio-aware formula.) */
+    font-size: clamp(28px, min(15.4cqh, 23.8cqw), 126px);
     max-width: 92%;
     text-align: center;
     letter-spacing: 2px;
@@ -967,7 +968,7 @@
     opacity: 0;
     pointer-events: none;
     white-space: nowrap;
-    animation: tvRummyPop 2s cubic-bezier(.34,1.56,.64,1) forwards;
+    animation: tvRummyPop 6s cubic-bezier(.34,1.56,.64,1) forwards;
   }
   @keyframes tvRummyPop {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-14deg); }
@@ -2129,7 +2130,9 @@
           input.dataset.eventKey = ev.key;
           syncEventSelection(row);
           updateTestDumpState();
-          input.focus();
+          // Deliberately not focusing the input here — tapping a preset chip shouldn't
+          // pop up the on-screen keyboard; that should only happen when the text field
+          // itself is tapped directly.
         });
         eventBtns.appendChild(b);
       });
@@ -2269,10 +2272,9 @@
     if (!tvAddModal.hidden) {
       // Recorded from the TV Mode overlay — close it so the animated score update shows.
       closeTvAddModal();
-    } else {
-      const firstActive = document.getElementById(`entry-${activeIdx[0]}`);
-      if (firstActive) firstActive.focus();
     }
+    // Deliberately not re-focusing the next round's input here — tapping "Add Match"
+    // shouldn't pop up the on-screen keyboard; only tapping the field itself should.
   });
 
   exportCsvBtn.addEventListener('click', () => {
@@ -2435,8 +2437,8 @@
   function openTvAddModal() {
     tvAddModalCard.insertBefore(recordMatchPanel, tvAddDoneBtn);
     tvAddModal.hidden = false;
-    const firstInput = entryGrid.querySelector('input[type="number"]:not(:disabled)');
-    if (firstInput) firstInput.focus();
+    // Deliberately not auto-focusing an input here — opening the modal shouldn't pop
+    // up the on-screen keyboard; only tapping the field itself should.
   }
 
   function closeTvAddModal() {
