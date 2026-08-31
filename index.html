@@ -933,7 +933,11 @@
     left: 50%;
     font-family: 'Bangers', cursive;
     font-weight: 400;
-    font-size: clamp(32px, 11cqh, 90px);
+    /* Sized off whichever dimension is tighter, same reasoning as .tv-score — on a
+       narrow, tall portrait tile, sizing purely off height blows way past the width. */
+    font-size: clamp(20px, min(11cqh, 17cqw), 90px);
+    max-width: 92%;
+    text-align: center;
     letter-spacing: 2px;
     color: #ffd400;
     -webkit-text-stroke: 0.12cqh #7a3d00;
