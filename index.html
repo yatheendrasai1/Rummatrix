@@ -315,6 +315,45 @@
   .set-block[open] summary::before { transform: rotate(90deg); }
   .set-block[open] summary { margin-bottom: 10px; }
 
+  .voice-settings-section { margin-bottom: 26px; }
+  .voice-settings-section[hidden] { display: none; }
+  .voice-settings-section summary {
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: 17px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin: 0 0 14px;
+    user-select: none;
+  }
+  .voice-settings-section summary::-webkit-details-marker { display: none; }
+  .voice-settings-section summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.15s ease;
+  }
+  .voice-settings-section[open] summary::before { transform: rotate(90deg); }
+  .voice-phrase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .voice-phrase-input { flex: 1; min-width: 0; }
+  .voice-phrase-play-btn {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .voice-phrase-play-btn:hover { border-color: var(--green); color: var(--green); }
+
   .match-log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .match-log-table { display: grid; gap: 6px; min-width: fit-content; }
   .match-log-header, .match-log-row {
@@ -467,8 +506,8 @@
   /* Hover-to-reveal only makes sense on devices with a real hover state (mouse/trackpad) —
      on touchscreens there is no hover, so keep the edit button visible there always. */
   @media (hover: hover) and (pointer: fine) {
-    .icon-btn.edit-btn { opacity: 0; }
-    .match-log-row:hover .edit-btn { opacity: 1; }
+    .icon-btn.edit-btn, .icon-btn.delete-btn { opacity: 0; }
+    .match-log-row:hover .edit-btn, .match-log-row:hover .delete-btn { opacity: 1; }
   }
   .icon-btn:hover { color: var(--orange); }
   .row-actions { display: flex; gap: 2px; }
@@ -952,6 +991,14 @@
     </div>
 
     <p class="sub" id="eventLegendText" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
+
+    <details class="voice-settings-section" id="voiceSettingsSection">
+      <summary>Voice Settings</summary>
+      <p class="sub" style="margin:0 0 14px; font-size:13px;">Edit the congratulation phrases below — use <code>{name}</code> wherever the winner's name should go. Tap ▶ to preview a phrase using whatever is currently typed in its field.</p>
+      <div id="voiceSettingsList"></div>
+      <div class="error-text" id="voiceSettingsError"></div>
+      <button type="button" class="btn-primary" id="voiceSettingsSaveBtn" style="padding:10px 20px; font-size:12px;">Save Phrases</button>
+    </details>
   </section>
 
   <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
@@ -1048,6 +1095,10 @@
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
   const recordMatchPanel = document.getElementById('recordMatchPanel');
   const announceToggle = document.getElementById('announceToggle');
+  const voiceSettingsSection = document.getElementById('voiceSettingsSection');
+  const voiceSettingsList = document.getElementById('voiceSettingsList');
+  const voiceSettingsError = document.getElementById('voiceSettingsError');
+  const voiceSettingsSaveBtn = document.getElementById('voiceSettingsSaveBtn');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1100,9 +1151,10 @@
   // beside "Total" speaks every active player's name and current score on demand.
 
   const ANNOUNCE_PREF_KEY = 'rummatrix.announceEnabled';
+  const CONGRATS_PHRASES_KEY = 'rummatrix.congratsPhrases';
   const speechSupported = 'speechSynthesis' in window;
 
-  const CONGRATS_PHRASES = [
+  const DEFAULT_CONGRATS_PHRASES = [
     '{name}, congratulations!',
     '{name}, thaggedhe leyy!',
     '{name}, is back!',
@@ -1110,6 +1162,12 @@
     'Nice one, {name}!',
     'Evaru kodithey dhimma tirigi mind block ayipoddho vaalleyy {name}'
   ];
+
+  let CONGRATS_PHRASES = DEFAULT_CONGRATS_PHRASES.slice();
+  try {
+    const savedPhrases = JSON.parse(localStorage.getItem(CONGRATS_PHRASES_KEY));
+    if (Array.isArray(savedPhrases) && savedPhrases.length > 0) CONGRATS_PHRASES = savedPhrases;
+  } catch (err) { /* ignore — keep defaults */ }
 
   let announceEnabled = false;
   try { announceEnabled = localStorage.getItem(ANNOUNCE_PREF_KEY) === 'true'; } catch (err) { /* ignore */ }
@@ -1189,6 +1247,50 @@
       announceEnabled = !announceEnabled;
       try { localStorage.setItem(ANNOUNCE_PREF_KEY, String(announceEnabled)); } catch (err) { /* ignore */ }
       renderAnnounceToggle();
+    });
+  }
+
+  // ---------- VOICE SETTINGS: editable congratulation phrases ----------
+
+  function renderVoiceSettingsList() {
+    voiceSettingsList.innerHTML = CONGRATS_PHRASES.map((phrase, i) => `
+      <div class="voice-phrase-row">
+        <input type="text" class="voice-phrase-input" data-idx="${i}" maxlength="200" value="${escapeAttr(phrase)}">
+        <button type="button" class="voice-phrase-play-btn" data-idx="${i}" title="Preview this phrase" aria-label="Preview this phrase">▶</button>
+      </div>`
+    ).join('');
+  }
+
+  if (!speechSupported) {
+    voiceSettingsSection.hidden = true;
+  } else {
+    renderVoiceSettingsList();
+
+    voiceSettingsList.addEventListener('click', (e) => {
+      const playBtn = e.target.closest('.voice-phrase-play-btn');
+      if (!playBtn) return;
+      const input = voiceSettingsList.querySelector(`.voice-phrase-input[data-idx="${playBtn.dataset.idx}"]`);
+      const text = input ? input.value.trim() : '';
+      if (text) speak(text.replace('{name}', 'Player'));
+    });
+
+    voiceSettingsSaveBtn.addEventListener('click', () => {
+      const inputs = [...voiceSettingsList.querySelectorAll('.voice-phrase-input')];
+      const newPhrases = inputs.map(inp => inp.value.trim()).filter(v => v !== '');
+      if (newPhrases.length === 0) {
+        voiceSettingsError.style.color = '';
+        voiceSettingsError.textContent = 'Keep at least one phrase.';
+        return;
+      }
+      CONGRATS_PHRASES = newPhrases;
+      try { localStorage.setItem(CONGRATS_PHRASES_KEY, JSON.stringify(CONGRATS_PHRASES)); } catch (err) { /* ignore */ }
+      renderVoiceSettingsList();
+      voiceSettingsError.style.color = 'var(--green)';
+      voiceSettingsError.textContent = '✓ Phrases saved.';
+      setTimeout(() => {
+        voiceSettingsError.textContent = '';
+        voiceSettingsError.style.color = '';
+      }, 2000);
     });
   }
 
@@ -2026,9 +2128,25 @@
 
   matchLogList.addEventListener('click', (e) => {
     const editBtn = e.target.closest('.edit-btn');
+    const deleteBtn = e.target.closest('.delete-btn');
     const saveBtn = e.target.closest('.save-btn');
     const cancelBtn = e.target.closest('.cancel-btn');
     const readoutBtn = e.target.closest('.readout-btn');
+
+    if (deleteBtn) {
+      const row = deleteBtn.closest('.match-log-row');
+      const idx = Number(row.dataset.matchIndex);
+      if (!confirm(`Delete Match #${idx + 1}? This cannot be undone.`)) return;
+      matches.splice(idx, 1);
+      matchEvents.splice(idx, 1);
+      if (editingMatchIndex !== null) {
+        if (editingMatchIndex === idx) { editingMatchIndex = null; editErrorMsg = ''; }
+        else if (editingMatchIndex > idx) { editingMatchIndex -= 1; }
+      }
+      saveActiveGame();
+      renderAll();
+      return;
+    }
 
     if (readoutBtn) {
       const totals = getTotals(matches);
@@ -2259,6 +2377,7 @@
           <span class="ml-cell ml-label match-label-cell">
             <span>${i + 1}</span>
             <button type="button" class="icon-btn edit-btn" title="Edit this round">✎</button>
+            <button type="button" class="icon-btn delete-btn" title="Delete this round">🗑</button>
           </span>
           ${cells}
         </div>`;
