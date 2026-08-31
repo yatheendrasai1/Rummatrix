@@ -529,6 +529,41 @@
 
   .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
 
+  /* ---------- VOICE ANNOUNCEMENTS ---------- */
+  .announce-toggle {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    padding: 9px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .announce-toggle:hover { border-color: var(--green); color: var(--green); }
+  .announce-toggle.on { background: rgba(51,225,138,0.12); border-color: var(--green); color: var(--green); }
+  .announce-toggle[hidden] { display: none; }
+
+  .readout-btn {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .readout-btn:hover { border-color: var(--green); color: var(--green); }
+  .readout-btn[hidden] { display: none; }
+
   footer { text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
 
   /* ---------- TV MODE ---------- */
@@ -778,6 +813,8 @@
     .icon-btn { padding: 6px 8px; font-size: 15px; }
 
     .actions-row .btn-ghost, .actions-row .btn-primary { flex: 1 1 140px; }
+
+    .readout-btn { width: 36px; height: 36px; font-size: 15px; }
   }
 
   @media (max-width: 380px) {
@@ -874,7 +911,10 @@
       </div>
       <div class="entry-grid" id="entryGrid"></div>
       <div class="error-text" id="entryError"></div>
-      <button class="btn-primary" id="addMatchBtn" style="padding:10px 20px; font-size:12px;">Add Match ▹</button>
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="btn-primary" id="addMatchBtn" style="padding:10px 20px; font-size:12px;">Add Match ▹</button>
+        <button type="button" class="announce-toggle" id="announceToggle" title="Speak a congratulations for the round winner">🔊 Announce!</button>
+      </div>
     </div>
 
     <div class="board-section">
@@ -998,6 +1038,7 @@
   const tvAddModalCard = document.getElementById('tvAddModalCard');
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
   const recordMatchPanel = document.getElementById('recordMatchPanel');
+  const announceToggle = document.getElementById('announceToggle');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1042,6 +1083,64 @@
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed : [];
     } catch (err) { return []; }
+  }
+
+  // ---------- VOICE ANNOUNCEMENTS ----------
+  // Browser-native speech synthesis — no server, no API key. "Announce!" speaks a
+  // random congratulations for whoever wins a round as Rummy; the readout button
+  // beside "Total" speaks every active player's name and current score on demand.
+
+  const ANNOUNCE_PREF_KEY = 'rummatrix.announceEnabled';
+  const speechSupported = 'speechSynthesis' in window;
+
+  const CONGRATS_PHRASES = [
+    '{name}, congratulations!',
+    'Rummy! {name} takes the round!',
+    'Well played, {name}!',
+    '{name} wins it in style!',
+    'Nice one, {name}!',
+    'And {name} goes out clean!',
+    'That is Rummy for {name}!',
+    '{name} seals the round!',
+    'Take a bow, {name}!',
+    '{name} strikes again!'
+  ];
+
+  let announceEnabled = false;
+  try { announceEnabled = localStorage.getItem(ANNOUNCE_PREF_KEY) === 'true'; } catch (err) { /* ignore */ }
+
+  function speak(text) {
+    if (!speechSupported) return;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+
+  function speakSequence(texts) {
+    if (!speechSupported || texts.length === 0) return;
+    speechSynthesis.cancel();
+    texts.forEach(t => speechSynthesis.speak(new SpeechSynthesisUtterance(t)));
+  }
+
+  function announceRoundWinner(winnerName) {
+    if (!announceEnabled || !winnerName) return;
+    const template = CONGRATS_PHRASES[Math.floor(Math.random() * CONGRATS_PHRASES.length)];
+    speak(template.replace('{name}', winnerName));
+  }
+
+  function renderAnnounceToggle() {
+    announceToggle.classList.toggle('on', announceEnabled);
+    announceToggle.textContent = announceEnabled ? '🔊 Announce: On' : '🔇 Announce: Off';
+  }
+
+  if (!speechSupported) {
+    announceToggle.hidden = true;
+  } else {
+    renderAnnounceToggle();
+    announceToggle.addEventListener('click', () => {
+      announceEnabled = !announceEnabled;
+      try { localStorage.setItem(ANNOUNCE_PREF_KEY, String(announceEnabled)); } catch (err) { /* ignore */ }
+      renderAnnounceToggle();
+    });
   }
 
   // ---------- SETUP SCREEN ----------
@@ -1486,6 +1585,8 @@
     matches.push(fullScores);
     matchEvents.push(fullEvents);
     saveActiveGame();
+    const winnerIdx = fullScores.findIndex(s => s === 0);
+    if (winnerIdx !== -1) announceRoundWinner(players[winnerIdx]);
     renderAll();
     if (!tvAddModal.hidden) {
       // Recorded from the TV Mode overlay — close it so the animated score update shows.
@@ -1878,6 +1979,18 @@
     const editBtn = e.target.closest('.edit-btn');
     const saveBtn = e.target.closest('.save-btn');
     const cancelBtn = e.target.closest('.cancel-btn');
+    const readoutBtn = e.target.closest('.readout-btn');
+
+    if (readoutBtn) {
+      const totals = getTotals(matches);
+      const outFlags = getOutFlags(totals);
+      const lines = players
+        .map((name, pIdx) => ({ name, total: totals[pIdx], out: outFlags[pIdx] }))
+        .filter(p => !p.out)
+        .map(p => `${p.name}, ${p.total} points.`);
+      speakSequence(lines);
+      return;
+    }
 
     if (editBtn) {
       const row = editBtn.closest('.match-log-row');
@@ -2107,7 +2220,7 @@
     // --- Overall total, appended under the Match Log — average shown faded in brackets alongside it ---
     matchLogHtml += `<div class="match-log-scroll" style="margin-top:14px;"><div class="match-log-table">`;
     matchLogHtml += `<div class="match-log-header" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Overall</span>${players.map(name => `<span class="ml-cell">${escapeHtml(name)}</span>`).join('')}</div>`;
-    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Total</span>${totals.map((t, pIdx) => {
+    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label" style="display:flex; align-items:center;">Total<button type="button" class="readout-btn" title="Speak everyone's current score" aria-label="Speak everyone's current score">▶</button></span>${totals.map((t, pIdx) => {
       const avg = (matches.length ? t / matches.length : 0).toFixed(1);
       return `<span class="ml-cell ${(!outFlags[pIdx] && minActiveTotal !== null && t === minActiveTotal) ? 'rummy-score' : ''}">${t} <span class="ml-avg">(${avg})</span></span>`;
     }).join('')}</div>`;
@@ -2115,6 +2228,9 @@
 
     setBreakdownList.innerHTML = setBreakdownHtml;
     matchLogList.innerHTML = matchLogHtml;
+    if (!speechSupported) {
+      matchLogList.querySelectorAll('.readout-btn').forEach(btn => { btn.hidden = true; });
+    }
   }
 
   function escapeHtml(str) {
