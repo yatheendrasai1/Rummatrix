@@ -1029,6 +1029,14 @@
         </select>
         <button type="button" class="voice-phrase-play-btn" id="announceSoundPreviewBtn" title="Preview this sound" aria-label="Preview this sound">▶</button>
       </div>
+      <div class="voice-settings-row">
+        <label for="voiceEnergySelect">Voice energy</label>
+        <select id="voiceEnergySelect" class="select-control">
+          <option value="normal">Normal</option>
+          <option value="excited">Excited</option>
+          <option value="hype">Hype!</option>
+        </select>
+      </div>
       <p class="sub" style="margin:0 0 14px; font-size:13px;">Edit the congratulation phrases below — use <code>{name}</code> wherever the winner's name should go. Tap ▶ to preview a phrase using whatever is currently typed in its field.</p>
       <div id="voiceSettingsList"></div>
       <div class="error-text" id="voiceSettingsError"></div>
@@ -1137,6 +1145,7 @@
   const announceLangSelect = document.getElementById('announceLangSelect');
   const announceSoundSelect = document.getElementById('announceSoundSelect');
   const announceSoundPreviewBtn = document.getElementById('announceSoundPreviewBtn');
+  const voiceEnergySelect = document.getElementById('voiceEnergySelect');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1193,7 +1202,28 @@
   const CONGRATS_PHRASES_TE_KEY = 'rummatrix.congratsPhrasesTelugu';
   const ANNOUNCE_LANG_KEY = 'rummatrix.announceLanguage';
   const ANNOUNCE_SOUND_KEY = 'rummatrix.announceSound';
+  const VOICE_ENERGY_KEY = 'rummatrix.voiceEnergy';
   const speechSupported = 'speechSynthesis' in window;
+
+  // Web Speech API has no real emotional TTS — no SSML support in browsers — but each
+  // utterance can carry its own pitch/rate, and a higher pitch spoken slightly faster
+  // reads as "excited" to a listener. The congratulation gets the full boost; the score
+  // readout gets a lighter touch (40%) so the numbers stay clearly understandable.
+  const VOICE_ENERGY_LEVELS = {
+    normal: { pitchBoost: 0, rateBoost: 0 },
+    excited: { pitchBoost: 0.25, rateBoost: 0.15 },
+    hype: { pitchBoost: 0.45, rateBoost: 0.3 }
+  };
+
+  function emotionForAnnounce() {
+    const e = VOICE_ENERGY_LEVELS[voiceEnergy] || VOICE_ENERGY_LEVELS.normal;
+    return { pitch: 1 + e.pitchBoost, rate: 1 + e.rateBoost };
+  }
+
+  function emotionForReadout() {
+    const e = VOICE_ENERGY_LEVELS[voiceEnergy] || VOICE_ENERGY_LEVELS.normal;
+    return { pitch: 1 + e.pitchBoost * 0.4, rate: 1 + e.rateBoost * 0.4 };
+  }
 
   const DEFAULT_CONGRATS_PHRASES = [
     '{name}, congratulations!',
@@ -1238,6 +1268,12 @@
   try {
     const savedSound = localStorage.getItem(ANNOUNCE_SOUND_KEY);
     if (['none', 'drumroll', 'applause', 'trumpet'].includes(savedSound)) announceSound = savedSound;
+  } catch (err) { /* ignore */ }
+
+  let voiceEnergy = 'excited';
+  try {
+    const savedEnergy = localStorage.getItem(VOICE_ENERGY_KEY);
+    if (Object.prototype.hasOwnProperty.call(VOICE_ENERGY_LEVELS, savedEnergy)) voiceEnergy = savedEnergy;
   } catch (err) { /* ignore */ }
 
   function activePhrases() {
@@ -1285,28 +1321,30 @@
     return announceLanguage === 'te' ? preferredTeluguVoice : preferredVoice;
   }
 
-  function makeUtterance(text, voiceOverride) {
+  function makeUtterance(text, opts) {
     const u = new SpeechSynthesisUtterance(text);
-    const voice = voiceOverride !== undefined ? voiceOverride : preferredVoice;
+    const voice = (opts && opts.voice !== undefined) ? opts.voice : preferredVoice;
     if (voice) {
       try {
         u.voice = voice;
         u.lang = voice.lang;
       } catch (err) { /* fall back to the default voice rather than losing the announcement */ }
     }
+    if (opts && opts.pitch !== undefined) u.pitch = opts.pitch;
+    if (opts && opts.rate !== undefined) u.rate = opts.rate;
     return u;
   }
 
-  function speak(text, voiceOverride) {
+  function speak(text, opts) {
     if (!speechSupported) return;
     speechSynthesis.cancel();
-    speechSynthesis.speak(makeUtterance(text, voiceOverride));
+    speechSynthesis.speak(makeUtterance(text, opts));
   }
 
-  function speakSequence(texts) {
+  function speakSequence(texts, opts) {
     if (!speechSupported || texts.length === 0) return;
     speechSynthesis.cancel();
-    texts.forEach(t => speechSynthesis.speak(makeUtterance(t)));
+    texts.forEach(t => speechSynthesis.speak(makeUtterance(t, opts)));
   }
 
   const SPOKEN_DIGITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
@@ -1424,7 +1462,7 @@
     if (phrases.length === 0) return;
     const template = phrases[Math.floor(Math.random() * phrases.length)];
     playSoundEffect(announceSound).then(() => {
-      speak(template.replace('{name}', winnerName), activeVoice());
+      speak(template.replace('{name}', winnerName), { voice: activeVoice(), ...emotionForAnnounce() });
     });
   }
 
@@ -1461,6 +1499,7 @@
   } else {
     announceLangSelect.value = announceLanguage;
     announceSoundSelect.value = announceSound;
+    voiceEnergySelect.value = voiceEnergy;
     renderVoiceSettingsList();
 
     announceLangSelect.addEventListener('change', () => {
@@ -1477,12 +1516,17 @@
 
     announceSoundPreviewBtn.addEventListener('click', () => { playSoundEffect(announceSound); });
 
+    voiceEnergySelect.addEventListener('change', () => {
+      voiceEnergy = voiceEnergySelect.value;
+      try { localStorage.setItem(VOICE_ENERGY_KEY, voiceEnergy); } catch (err) { /* ignore */ }
+    });
+
     voiceSettingsList.addEventListener('click', (e) => {
       const playBtn = e.target.closest('.voice-phrase-play-btn');
       if (!playBtn) return;
       const input = voiceSettingsList.querySelector(`.voice-phrase-input[data-idx="${playBtn.dataset.idx}"]`);
       const text = input ? input.value.trim() : '';
-      if (text) speak(text.replace('{name}', 'Player'), activeVoice());
+      if (text) speak(text.replace('{name}', 'Player'), { voice: activeVoice(), ...emotionForAnnounce() });
     });
 
     voiceSettingsSaveBtn.addEventListener('click', () => {
@@ -2371,7 +2415,7 @@
         .map((name, pIdx) => ({ name, total: totals[pIdx], out: outFlags[pIdx] }))
         .filter(p => !p.out)
         .map(p => `${p.name}, ${spokenScore(p.total)}.`);
-      speakSequence(lines);
+      speakSequence(lines, emotionForReadout());
       return;
     }
 
