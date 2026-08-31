@@ -315,9 +315,11 @@
   .set-block[open] summary::before { transform: rotate(90deg); }
   .set-block[open] summary { margin-bottom: 10px; }
 
-  .voice-settings-section { margin-bottom: 26px; }
-  .voice-settings-section[hidden] { display: none; }
-  .voice-settings-section summary {
+  /* Shared collapsible-section look — used for Voice Settings and Set Breakdown,
+     both closed by default (no "open" attribute) to keep the page compact. */
+  .collapsible-section { margin-bottom: 26px; }
+  .collapsible-section[hidden] { display: none; }
+  .collapsible-section summary {
     cursor: pointer;
     list-style: none;
     font-family: var(--font-display);
@@ -328,14 +330,19 @@
     margin: 0 0 14px;
     user-select: none;
   }
-  .voice-settings-section summary::-webkit-details-marker { display: none; }
-  .voice-settings-section summary::before {
+  .collapsible-section summary::-webkit-details-marker { display: none; }
+  .collapsible-section summary::before {
     content: '▸';
     display: inline-block;
     margin-right: 8px;
     transition: transform 0.15s ease;
   }
-  .voice-settings-section[open] summary::before { transform: rotate(90deg); }
+  .collapsible-section[open] summary::before { transform: rotate(90deg); }
+
+  /* The Voice Settings summary otherwise sits flush against the event-legend text
+     right above it — give it its own breathing room and a divider, like the CSV
+     import section gets on the setup screen. */
+  #voiceSettingsSection { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--border); }
   .voice-phrase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .voice-phrase-input { flex: 1; min-width: 0; }
   .voice-phrase-input[lang="te"] { font-family: 'Noto Sans Telugu', 'Gautami', sans-serif; }
@@ -614,6 +621,10 @@
   .event-btn[data-key="rummy"].selected { background: var(--green); color: #04150c; border-color: var(--green); }
 
   .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  #tvModeBtn, #endGameBtn { flex: 1 1 100%; width: 100%; }
+
+  /* Player Summary cards, shown outside TV Mode, at half their original size. */
+  .summary-list-compact { zoom: 0.5; }
 
   /* ---------- VOICE ANNOUNCEMENTS ---------- */
   .announce-toggle {
@@ -1058,29 +1069,30 @@
         <span>Player Summary</span>
         <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · MAX <b id="maxPointsDisplay">-</b></span>
       </h2>
-      <div id="summaryList"></div>
+      <div id="summaryList" class="summary-list-compact"></div>
     </div>
 
     <div class="board-section">
-      <h2>Match Log</h2>
+      <h2 style="display:flex; align-items:center; justify-content:space-between;">
+        Match Log
+        <button class="btn-ghost" id="exportCsvBtn" type="button" title="Export CSV" aria-label="Export CSV" style="font-size:12px; padding:5px 10px;">⬇</button>
+      </h2>
       <div id="matchLogList"></div>
     </div>
 
-    <div class="board-section">
-      <h2>Set Breakdown</h2>
+    <details class="collapsible-section" id="setBreakdownSection">
+      <summary>Set Breakdown</summary>
       <div id="setBreakdownList"></div>
-    </div>
+    </details>
 
     <div class="actions-row">
       <button class="btn-ghost" id="tvModeBtn">📺 TV Mode</button>
-      <button class="btn-ghost" id="undoBtn">↺ Undo Last Match</button>
-      <button class="btn-ghost" id="exportCsvBtn">⬇ Export CSV</button>
       <button class="btn-ghost danger" id="endGameBtn">⏻ End Game</button>
     </div>
 
     <p class="sub" id="eventLegendText" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
 
-    <details class="voice-settings-section" id="voiceSettingsSection">
+    <details class="collapsible-section" id="voiceSettingsSection">
       <summary>Voice Settings</summary>
       <div class="voice-settings-row">
         <label for="announceLangSelect">Phrase language</label>
@@ -1198,7 +1210,6 @@
   const entryError = document.getElementById('entryError');
   const addMatchBtn = document.getElementById('addMatchBtn');
   const testDumpBtn = document.getElementById('testDumpBtn');
-  const undoBtn = document.getElementById('undoBtn');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const endGameBtn = document.getElementById('endGameBtn');
   const tvModeBtn = document.getElementById('tvModeBtn');
@@ -2196,16 +2207,6 @@
   exportCsvBtn.addEventListener('click', () => {
     if (players.length === 0) return;
     downloadCsv(`rummy-game-${Date.now()}.csv`, matchesToCsv(players, matches));
-  });
-
-  undoBtn.addEventListener('click', () => {
-    if (matches.length === 0) return;
-    matches.pop();
-    matchEvents.pop();
-    editingMatchIndex = null;
-    editErrorMsg = '';
-    saveActiveGame();
-    renderAll();
   });
 
   endGameBtn.addEventListener('click', () => {
