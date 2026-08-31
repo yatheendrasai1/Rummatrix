@@ -856,6 +856,45 @@
   }
   .tv-score.tv-score-updated { animation: tvScorePop 0.7s cubic-bezier(.34,1.56,.64,1); }
 
+  /* Round-winner spotlight — the winning tile zooms in slightly (rising above its
+     neighbors) while every other tile eases down a touch, then both settle back to
+     normal size; a golden band sweeps diagonally across the winner's tile at the
+     same time, clipped to its rounded corners since the tile has overflow:hidden. */
+  @keyframes tvWinnerZoom {
+    0%, 100% { transform: scale(1); z-index: 1; }
+    25%, 70% { transform: scale(1.12); z-index: 5; }
+  }
+  .tv-tile-winner { animation: tvWinnerZoom 1.7s ease-in-out; }
+
+  @keyframes tvOthersShrink {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    25%, 70% { transform: scale(0.9); opacity: 0.75; }
+  }
+  .tv-tile-shrink { animation: tvOthersShrink 1.7s ease-in-out; }
+
+  .tv-shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg,
+      transparent 35%,
+      rgba(255,215,64,0) 42%,
+      rgba(255,224,120,0.9) 50%,
+      rgba(255,215,64,0) 58%,
+      transparent 65%);
+    background-size: 250% 250%;
+    background-position: -120% -120%;
+    opacity: 0;
+    animation: tvShineSweep 1.2s ease-out;
+    mix-blend-mode: screen;
+  }
+  @keyframes tvShineSweep {
+    0% { background-position: -120% -120%; opacity: 0; }
+    12% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { background-position: 120% 120%; opacity: 0; }
+  }
+
   /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
      just moved on top of the score grid instead of navigating away. */
   .tv-add-modal {
@@ -2140,7 +2179,10 @@
     matchEvents.push(fullEvents);
     saveActiveGame();
     const winnerIdx = fullScores.findIndex(s => s === 0);
-    if (winnerIdx !== -1) announceRoundWinner(players[winnerIdx]);
+    if (winnerIdx !== -1) {
+      announceRoundWinner(players[winnerIdx]);
+      lastRoundWinnerIdx = winnerIdx;
+    }
     renderAll();
     if (!tvAddModal.hidden) {
       // Recorded from the TV Mode overlay — close it so the animated score update shows.
@@ -2218,6 +2260,10 @@
   // add-score modal and back out again without losing its place in the page.
   const recordMatchPanelHome = { parent: recordMatchPanel.parentNode, next: recordMatchPanel.nextSibling };
   let tvPrevTotals = null; // last-rendered totals, to detect which scores just changed
+  // Index of the player who just won a round as Rummy, set right when that round is
+  // added and consumed by the very next TV render — so the winner spotlight animation
+  // fires exactly once and never replays on a later, unrelated re-render.
+  let lastRoundWinnerIdx = null;
 
   function tvGridShape(n) {
     // Keep it to one row up through 4 players; beyond that, split into two rows so
@@ -2235,18 +2281,30 @@
     tvGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     tvGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
+    const winnerIdx = lastRoundWinnerIdx;
+    lastRoundWinnerIdx = null; // consume — this render is the one that gets the spotlight
+
     tvGrid.innerHTML = players.map((name, pIdx) => {
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
+      const isWinner = pIdx === winnerIdx;
       const url = playerAvatars[pIdx];
       const photo = url
         ? `<img class="tv-photo" src="${url}" alt="">`
         : `<span class="tv-photo-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
       const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? '<span class="tv-tag">Out</span>' : '');
       const changed = !!(tvPrevTotals && tvPrevTotals[pIdx] !== undefined && tvPrevTotals[pIdx] !== totals[pIdx]);
-      return `<div class="tv-tile ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'tv-tile-updated' : ''}">
+      const tileClasses = [
+        'tv-tile',
+        isLeader ? 'lead' : '',
+        isOut ? 'out' : '',
+        changed ? 'tv-tile-updated' : '',
+        isWinner ? 'tv-tile-winner' : (winnerIdx !== null ? 'tv-tile-shrink' : '')
+      ].filter(Boolean).join(' ');
+      return `<div class="${tileClasses}">
         ${photo}
         <div class="tv-scrim"></div>
+        ${isWinner ? '<div class="tv-shine"></div>' : ''}
         ${tag}
         <div class="tv-overlay">
           <div class="tv-name">${escapeHtml(name)}</div>
@@ -2272,6 +2330,7 @@
 
   tvModeBtn.addEventListener('click', () => {
     tvPrevTotals = null; // don't animate every tile just because TV Mode opened
+    lastRoundWinnerIdx = null; // don't replay a stale winner spotlight either
     renderTvScreen();
     tvScreen.hidden = false;
     document.documentElement.style.overflow = 'hidden';
