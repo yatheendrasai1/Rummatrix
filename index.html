@@ -2111,7 +2111,7 @@
     matchEvents.push(fullEvents);
     saveActiveGame();
     const winnerIdx = fullScores.findIndex(s => s === 0);
-    if (winnerIdx !== -1) setTimeout(() => announceRoundWinner(players[winnerIdx]), 3000);
+    if (winnerIdx !== -1) announceRoundWinner(players[winnerIdx]);
     renderAll();
     if (!tvAddModal.hidden) {
       // Recorded from the TV Mode overlay — close it so the animated score update shows.
