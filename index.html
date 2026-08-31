@@ -1177,12 +1177,23 @@
   // stays null and speech just uses the browser's default voice. getVoices() often
   // loads asynchronously on first page load, so we also re-check on voiceschanged.
   let preferredVoice = null;
+  // Normalizes a BCP-47 language tag for comparison — lowercases it and treats
+  // underscore/hyphen as equivalent, since some Android/WebView builds report
+  // "en_IN" instead of the standard "en-IN".
+  function normalizeLang(lang) {
+    return (lang || '').toLowerCase().replace(/_/g, '-');
+  }
+
   function pickPreferredVoice() {
     const voices = speechSynthesis.getVoices();
     preferredVoice =
-      voices.find(v => v.lang && v.lang.toLowerCase() === 'en-in') ||
-      voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en-in')) ||
-      voices.find(v => /india|indian/i.test(v.name)) ||
+      voices.find(v => normalizeLang(v.lang) === 'en-in') ||
+      voices.find(v => normalizeLang(v.lang).startsWith('en-in')) ||
+      // Only fall back to a name-based guess ("Indian English", etc.) when the
+      // voice's own language is still English — otherwise this can pick a
+      // Hindi/Telugu voice just because its name also happens to say "India",
+      // which speaks the wrong language entirely rather than just the wrong accent.
+      voices.find(v => normalizeLang(v.lang).startsWith('en') && /india|indian/i.test(v.name)) ||
       null;
   }
   if (speechSupported) {
