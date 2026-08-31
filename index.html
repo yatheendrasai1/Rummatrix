@@ -1024,7 +1024,7 @@
         <select id="announceSoundSelect" class="select-control">
           <option value="none">None</option>
           <option value="drumroll">Drumroll</option>
-          <option value="applause">Applause</option>
+          <option value="claps">Claps</option>
           <option value="trumpet">Trumpet fanfare</option>
         </select>
         <button type="button" class="voice-phrase-play-btn" id="announceSoundPreviewBtn" title="Preview this sound" aria-label="Preview this sound">▶</button>
@@ -1267,7 +1267,7 @@
   let announceSound = 'drumroll';
   try {
     const savedSound = localStorage.getItem(ANNOUNCE_SOUND_KEY);
-    if (['none', 'drumroll', 'applause', 'trumpet'].includes(savedSound)) announceSound = savedSound;
+    if (['none', 'drumroll', 'claps', 'trumpet'].includes(savedSound)) announceSound = savedSound;
   } catch (err) { /* ignore */ }
 
   let voiceEnergy = 'excited';
@@ -1413,31 +1413,39 @@
   }
 
   function scheduleDrumroll(ctx, startTime) {
-    const rollDuration = 1.1;
+    const rollDuration = 1.9;
     const noiseBuffer = createNoiseBuffer(ctx, 0.15);
-    const hitInterval = 0.045;
+    const hitInterval = 0.04;
     for (let t = startTime; t < startTime + rollDuration; t += hitInterval) {
       playNoiseBurst(ctx, noiseBuffer, t, hitInterval * 1.4, 0.35, 'bandpass', 320);
     }
-    playNoiseBurst(ctx, createNoiseBuffer(ctx, 0.4), startTime + rollDuration, 0.4, 0.6, 'highpass', 2500);
-    return rollDuration + 0.4;
+    playNoiseBurst(ctx, createNoiseBuffer(ctx, 0.6), startTime + rollDuration, 0.6, 0.65, 'highpass', 2500);
+    return rollDuration + 0.6;
   }
 
-  function scheduleApplause(ctx, startTime) {
-    const totalDuration = 1.4;
-    const noiseBuffer = createNoiseBuffer(ctx, 0.1);
-    for (let t = startTime; t < startTime + totalDuration; t += 0.02 + Math.random() * 0.05) {
-      playNoiseBurst(ctx, noiseBuffer, t, 0.03 + Math.random() * 0.05, 0.15 + Math.random() * 0.2, 'highpass', 1800 + Math.random() * 1500);
+  // Distinct claps rather than a continuous applause hiss — each clap layers a sharp
+  // "smack" transient (highpass) with a slightly-delayed hollow "ring" (bandpass), and
+  // claps are spaced with a little randomness so it doesn't sound robotically even.
+  function scheduleClaps(ctx, startTime) {
+    const clapCount = 9;
+    const totalDuration = 2.1;
+    const clapBuffer = createNoiseBuffer(ctx, 0.1);
+    for (let i = 0; i < clapCount; i++) {
+      const t = startTime + (i / clapCount) * totalDuration + (Math.random() * 0.04 - 0.02);
+      playNoiseBurst(ctx, clapBuffer, t, 0.05, 0.55 + Math.random() * 0.15, 'highpass', 1200);
+      playNoiseBurst(ctx, clapBuffer, t + 0.008, 0.09, 0.3 + Math.random() * 0.1, 'bandpass', 2200);
     }
-    return totalDuration;
+    return totalDuration + 0.15;
   }
 
   function scheduleTrumpet(ctx, startTime) {
-    playTone(ctx, startTime, 0.22, 523.25, 0.3, 'sawtooth');
-    playTone(ctx, startTime, 0.22, 659.25, 0.15, 'sawtooth');
-    playTone(ctx, startTime + 0.26, 0.65, 783.99, 0.32, 'sawtooth');
-    playTone(ctx, startTime + 0.26, 0.65, 987.77, 0.16, 'sawtooth');
-    return 0.95;
+    playTone(ctx, startTime, 0.3, 523.25, 0.3, 'sawtooth');
+    playTone(ctx, startTime, 0.3, 659.25, 0.15, 'sawtooth');
+    playTone(ctx, startTime + 0.34, 0.3, 587.33, 0.28, 'sawtooth');
+    playTone(ctx, startTime + 0.34, 0.3, 739.99, 0.14, 'sawtooth');
+    playTone(ctx, startTime + 0.68, 1.05, 783.99, 0.34, 'sawtooth');
+    playTone(ctx, startTime + 0.68, 1.05, 987.77, 0.17, 'sawtooth');
+    return 1.8;
   }
 
   // Plays the chosen sound effect and resolves once it's finished, so callers can
@@ -1450,7 +1458,7 @@
       const startTime = ctx.currentTime + 0.03;
       let duration = 0;
       if (kind === 'drumroll') duration = scheduleDrumroll(ctx, startTime);
-      else if (kind === 'applause') duration = scheduleApplause(ctx, startTime);
+      else if (kind === 'claps') duration = scheduleClaps(ctx, startTime);
       else if (kind === 'trumpet') duration = scheduleTrumpet(ctx, startTime);
       setTimeout(resolve, Math.max(0, duration * 1000));
     });
