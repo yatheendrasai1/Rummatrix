@@ -519,6 +519,27 @@
     font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 6px;
   }
 
+  /* Player Summary cards shown outside TV Mode — a compact multi-column grid with
+     genuinely smaller cards and avatar photos, not just a shorter single column. */
+  .summary-list-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  .summary-list-compact .summary-card { margin-bottom: 0; border-radius: 10px; }
+  .summary-list-compact .summary-photo-col { flex: 0 0 28%; max-width: 28%; min-height: 64px; }
+  .summary-list-compact .avatar-photo { font-size: 18px; }
+  .summary-list-compact .summary-info-col { padding: 10px 12px; gap: 6px; }
+  .summary-list-compact .summary-tags { gap: 4px; }
+  .summary-list-compact .tag-pill { font-size: 8px; padding: 3px 7px; }
+  .summary-list-compact .summary-name { font-size: 13px; }
+  .summary-list-compact .summary-stats { gap: 6px 10px; }
+  .summary-list-compact .stat-value { font-size: 12px; }
+  .summary-list-compact .stat-label { font-size: 9px; margin-top: 2px; }
+  .summary-list-compact .timeline-track { height: 5px; }
+  .summary-list-compact .timeline-marker { width: 9px; height: 9px; }
+  .summary-list-compact .timeline-scale { font-size: 9px; margin-top: 4px; }
+
   .match-label-cell { display: flex; align-items: center; gap: 8px; }
   .icon-btn {
     background: transparent;
@@ -622,9 +643,6 @@
 
   .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
   #tvModeBtn, #endGameBtn { flex: 1 1 100%; width: 100%; }
-
-  /* Player Summary cards, shown outside TV Mode, at half their original size. */
-  .summary-list-compact { zoom: 0.5; }
 
   /* ---------- VOICE ANNOUNCEMENTS ---------- */
   .announce-toggle {
