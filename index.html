@@ -526,14 +526,41 @@
   /* Hover-to-reveal only makes sense on devices with a real hover state (mouse/trackpad) —
      on touchscreens there is no hover, so keep the edit button visible there always. */
   @media (hover: hover) and (pointer: fine) {
-    .icon-btn.edit-btn, .icon-btn.delete-btn { opacity: 0; }
-    .match-log-row:hover .edit-btn, .match-log-row:hover .delete-btn { opacity: 1; }
+    .icon-btn.edit-btn { opacity: 0; }
+    .match-log-row:hover .edit-btn { opacity: 1; }
+    .row-delete-btn { opacity: 0; }
+    .match-log-row:hover .row-delete-btn { opacity: 1; }
   }
   .icon-btn:hover { color: var(--orange); }
   .row-actions { display: flex; gap: 2px; }
   .row-actions .icon-btn { opacity: 1; }
   .save-btn:hover { color: var(--green); }
   .cancel-btn:hover { color: var(--orange); }
+
+  /* Delete sits in its own corner, off to the right, rather than crowding the
+     narrow match-number column on the left alongside the edit button. */
+  .match-log-row.mlr-deletable { position: relative; padding-right: 36px; }
+  .row-delete-btn {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .row-delete-btn:hover { border-color: var(--orange); color: var(--orange); }
 
   .match-log-row.editing { border-color: var(--green); background: rgba(51,225,138,0.05); }
   .ml-edit-input {
@@ -879,10 +906,12 @@
 
     .match-log-header, .match-log-row { padding: 8px 10px; font-size: 15px; }
     .icon-btn { padding: 6px 8px; font-size: 15px; }
+    .match-log-row.mlr-deletable { padding-right: 38px; }
 
     .actions-row .btn-ghost, .actions-row .btn-primary { flex: 1 1 140px; }
 
     .readout-btn { width: 26px; height: 26px; font-size: 11px; }
+    .row-delete-btn { width: 26px; height: 26px; padding: 0; font-size: 12px; }
   }
 
   @media (max-width: 380px) {
@@ -2747,13 +2776,13 @@
           const isRummy = m[pIdx] === 0;
           return `<span class="ml-cell ${isRummy ? 'rummy-score' : ''}">${matchLogLabel(m[pIdx])}</span>`;
         }).join('');
-        matchLogHtml += `<div class="match-log-row ${isNewSet ? 'set-boundary' : ''}" style="grid-template-columns:${cols}" data-match-index="${i}">
+        matchLogHtml += `<div class="match-log-row mlr-deletable ${isNewSet ? 'set-boundary' : ''}" style="grid-template-columns:${cols}" data-match-index="${i}">
           <span class="ml-cell ml-label match-label-cell">
             <span>${i + 1}</span>
             <button type="button" class="icon-btn edit-btn" title="Edit this round">✎</button>
-            <button type="button" class="icon-btn delete-btn" title="Delete this round">🗑</button>
           </span>
           ${cells}
+          <button type="button" class="icon-btn delete-btn row-delete-btn" title="Delete this round" aria-label="Delete this round">✕</button>
         </div>`;
       }
     });
