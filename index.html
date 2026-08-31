@@ -338,6 +338,7 @@
   .voice-settings-section[open] summary::before { transform: rotate(90deg); }
   .voice-phrase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .voice-phrase-input { flex: 1; min-width: 0; }
+  .voice-phrase-input[lang="te"] { font-family: 'Noto Sans Telugu', 'Gautami', sans-serif; }
   .voice-phrase-play-btn {
     flex: none;
     width: 30px;
@@ -353,6 +354,23 @@
     justify-content: center;
   }
   .voice-phrase-play-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .voice-settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .voice-settings-row label {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .select-control {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .select-control:focus { border-color: var(--green); }
 
   .match-log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .match-log-table { display: grid; gap: 6px; min-width: fit-content; }
@@ -994,6 +1012,23 @@
 
     <details class="voice-settings-section" id="voiceSettingsSection">
       <summary>Voice Settings</summary>
+      <div class="voice-settings-row">
+        <label for="announceLangSelect">Phrase language</label>
+        <select id="announceLangSelect" class="select-control">
+          <option value="en">English</option>
+          <option value="te">Telugu</option>
+        </select>
+      </div>
+      <div class="voice-settings-row">
+        <label for="announceSoundSelect">Sound before announcement</label>
+        <select id="announceSoundSelect" class="select-control">
+          <option value="none">None</option>
+          <option value="drumroll">Drumroll</option>
+          <option value="applause">Applause</option>
+          <option value="trumpet">Trumpet fanfare</option>
+        </select>
+        <button type="button" class="voice-phrase-play-btn" id="announceSoundPreviewBtn" title="Preview this sound" aria-label="Preview this sound">▶</button>
+      </div>
       <p class="sub" style="margin:0 0 14px; font-size:13px;">Edit the congratulation phrases below — use <code>{name}</code> wherever the winner's name should go. Tap ▶ to preview a phrase using whatever is currently typed in its field.</p>
       <div id="voiceSettingsList"></div>
       <div class="error-text" id="voiceSettingsError"></div>
@@ -1099,6 +1134,9 @@
   const voiceSettingsList = document.getElementById('voiceSettingsList');
   const voiceSettingsError = document.getElementById('voiceSettingsError');
   const voiceSettingsSaveBtn = document.getElementById('voiceSettingsSaveBtn');
+  const announceLangSelect = document.getElementById('announceLangSelect');
+  const announceSoundSelect = document.getElementById('announceSoundSelect');
+  const announceSoundPreviewBtn = document.getElementById('announceSoundPreviewBtn');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1152,6 +1190,9 @@
 
   const ANNOUNCE_PREF_KEY = 'rummatrix.announceEnabled';
   const CONGRATS_PHRASES_KEY = 'rummatrix.congratsPhrases';
+  const CONGRATS_PHRASES_TE_KEY = 'rummatrix.congratsPhrasesTelugu';
+  const ANNOUNCE_LANG_KEY = 'rummatrix.announceLanguage';
+  const ANNOUNCE_SOUND_KEY = 'rummatrix.announceSound';
   const speechSupported = 'speechSynthesis' in window;
 
   const DEFAULT_CONGRATS_PHRASES = [
@@ -1163,20 +1204,54 @@
     'Evaru kodithey dhimma tirigi mind block ayipoddho vaalleyy {name}'
   ];
 
+  const DEFAULT_CONGRATS_PHRASES_TE = [
+    '{name}, అభినందనలు!',
+    '{name}, తగ్గేదే లే!',
+    '{name}, తిరిగి వచ్చేశారు!',
+    'నువ్వు సూపర్ {name}!',
+    'బాగా ఆడారు {name}!',
+    'ఎవరు కొట్టినా దిమ్మ తిరిగి మైండ్ బ్లాక్ అయిపోద్ది వాళ్ళే {name}'
+  ];
+
   let CONGRATS_PHRASES = DEFAULT_CONGRATS_PHRASES.slice();
   try {
     const savedPhrases = JSON.parse(localStorage.getItem(CONGRATS_PHRASES_KEY));
     if (Array.isArray(savedPhrases) && savedPhrases.length > 0) CONGRATS_PHRASES = savedPhrases;
   } catch (err) { /* ignore — keep defaults */ }
 
+  let CONGRATS_PHRASES_TE = DEFAULT_CONGRATS_PHRASES_TE.slice();
+  try {
+    const savedPhrasesTe = JSON.parse(localStorage.getItem(CONGRATS_PHRASES_TE_KEY));
+    if (Array.isArray(savedPhrasesTe) && savedPhrasesTe.length > 0) CONGRATS_PHRASES_TE = savedPhrasesTe;
+  } catch (err) { /* ignore — keep defaults */ }
+
   let announceEnabled = false;
   try { announceEnabled = localStorage.getItem(ANNOUNCE_PREF_KEY) === 'true'; } catch (err) { /* ignore */ }
+
+  let announceLanguage = 'en';
+  try {
+    const savedLang = localStorage.getItem(ANNOUNCE_LANG_KEY);
+    if (savedLang === 'te' || savedLang === 'en') announceLanguage = savedLang;
+  } catch (err) { /* ignore */ }
+
+  let announceSound = 'drumroll';
+  try {
+    const savedSound = localStorage.getItem(ANNOUNCE_SOUND_KEY);
+    if (['none', 'drumroll', 'applause', 'trumpet'].includes(savedSound)) announceSound = savedSound;
+  } catch (err) { /* ignore */ }
+
+  function activePhrases() {
+    return announceLanguage === 'te' ? CONGRATS_PHRASES_TE : CONGRATS_PHRASES;
+  }
 
   // Prefer an Indian-English voice if the device/browser has one installed (common
   // on Android, and on Windows/Chrome with Indian language packs) — otherwise this
   // stays null and speech just uses the browser's default voice. getVoices() often
   // loads asynchronously on first page load, so we also re-check on voiceschanged.
   let preferredVoice = null;
+  // Telugu voice for the "Telugu" phrase language option — stays null (and speech
+  // falls back to the default voice) if the device has no Telugu voice installed.
+  let preferredTeluguVoice = null;
   // Normalizes a BCP-47 language tag for comparison — lowercases it and treats
   // underscore/hyphen as equivalent, since some Android/WebView builds report
   // "en_IN" instead of the standard "en-IN".
@@ -1195,27 +1270,37 @@
       // which speaks the wrong language entirely rather than just the wrong accent.
       voices.find(v => normalizeLang(v.lang).startsWith('en') && /india|indian/i.test(v.name)) ||
       null;
+    preferredTeluguVoice =
+      voices.find(v => normalizeLang(v.lang) === 'te-in') ||
+      voices.find(v => normalizeLang(v.lang).startsWith('te')) ||
+      voices.find(v => /telugu/i.test(v.name)) ||
+      null;
   }
   if (speechSupported) {
     pickPreferredVoice();
     speechSynthesis.addEventListener('voiceschanged', pickPreferredVoice);
   }
 
-  function makeUtterance(text) {
+  function activeVoice() {
+    return announceLanguage === 'te' ? preferredTeluguVoice : preferredVoice;
+  }
+
+  function makeUtterance(text, voiceOverride) {
     const u = new SpeechSynthesisUtterance(text);
-    if (preferredVoice) {
+    const voice = voiceOverride !== undefined ? voiceOverride : preferredVoice;
+    if (voice) {
       try {
-        u.voice = preferredVoice;
-        u.lang = preferredVoice.lang;
+        u.voice = voice;
+        u.lang = voice.lang;
       } catch (err) { /* fall back to the default voice rather than losing the announcement */ }
     }
     return u;
   }
 
-  function speak(text) {
+  function speak(text, voiceOverride) {
     if (!speechSupported) return;
     speechSynthesis.cancel();
-    speechSynthesis.speak(makeUtterance(text));
+    speechSynthesis.speak(makeUtterance(text, voiceOverride));
   }
 
   function speakSequence(texts) {
@@ -1239,10 +1324,108 @@
     return `${hundredsWord} ${remainderWord}`;
   }
 
+  // ---------- SOUND EFFECTS: a short synthesized clip before the announcement ----------
+  // Generated with the Web Audio API (noise bursts + oscillators) rather than an
+  // embedded audio file, so the page stays a single self-contained HTML file.
+
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (audioCtx) return audioCtx;
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (err) { audioCtx = null; }
+    return audioCtx;
+  }
+
+  function createNoiseBuffer(ctx, seconds) {
+    const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * seconds)), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function playNoiseBurst(ctx, noiseBuffer, startTime, duration, peakGain, filterType, filterFreq) {
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.value = filterFreq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + duration * 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(startTime);
+    source.stop(startTime + duration + 0.05);
+  }
+
+  function playTone(ctx, startTime, duration, freq, peakGain, type) {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + Math.min(0.03, duration * 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.05);
+  }
+
+  function scheduleDrumroll(ctx, startTime) {
+    const rollDuration = 1.1;
+    const noiseBuffer = createNoiseBuffer(ctx, 0.15);
+    const hitInterval = 0.045;
+    for (let t = startTime; t < startTime + rollDuration; t += hitInterval) {
+      playNoiseBurst(ctx, noiseBuffer, t, hitInterval * 1.4, 0.35, 'bandpass', 320);
+    }
+    playNoiseBurst(ctx, createNoiseBuffer(ctx, 0.4), startTime + rollDuration, 0.4, 0.6, 'highpass', 2500);
+    return rollDuration + 0.4;
+  }
+
+  function scheduleApplause(ctx, startTime) {
+    const totalDuration = 1.4;
+    const noiseBuffer = createNoiseBuffer(ctx, 0.1);
+    for (let t = startTime; t < startTime + totalDuration; t += 0.02 + Math.random() * 0.05) {
+      playNoiseBurst(ctx, noiseBuffer, t, 0.03 + Math.random() * 0.05, 0.15 + Math.random() * 0.2, 'highpass', 1800 + Math.random() * 1500);
+    }
+    return totalDuration;
+  }
+
+  function scheduleTrumpet(ctx, startTime) {
+    playTone(ctx, startTime, 0.22, 523.25, 0.3, 'sawtooth');
+    playTone(ctx, startTime, 0.22, 659.25, 0.15, 'sawtooth');
+    playTone(ctx, startTime + 0.26, 0.65, 783.99, 0.32, 'sawtooth');
+    playTone(ctx, startTime + 0.26, 0.65, 987.77, 0.16, 'sawtooth');
+    return 0.95;
+  }
+
+  // Plays the chosen sound effect and resolves once it's finished, so callers can
+  // await it before starting the spoken announcement.
+  function playSoundEffect(kind) {
+    return new Promise((resolve) => {
+      const ctx = kind !== 'none' && getAudioCtx();
+      if (!ctx) { resolve(); return; }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const startTime = ctx.currentTime + 0.03;
+      let duration = 0;
+      if (kind === 'drumroll') duration = scheduleDrumroll(ctx, startTime);
+      else if (kind === 'applause') duration = scheduleApplause(ctx, startTime);
+      else if (kind === 'trumpet') duration = scheduleTrumpet(ctx, startTime);
+      setTimeout(resolve, Math.max(0, duration * 1000));
+    });
+  }
+
   function announceRoundWinner(winnerName) {
     if (!announceEnabled || !winnerName) return;
-    const template = CONGRATS_PHRASES[Math.floor(Math.random() * CONGRATS_PHRASES.length)];
-    speak(template.replace('{name}', winnerName));
+    const phrases = activePhrases();
+    if (phrases.length === 0) return;
+    const template = phrases[Math.floor(Math.random() * phrases.length)];
+    playSoundEffect(announceSound).then(() => {
+      speak(template.replace('{name}', winnerName), activeVoice());
+    });
   }
 
   function renderAnnounceToggle() {
@@ -1264,9 +1447,10 @@
   // ---------- VOICE SETTINGS: editable congratulation phrases ----------
 
   function renderVoiceSettingsList() {
-    voiceSettingsList.innerHTML = CONGRATS_PHRASES.map((phrase, i) => `
+    const langAttr = announceLanguage === 'te' ? ' lang="te"' : '';
+    voiceSettingsList.innerHTML = activePhrases().map((phrase, i) => `
       <div class="voice-phrase-row">
-        <input type="text" class="voice-phrase-input" data-idx="${i}" maxlength="200" value="${escapeAttr(phrase)}">
+        <input type="text" class="voice-phrase-input" data-idx="${i}" maxlength="200" value="${escapeAttr(phrase)}"${langAttr}>
         <button type="button" class="voice-phrase-play-btn" data-idx="${i}" title="Preview this phrase" aria-label="Preview this phrase">▶</button>
       </div>`
     ).join('');
@@ -1275,14 +1459,30 @@
   if (!speechSupported) {
     voiceSettingsSection.hidden = true;
   } else {
+    announceLangSelect.value = announceLanguage;
+    announceSoundSelect.value = announceSound;
     renderVoiceSettingsList();
+
+    announceLangSelect.addEventListener('change', () => {
+      announceLanguage = announceLangSelect.value === 'te' ? 'te' : 'en';
+      try { localStorage.setItem(ANNOUNCE_LANG_KEY, announceLanguage); } catch (err) { /* ignore */ }
+      voiceSettingsError.textContent = '';
+      renderVoiceSettingsList();
+    });
+
+    announceSoundSelect.addEventListener('change', () => {
+      announceSound = announceSoundSelect.value;
+      try { localStorage.setItem(ANNOUNCE_SOUND_KEY, announceSound); } catch (err) { /* ignore */ }
+    });
+
+    announceSoundPreviewBtn.addEventListener('click', () => { playSoundEffect(announceSound); });
 
     voiceSettingsList.addEventListener('click', (e) => {
       const playBtn = e.target.closest('.voice-phrase-play-btn');
       if (!playBtn) return;
       const input = voiceSettingsList.querySelector(`.voice-phrase-input[data-idx="${playBtn.dataset.idx}"]`);
       const text = input ? input.value.trim() : '';
-      if (text) speak(text.replace('{name}', 'Player'));
+      if (text) speak(text.replace('{name}', 'Player'), activeVoice());
     });
 
     voiceSettingsSaveBtn.addEventListener('click', () => {
@@ -1293,8 +1493,13 @@
         voiceSettingsError.textContent = 'Keep at least one phrase.';
         return;
       }
-      CONGRATS_PHRASES = newPhrases;
-      try { localStorage.setItem(CONGRATS_PHRASES_KEY, JSON.stringify(CONGRATS_PHRASES)); } catch (err) { /* ignore */ }
+      if (announceLanguage === 'te') {
+        CONGRATS_PHRASES_TE = newPhrases;
+        try { localStorage.setItem(CONGRATS_PHRASES_TE_KEY, JSON.stringify(CONGRATS_PHRASES_TE)); } catch (err) { /* ignore */ }
+      } else {
+        CONGRATS_PHRASES = newPhrases;
+        try { localStorage.setItem(CONGRATS_PHRASES_KEY, JSON.stringify(CONGRATS_PHRASES)); } catch (err) { /* ignore */ }
+      }
       renderVoiceSettingsList();
       voiceSettingsError.style.color = 'var(--green)';
       voiceSettingsError.textContent = '✓ Phrases saved.';
