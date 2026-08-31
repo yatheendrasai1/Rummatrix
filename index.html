@@ -545,21 +545,30 @@
   .announce-toggle.on { background: rgba(51,225,138,0.12); border-color: var(--green); color: var(--green); }
   .announce-toggle[hidden] { display: none; }
 
+  /* Stacked under the "Total" label (not beside it) — that label cell is a fixed
+     70px-wide grid column, which is too narrow to fit the word "Total" plus a
+     tappable button side by side without the button spilling into the next
+     column's score text. Stacking keeps the row's width unchanged and just lets
+     the row grow a little taller instead. */
+  .ml-label-with-readout {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
   .readout-btn {
     flex: none;
-    width: 30px;
-    height: 30px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--muted);
-    font-size: 13px;
+    font-size: 10px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 8px;
-    vertical-align: middle;
   }
   .readout-btn:hover { border-color: var(--green); color: var(--green); }
   .readout-btn[hidden] { display: none; }
@@ -814,7 +823,7 @@
 
     .actions-row .btn-ghost, .actions-row .btn-primary { flex: 1 1 140px; }
 
-    .readout-btn { width: 36px; height: 36px; font-size: 15px; }
+    .readout-btn { width: 26px; height: 26px; font-size: 11px; }
   }
 
   @media (max-width: 380px) {
@@ -1119,6 +1128,21 @@
     if (!speechSupported || texts.length === 0) return;
     speechSynthesis.cancel();
     texts.forEach(t => speechSynthesis.speak(new SpeechSynthesisUtterance(t)));
+  }
+
+  const SPOKEN_DIGITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+  // Spells out a score the way it's said out loud rather than the way a TTS engine
+  // would normalize the raw number — a 3-digit score is read as two short groups
+  // ("one twenty-three") instead of "one hundred and twenty-three".
+  function spokenScore(n) {
+    if (n < 100) return String(n); // two digits or fewer — the engine already says these naturally
+    const hundreds = Math.floor(n / 100);
+    const remainder = n % 100;
+    const hundredsWord = SPOKEN_DIGITS[hundreds] || String(hundreds);
+    if (remainder === 0) return `${hundredsWord} hundred`;
+    const remainderWord = remainder < 10 ? `oh ${SPOKEN_DIGITS[remainder]}` : String(remainder);
+    return `${hundredsWord} ${remainderWord}`;
   }
 
   function announceRoundWinner(winnerName) {
@@ -1987,7 +2011,7 @@
       const lines = players
         .map((name, pIdx) => ({ name, total: totals[pIdx], out: outFlags[pIdx] }))
         .filter(p => !p.out)
-        .map(p => `${p.name}, ${p.total} points.`);
+        .map(p => `${p.name}, ${spokenScore(p.total)}.`);
       speakSequence(lines);
       return;
     }
@@ -2220,7 +2244,7 @@
     // --- Overall total, appended under the Match Log — average shown faded in brackets alongside it ---
     matchLogHtml += `<div class="match-log-scroll" style="margin-top:14px;"><div class="match-log-table">`;
     matchLogHtml += `<div class="match-log-header" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Overall</span>${players.map(name => `<span class="ml-cell">${escapeHtml(name)}</span>`).join('')}</div>`;
-    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label" style="display:flex; align-items:center;">Total<button type="button" class="readout-btn" title="Speak everyone's current score" aria-label="Speak everyone's current score">▶</button></span>${totals.map((t, pIdx) => {
+    matchLogHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label ml-label-with-readout">Total<button type="button" class="readout-btn" title="Speak everyone's current score" aria-label="Speak everyone's current score">▶</button></span>${totals.map((t, pIdx) => {
       const avg = (matches.length ? t / matches.length : 0).toFixed(1);
       return `<span class="ml-cell ${(!outFlags[pIdx] && minActiveTotal !== null && t === minActiveTotal) ? 'rummy-score' : ''}">${t} <span class="ml-avg">(${avg})</span></span>`;
     }).join('')}</div>`;
