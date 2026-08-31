@@ -356,6 +356,7 @@
   .voice-phrase-play-btn:hover { border-color: var(--green); color: var(--green); }
 
   .voice-settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .voice-settings-row[hidden] { display: none; }
   .voice-settings-row label {
     font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
     text-transform: uppercase; color: var(--muted);
@@ -371,6 +372,7 @@
     transition: border-color 0.15s ease;
   }
   .select-control:focus { border-color: var(--green); }
+  .custom-sound-input { color: var(--muted); font-family: var(--font-mono); font-size: 12px; max-width: 100%; }
 
   .match-log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .match-log-table { display: grid; gap: 6px; min-width: fit-content; }
@@ -1026,8 +1028,14 @@
           <option value="drumroll">Drumroll</option>
           <option value="claps">Claps</option>
           <option value="trumpet">Trumpet fanfare</option>
+          <option value="custom">Custom...</option>
         </select>
         <button type="button" class="voice-phrase-play-btn" id="announceSoundPreviewBtn" title="Preview this sound" aria-label="Preview this sound">▶</button>
+      </div>
+      <div class="voice-settings-row" id="customSoundRow" hidden>
+        <label for="customSoundInput">Custom sound file</label>
+        <input type="file" id="customSoundInput" accept="audio/*" class="custom-sound-input">
+        <span class="sub" id="customSoundStatus" style="font-size:12px; margin:0;"></span>
       </div>
       <div class="voice-settings-row">
         <label for="voiceEnergySelect">Voice energy</label>
@@ -1146,6 +1154,9 @@
   const announceSoundSelect = document.getElementById('announceSoundSelect');
   const announceSoundPreviewBtn = document.getElementById('announceSoundPreviewBtn');
   const voiceEnergySelect = document.getElementById('voiceEnergySelect');
+  const customSoundRow = document.getElementById('customSoundRow');
+  const customSoundInput = document.getElementById('customSoundInput');
+  const customSoundStatus = document.getElementById('customSoundStatus');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -1267,7 +1278,7 @@
   let announceSound = 'drumroll';
   try {
     const savedSound = localStorage.getItem(ANNOUNCE_SOUND_KEY);
-    if (['none', 'drumroll', 'claps', 'trumpet'].includes(savedSound)) announceSound = savedSound;
+    if (['none', 'drumroll', 'claps', 'trumpet', 'custom'].includes(savedSound)) announceSound = savedSound;
   } catch (err) { /* ignore */ }
 
   let voiceEnergy = 'excited';
@@ -1448,9 +1459,63 @@
     return 1.8;
   }
 
+  // ---------- CUSTOM SOUND: a user-uploaded audio clip, stored in IndexedDB ----------
+  // Kept in IndexedDB rather than localStorage since an audio file is too large for
+  // localStorage's small per-origin quota. This is device/browser-local — there's no
+  // server, so an uploaded clip doesn't follow you to a different device.
+
+  const CUSTOM_SOUND_DB = 'rummatrixCustomSound';
+  const CUSTOM_SOUND_STORE = 'sounds';
+  const CUSTOM_SOUND_KEY = 'announceCustomSound';
+  const CUSTOM_SOUND_MAX_BYTES = 5 * 1024 * 1024;
+
+  let customSoundObjectUrl = null;
+  let customSoundFileName = '';
+
+  function openCustomSoundDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) { reject(new Error('IndexedDB unsupported')); return; }
+      const req = indexedDB.open(CUSTOM_SOUND_DB, 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore(CUSTOM_SOUND_STORE); } catch (err) { /* ignore */ } };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function saveCustomSoundFile(file) {
+    return openCustomSoundDb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(CUSTOM_SOUND_STORE, 'readwrite');
+      tx.objectStore(CUSTOM_SOUND_STORE).put(file, CUSTOM_SOUND_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function loadCustomSoundFile() {
+    return openCustomSoundDb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(CUSTOM_SOUND_STORE, 'readonly');
+      const req = tx.objectStore(CUSTOM_SOUND_STORE).get(CUSTOM_SOUND_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  // Plays the uploaded custom clip and resolves once it ends (or immediately if none
+  // has been uploaded yet, or autoplay is blocked — never leaves the announcement stuck).
+  function playCustomSound() {
+    return new Promise((resolve) => {
+      if (!customSoundObjectUrl) { resolve(); return; }
+      const audio = new Audio(customSoundObjectUrl);
+      audio.addEventListener('ended', resolve, { once: true });
+      audio.addEventListener('error', resolve, { once: true });
+      audio.play().catch(resolve);
+    });
+  }
+
   // Plays the chosen sound effect and resolves once it's finished, so callers can
   // await it before starting the spoken announcement.
   function playSoundEffect(kind) {
+    if (kind === 'custom') return playCustomSound();
     return new Promise((resolve) => {
       const ctx = kind !== 'none' && getAudioCtx();
       if (!ctx) { resolve(); return; }
@@ -1510,6 +1575,26 @@
     voiceEnergySelect.value = voiceEnergy;
     renderVoiceSettingsList();
 
+    function updateCustomSoundStatus() {
+      if (customSoundFileName) {
+        customSoundStatus.textContent = `✓ ${customSoundFileName}`;
+        customSoundStatus.style.color = 'var(--green)';
+      } else {
+        customSoundStatus.textContent = 'No file uploaded yet.';
+        customSoundStatus.style.color = '';
+      }
+    }
+
+    customSoundRow.hidden = announceSoundSelect.value !== 'custom';
+    updateCustomSoundStatus();
+    loadCustomSoundFile().then(file => {
+      if (file) {
+        customSoundObjectUrl = URL.createObjectURL(file);
+        customSoundFileName = file.name || 'Custom sound';
+        updateCustomSoundStatus();
+      }
+    }).catch(() => { /* no custom sound saved, or IndexedDB unavailable — stays silent */ });
+
     announceLangSelect.addEventListener('change', () => {
       announceLanguage = announceLangSelect.value === 'te' ? 'te' : 'en';
       try { localStorage.setItem(ANNOUNCE_LANG_KEY, announceLanguage); } catch (err) { /* ignore */ }
@@ -1520,9 +1605,30 @@
     announceSoundSelect.addEventListener('change', () => {
       announceSound = announceSoundSelect.value;
       try { localStorage.setItem(ANNOUNCE_SOUND_KEY, announceSound); } catch (err) { /* ignore */ }
+      customSoundRow.hidden = announceSound !== 'custom';
     });
 
     announceSoundPreviewBtn.addEventListener('click', () => { playSoundEffect(announceSound); });
+
+    customSoundInput.addEventListener('change', () => {
+      const file = customSoundInput.files && customSoundInput.files[0];
+      if (!file) return;
+      if (file.size > CUSTOM_SOUND_MAX_BYTES) {
+        customSoundStatus.textContent = 'File too large — please use a clip under 5MB.';
+        customSoundStatus.style.color = 'var(--orange)';
+        customSoundInput.value = '';
+        return;
+      }
+      saveCustomSoundFile(file).then(() => {
+        if (customSoundObjectUrl) URL.revokeObjectURL(customSoundObjectUrl);
+        customSoundObjectUrl = URL.createObjectURL(file);
+        customSoundFileName = file.name;
+        updateCustomSoundStatus();
+      }).catch(() => {
+        customSoundStatus.textContent = 'Could not save this file on this device.';
+        customSoundStatus.style.color = 'var(--orange)';
+      });
+    });
 
     voiceEnergySelect.addEventListener('change', () => {
       voiceEnergy = voiceEnergySelect.value;
