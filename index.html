@@ -1442,6 +1442,28 @@
     return announceLanguage === 'te' ? CONGRATS_PHRASES_TE : CONGRATS_PHRASES;
   }
 
+  // Cycles through the active language's phrases in order rather than picking one at
+  // random, so every phrase gets an even turn. Tracked separately per language and
+  // persisted, so switching languages (or reloading) doesn't reset or skip around.
+  const PHRASE_CURSOR_KEY = 'rummatrix.phraseCursor';
+  let phraseCursor = { en: 0, te: 0 };
+  try {
+    const savedCursor = JSON.parse(localStorage.getItem(PHRASE_CURSOR_KEY));
+    if (savedCursor && typeof savedCursor === 'object') {
+      if (Number.isInteger(savedCursor.en)) phraseCursor.en = savedCursor.en;
+      if (Number.isInteger(savedCursor.te)) phraseCursor.te = savedCursor.te;
+    }
+  } catch (err) { /* ignore */ }
+
+  function nextPhrase() {
+    const phrases = activePhrases();
+    if (phrases.length === 0) return null;
+    const idx = ((phraseCursor[announceLanguage] % phrases.length) + phrases.length) % phrases.length;
+    phraseCursor[announceLanguage] = (idx + 1) % phrases.length;
+    try { localStorage.setItem(PHRASE_CURSOR_KEY, JSON.stringify(phraseCursor)); } catch (err) { /* ignore */ }
+    return phrases[idx];
+  }
+
   // Prefer an Indian-English voice if the device/browser has one installed (common
   // on Android, and on Windows/Chrome with Indian language packs) — otherwise this
   // stays null and speech just uses the browser's default voice. getVoices() often
@@ -1682,9 +1704,8 @@
 
   function announceRoundWinner(winnerName) {
     if (!announceEnabled || !winnerName) return;
-    const phrases = activePhrases();
-    if (phrases.length === 0) return;
-    const template = phrases[Math.floor(Math.random() * phrases.length)];
+    const template = nextPhrase();
+    if (!template) return;
     playSoundEffect(announceSound).then(() => {
       speak(template.replace('{name}', winnerName), { voice: activeVoice(), ...emotionForAnnounce() });
     });
