@@ -7,25 +7,92 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>
+  // Applied before the stylesheet paints anything, so a saved Rummy theme choice
+  // doesn't flash the default Terminal look for a frame on load.
+  try {
+    if (localStorage.getItem('rummatrix.theme') === 'rummy') {
+      document.documentElement.setAttribute('data-theme', 'rummy');
+      var earlyThemeMeta = document.querySelector('meta[name="theme-color"]');
+      if (earlyThemeMeta) earlyThemeMeta.content = '#0a2e1e';
+    }
+  } catch (err) { /* ignore — falls back to the default theme */ }
+</script>
 <title>Rummy Score Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Bangers&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Bangers&family=Playfair+Display:wght@600;700;900&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #050b08;
+    --bg-highlight: #0a1a12;
     --panel: #0b1912;
     --panel-2: #0f2119;
     --border: #1d3f2d;
     --orange: #ff6a1f;
     --orange-dim: #c1531c;
+    --orange-hover: #ff7d3d;
+    --orange-rgb: 255,106,31;
     --green: #33e18a;
     --green-dim: #1c8054;
+    --green-rgb: 51,225,138;
     --white: #eefaf3;
     --muted: #7fa895;
+    --ink-on-orange: #140900;
+    --ink-on-green: #04150c;
     --font-display: 'Titillium Web', sans-serif;
     --font-body: 'Rajdhani', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  /* RUMMY THEME — a classic green-felt card table instead of the default terminal
+     look: deep felt green, gold and playing-card red accents, a warm display serif.
+     Reuses the same variable names throughout the stylesheet (--orange/--green keep
+     their names but become red/gold here) so no other rule needs to change. */
+  :root[data-theme="rummy"] {
+    --bg: #0a2e1e;
+    --bg-highlight: #124a30;
+    --panel: #123a26;
+    --panel-2: #17492f;
+    --border: #8a6d2f;
+    --orange: #b3261e;
+    --orange-dim: #7a1a15;
+    --orange-hover: #d1453c;
+    --orange-rgb: 179,38,30;
+    --green: #d4af37;
+    --green-dim: #a3841f;
+    --green-rgb: 212,175,55;
+    --white: #f7ecd1;
+    --muted: #ab9767;
+    --ink-on-orange: #fdf3e7;
+    --ink-on-green: #1a1206;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Lora', serif;
+  }
+  /* A soft diagonal weave instead of the terminal's tech grid — reads as felt
+     fabric rather than a rectangular scanline pattern. */
+  :root[data-theme="rummy"] body,
+  :root[data-theme="rummy"] .tv-screen {
+    background:
+      repeating-linear-gradient(45deg, rgba(var(--green-rgb),0.05) 0px, rgba(var(--green-rgb),0.05) 2px, transparent 2px, transparent 16px),
+      radial-gradient(ellipse at top, var(--bg-highlight) 0%, var(--bg) 70%);
+  }
+  /* The terminal theme's sharp angular clip-paths (hexagons, notched corners) read
+     as sci-fi, not card-table — soften everything to plain rounded shapes instead. */
+  :root[data-theme="rummy"] .hud-bar,
+  :root[data-theme="rummy"] .panel {
+    clip-path: none;
+    border-radius: 16px;
+  }
+  :root[data-theme="rummy"] .hex-btn {
+    clip-path: none;
+    border-radius: 50%;
+  }
+  :root[data-theme="rummy"] .btn-primary,
+  :root[data-theme="rummy"] .btn-ghost,
+  :root[data-theme="rummy"] .event-btn {
+    clip-path: none;
+    border-radius: 8px;
   }
 
   * { box-sizing: border-box; }
@@ -34,9 +101,9 @@
     margin: 0;
     min-height: 100vh;
     background:
-      repeating-linear-gradient(0deg, rgba(51,225,138,0.035) 0px, rgba(51,225,138,0.035) 1px, transparent 1px, transparent 40px),
-      repeating-linear-gradient(90deg, rgba(51,225,138,0.035) 0px, rgba(51,225,138,0.035) 1px, transparent 1px, transparent 40px),
-      radial-gradient(ellipse at top, #0a1a12 0%, var(--bg) 65%);
+      repeating-linear-gradient(0deg, rgba(var(--green-rgb),0.035) 0px, rgba(var(--green-rgb),0.035) 1px, transparent 1px, transparent 40px),
+      repeating-linear-gradient(90deg, rgba(var(--green-rgb),0.035) 0px, rgba(var(--green-rgb),0.035) 1px, transparent 1px, transparent 40px),
+      radial-gradient(ellipse at top, var(--bg-highlight) 0%, var(--bg) 65%);
     color: var(--white);
     font-family: var(--font-body);
     padding: 20px;
@@ -83,6 +150,20 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.35; transform: scale(0.7); }
   }
+
+  .theme-select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    cursor: pointer;
+    outline: none;
+  }
+  .theme-select:focus { border-color: var(--green); }
 
   .panel {
     background: linear-gradient(160deg, var(--panel-2), var(--panel));
@@ -139,7 +220,7 @@
     background: var(--orange);
     color: #0a0a0a;
     border-color: var(--orange);
-    box-shadow: 0 0 14px rgba(255,106,31,0.5);
+    box-shadow: 0 0 14px rgba(var(--orange-rgb),0.5);
   }
 
   .player-fields { display: grid; gap: 12px; }
@@ -172,7 +253,7 @@
     width: 18px; height: 18px;
     border-radius: 50%;
     background: var(--orange);
-    color: #140900;
+    color: var(--ink-on-orange);
     border: 1px solid var(--bg);
     font-size: 12px;
     line-height: 1;
@@ -288,9 +369,9 @@
   }
   .btn-primary {
     background: var(--orange);
-    color: #140900;
+    color: var(--ink-on-orange);
   }
-  .btn-primary:hover { background: #ff7d3d; box-shadow: 0 0 16px rgba(255,106,31,0.45); }
+  .btn-primary:hover { background: var(--orange-hover); box-shadow: 0 0 16px rgba(var(--orange-rgb),0.45); }
   .btn-ghost {
     background: transparent;
     border: 1px solid var(--border);
@@ -456,7 +537,7 @@
   input[type="number"]:disabled { cursor: not-allowed; opacity: 0.6; }
 
   .winner-banner {
-    background: rgba(51,225,138,0.08);
+    background: rgba(var(--green-rgb),0.08);
     border: 1px solid var(--green);
     color: var(--green);
     font-family: var(--font-display);
@@ -522,8 +603,8 @@
     border-radius: 999px;
     white-space: nowrap;
   }
-  .tag-pill.tag-lead { background: rgba(255,106,31,0.12); color: var(--orange); border: 1px solid var(--orange); }
-  .tag-pill.tag-out { background: rgba(255,106,31,0.1); color: var(--orange); border: 1px solid var(--orange); }
+  .tag-pill.tag-lead { background: rgba(var(--orange-rgb),0.12); color: var(--orange); border: 1px solid var(--orange); }
+  .tag-pill.tag-out { background: rgba(var(--orange-rgb),0.1); color: var(--orange); border: 1px solid var(--orange); }
   .tag-pill.tag-neutral { background: rgba(127,168,149,0.1); color: var(--muted); border: 1px solid var(--border); }
 
   .summary-name {
@@ -547,9 +628,9 @@
     position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
     background: var(--green); border: 2px solid var(--bg);
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 8px rgba(51,225,138,0.6);
+    box-shadow: 0 0 8px rgba(var(--green-rgb),0.6);
   }
-  .timeline-marker.out { background: var(--orange); box-shadow: 0 0 8px rgba(255,106,31,0.6); }
+  .timeline-marker.out { background: var(--orange); box-shadow: 0 0 8px rgba(var(--orange-rgb),0.6); }
   .timeline-scale {
     display: flex; justify-content: space-between;
     font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 6px;
@@ -623,7 +704,7 @@
   }
   .row-delete-btn:hover { border-color: var(--orange); color: var(--orange); }
 
-  .match-log-row.editing { border-color: var(--green); background: rgba(51,225,138,0.05); }
+  .match-log-row.editing { border-color: var(--green); background: rgba(var(--green-rgb),0.05); }
   .ml-edit-input {
     width: 100%;
     padding: 4px 6px;
@@ -671,8 +752,8 @@
     transition: all 0.15s ease;
   }
   .event-btn:hover { border-color: var(--green); color: var(--green); }
-  .event-btn.selected { background: var(--orange); color: #140900; border-color: var(--orange); }
-  .event-btn[data-key="rummy"].selected { background: var(--green); color: #04150c; border-color: var(--green); }
+  .event-btn.selected { background: var(--orange); color: var(--ink-on-orange); border-color: var(--orange); }
+  .event-btn[data-key="rummy"].selected { background: var(--green); color: var(--ink-on-green); border-color: var(--green); }
 
   .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
   #tvModeBtn, #endGameBtn { flex: 1 1 100%; width: 100%; }
@@ -690,7 +771,7 @@
     transition: all 0.15s ease;
   }
   .announce-toggle:hover { border-color: var(--green); color: var(--green); }
-  .announce-toggle.on { background: rgba(51,225,138,0.12); border-color: var(--green); color: var(--green); }
+  .announce-toggle.on { background: rgba(var(--green-rgb),0.12); border-color: var(--green); color: var(--green); }
   .announce-toggle[hidden] { display: none; }
 
   /* Stacked under the "Total" label (not beside it) — that label cell is a fixed
@@ -733,7 +814,7 @@
     inset: 0;
     z-index: 1000;
     background:
-      radial-gradient(ellipse at top, #0a1a12 0%, var(--bg) 65%);
+      radial-gradient(ellipse at top, var(--bg-highlight) 0%, var(--bg) 65%);
     height: 100vh;
     height: 100dvh;
     width: 100vw;
@@ -791,7 +872,7 @@
     height: clamp(20px, 2.2vw, 28px);
     border-radius: 50%;
     background: var(--orange);
-    color: #140900;
+    color: var(--ink-on-orange);
     border: none;
     font-size: clamp(14px, 1.8vw, 20px);
     font-weight: 700;
@@ -799,7 +880,7 @@
     cursor: pointer;
     padding: 0;
   }
-  .tv-add-btn:hover { background: #ff7d3d; }
+  .tv-add-btn:hover { background: var(--orange-hover); }
   .tv-exit-btn {
     flex: none;
     background: transparent;
@@ -954,8 +1035,8 @@
     padding: 0.4vh 1vw;
     border-radius: 999px;
     font-size: clamp(9px, 1.8cqh, 16px);
-    background: rgba(255,106,31,0.85);
-    color: #140900;
+    background: rgba(var(--orange-rgb),0.85);
+    color: var(--ink-on-orange);
     border: 1px solid var(--orange);
   }
 
@@ -999,9 +1080,9 @@
   /* Pulse/glow the tile and pop the number whenever a score actually changes,
      so an update reads clearly on a TV from across a room. */
   @keyframes tvTileFlash {
-    0% { box-shadow: 0 0 0 0 rgba(51,225,138,0); }
-    20% { box-shadow: 0 0 4cqh 0.6cqh rgba(51,225,138,0.6); }
-    100% { box-shadow: 0 0 0 0 rgba(51,225,138,0); }
+    0% { box-shadow: 0 0 0 0 rgba(var(--green-rgb),0); }
+    20% { box-shadow: 0 0 4cqh 0.6cqh rgba(var(--green-rgb),0.6); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--green-rgb),0); }
   }
   .tv-tile.tv-tile-updated { animation: tvTileFlash 1s ease-out; }
 
@@ -1173,6 +1254,10 @@
   <div class="hud-bar">
     <div class="brand">⬡ RUMMY<span>.SYS</span></div>
     <div class="status"><span class="pulse-dot"></span><span id="statusText">STANDBY</span></div>
+    <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
+      <option value="terminal">Terminal</option>
+      <option value="rummy">Rummy</option>
+    </select>
   </div>
 
   <!-- SETUP SCREEN -->
@@ -1383,6 +1468,35 @@
   const setupScreen = document.getElementById('setupScreen');
   const gameScreen = document.getElementById('gameScreen');
   const statusText = document.getElementById('statusText');
+  const themeSelect = document.getElementById('themeSelect');
+
+  // ---------- THEME ----------
+  const THEME_KEY = 'rummatrix.theme';
+  const THEME_META_COLORS = { terminal: '#050b08', rummy: '#0a2e1e' }; // matches each theme's --bg
+
+  function applyTheme(theme) {
+    if (theme === 'rummy') {
+      document.documentElement.setAttribute('data-theme', 'rummy');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) metaThemeColor.content = THEME_META_COLORS[theme] || THEME_META_COLORS.terminal;
+    themeSelect.value = theme;
+  }
+
+  let currentTheme = 'terminal';
+  try {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme === 'rummy' || savedTheme === 'terminal') currentTheme = savedTheme;
+  } catch (err) { /* ignore — default to the terminal theme */ }
+  applyTheme(currentTheme);
+
+  themeSelect.addEventListener('change', () => {
+    currentTheme = themeSelect.value === 'rummy' ? 'rummy' : 'terminal';
+    applyTheme(currentTheme);
+    try { localStorage.setItem(THEME_KEY, currentTheme); } catch (err) { /* ignore */ }
+  });
   const countSelector = document.getElementById('countSelector');
   const playerFieldsWrap = document.getElementById('playerFieldsWrap');
   const playerFields = document.getElementById('playerFields');
