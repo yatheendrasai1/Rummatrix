@@ -791,6 +791,67 @@
   }
   .tv-tile.lead { border-color: var(--orange); }
   .tv-tile.out { opacity: 0.5; }
+  .tv-tile { cursor: pointer; }
+
+  /* Tapping a tile dims its photo and surfaces the player's full stat line —
+     tapping again (or another tile) puts it back to the normal scoreboard view.
+     A solid backdrop (not just a filter) covers the full tile so the stats stay
+     readable regardless of the photo's brightness, or the big placeholder letter
+     shown when there's no photo at all. */
+  .tv-tile-stats-active .tv-photo,
+  .tv-tile-stats-active .tv-photo-placeholder {
+    filter: brightness(0.3) saturate(0.7);
+  }
+  .tv-tile-stats-active .tv-overlay { opacity: 0; }
+  .tv-tile-stats-active::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: rgba(0,0,0,0.92);
+  }
+  .tv-stats-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.6cqh;
+    padding: 3cqh 4cqw;
+    text-align: center;
+    pointer-events: none;
+  }
+  .tv-stats-name {
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: #fff;
+    font-size: min(6cqh, 13cqw);
+    text-shadow: 0 0.2cqh 0.6cqh rgba(0,0,0,0.9);
+  }
+  .tv-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.8cqh 5cqw;
+  }
+  .tv-stat-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    font-size: min(8cqh, 13cqw);
+  }
+  .tv-tile.out .tv-stat-value { color: var(--orange); }
+  .tv-stat-label {
+    display: block;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-size: min(2cqh, 3.6cqw);
+    margin-top: 0.6cqh;
+  }
 
   .tv-photo {
     position: absolute;
@@ -798,6 +859,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: filter 0.15s ease;
   }
   .tv-photo-placeholder {
     position: absolute;
@@ -805,6 +867,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: filter 0.15s ease;
     background: var(--panel-2);
     color: var(--muted);
     font-family: var(--font-mono);
@@ -823,6 +886,7 @@
     position: absolute;
     top: 1.2vh;
     right: 1.2vw;
+    z-index: 5;
     font-family: var(--font-mono);
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -839,6 +903,7 @@
     left: 0;
     right: 0;
     bottom: 0;
+    transition: opacity 0.15s ease;
     padding: 2cqh 3cqw 3cqh;
     display: flex;
     flex-direction: column;
@@ -2359,6 +2424,8 @@
   // added and consumed by the very next TV render — so the winner spotlight animation
   // fires exactly once and never replays on a later, unrelated re-render.
   let lastRoundWinnerIdx = null;
+  // Player indices currently showing their expanded stats overlay (tap to toggle).
+  const tvStatsShown = new Set();
 
   function tvGridShape(n) {
     // Keep it to one row up through 4 players; beyond that, split into two rows so
@@ -2372,6 +2439,9 @@
     const outFlags = getOutFlags(totals);
     const activeTotals = totals.filter((_, i) => !outFlags[i]);
     const minActiveTotal = activeTotals.length ? Math.min(...activeTotals) : null;
+    const rummies = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 0).length);
+    const drops = players.map((_, pIdx) => matchEvents.filter(evRow => evRow && (evRow[pIdx] === 'drop' || evRow[pIdx] === 'mdrop')).length);
+    const fulls = players.map((_, pIdx) => matches.filter(m => m[pIdx] === maxRoundPoints).length);
     const { cols, rows } = tvGridShape(players.length);
     tvGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     tvGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
@@ -2383,6 +2453,7 @@
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const isWinner = pIdx === winnerIdx;
+      const showStats = tvStatsShown.has(pIdx);
       const url = playerAvatars[pIdx];
       const photo = url
         ? `<img class="tv-photo" src="${url}" alt="">`
@@ -2394,9 +2465,19 @@
         isLeader ? 'lead' : '',
         isOut ? 'out' : '',
         changed ? 'tv-tile-updated' : '',
+        showStats ? 'tv-tile-stats-active' : '',
         isWinner ? 'tv-tile-winner' : (winnerIdx !== null ? 'tv-tile-shrink' : '')
       ].filter(Boolean).join(' ');
-      return `<div class="${tileClasses}">
+      const statsOverlay = showStats ? `<div class="tv-stats-overlay">
+          <div class="tv-stats-name">${escapeHtml(name)}</div>
+          <div class="tv-stats-grid">
+            <div><span class="tv-stat-value">${totals[pIdx]}</span><span class="tv-stat-label">Total</span></div>
+            <div><span class="tv-stat-value">${rummies[pIdx]}</span><span class="tv-stat-label">Rummies</span></div>
+            <div><span class="tv-stat-value">${drops[pIdx]}</span><span class="tv-stat-label">Drops</span></div>
+            <div><span class="tv-stat-value">${fulls[pIdx]}</span><span class="tv-stat-label">Full</span></div>
+          </div>
+        </div>` : '';
+      return `<div class="${tileClasses}" data-player-idx="${pIdx}">
         ${photo}
         <div class="tv-scrim"></div>
         ${isWinner ? '<div class="tv-shine"></div>' : ''}
@@ -2405,6 +2486,7 @@
           <div class="tv-name">${escapeHtml(name)}</div>
           <div class="tv-score ${changed ? 'tv-score-updated' : ''}">${totals[pIdx]}</div>
         </div>
+        ${statsOverlay}
         ${isWinner ? '<div class="tv-rummy-text">Rummy!</div>' : ''}
       </div>`;
     }).join('') + `<div class="tv-dim-overlay ${winnerIdx !== null ? 'tv-dim-active' : ''}"></div>`;
@@ -2414,6 +2496,22 @@
     tvMaxPoints.textContent = maxPoints ?? '—';
     tvPrevTotals = totals.slice();
   }
+
+  // Tapping a tile toggles its dimmed stats overlay on/off; tapping a different tile
+  // switches the spotlight to that one instead of stacking multiple overlays.
+  tvGrid.addEventListener('click', (e) => {
+    const tile = e.target.closest('.tv-tile');
+    if (!tile) return;
+    const idx = Number(tile.dataset.playerIdx);
+    if (Number.isNaN(idx)) return;
+    if (tvStatsShown.has(idx)) {
+      tvStatsShown.delete(idx);
+    } else {
+      tvStatsShown.clear();
+      tvStatsShown.add(idx);
+    }
+    renderTvScreen();
+  });
 
   function exitTvMode() {
     tvScreen.hidden = true;
@@ -2427,6 +2525,7 @@
   tvModeBtn.addEventListener('click', () => {
     tvPrevTotals = null; // don't animate every tile just because TV Mode opened
     lastRoundWinnerIdx = null; // don't replay a stale winner spotlight either
+    tvStatsShown.clear(); // start each fresh view of TV Mode with no stats overlay open
     renderTvScreen();
     tvScreen.hidden = false;
     document.documentElement.style.overflow = 'hidden';
