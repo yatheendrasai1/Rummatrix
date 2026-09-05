@@ -749,6 +749,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 6px;
     gap: 12px;
   }
   .tv-brand {
@@ -767,6 +769,18 @@
     white-space: nowrap;
   }
   .tv-meta b { color: var(--green); }
+  /* On a narrow phone, brand + match info + exit button together don't fit one row
+     and the exit button was getting pushed off-screen entirely (nowrap never
+     shrinks). Give the meta text its own full-width row below instead, so the
+     brand and exit button always stay together and reachable on the first line. */
+  @media (max-width: 480px) {
+    .tv-meta {
+      order: 3;
+      flex: 1 1 100%;
+      white-space: normal;
+      text-align: center;
+    }
+  }
   .tv-add-btn {
     display: inline-flex;
     align-items: center;
@@ -807,6 +821,20 @@
     min-height: 0;
     display: grid;
     gap: 1.4vh 1.4vw;
+  }
+
+  /* On a phone held upright, a wide grid of narrow tiles is harder to read than a
+     single scrollable column — override the player-count-based column/row layout
+     (set inline by JS) with one tile per row. !important is needed to win over
+     that inline style; this is the one place in TV Mode that needs to scroll,
+     since a portrait phone doesn't have the tv/projector's roomy fixed frame. */
+  @media (orientation: portrait) and (max-width: 600px) {
+    .tv-grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: none !important;
+      grid-auto-rows: minmax(120px, 1fr);
+      overflow-y: auto;
+    }
   }
 
   /* Full-bleed photo tile — the avatar fills the whole tile, with name + score
