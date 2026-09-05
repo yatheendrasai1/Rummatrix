@@ -2442,6 +2442,8 @@
     const rummies = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 0).length);
     const drops = players.map((_, pIdx) => matchEvents.filter(evRow => evRow && (evRow[pIdx] === 'drop' || evRow[pIdx] === 'mdrop')).length);
     const fulls = players.map((_, pIdx) => matches.filter(m => m[pIdx] === maxRoundPoints).length);
+    const roundsPlayed = players.map((_, pIdx) => matches.filter(m => m[pIdx] !== null).length);
+    const lastScores = players.map((_, pIdx) => matches.length ? matches[matches.length - 1][pIdx] : null);
     const { cols, rows } = tvGridShape(players.length);
     tvGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     tvGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
@@ -2468,6 +2470,7 @@
         showStats ? 'tv-tile-stats-active' : '',
         isWinner ? 'tv-tile-winner' : (winnerIdx !== null ? 'tv-tile-shrink' : '')
       ].filter(Boolean).join(' ');
+      const lastScoreLabel = lastScores[pIdx] === null ? '—' : lastScores[pIdx];
       const statsOverlay = showStats ? `<div class="tv-stats-overlay">
           <div class="tv-stats-name">${escapeHtml(name)}</div>
           <div class="tv-stats-grid">
@@ -2475,6 +2478,8 @@
             <div><span class="tv-stat-value">${rummies[pIdx]}</span><span class="tv-stat-label">Rummies</span></div>
             <div><span class="tv-stat-value">${drops[pIdx]}</span><span class="tv-stat-label">Drops</span></div>
             <div><span class="tv-stat-value">${fulls[pIdx]}</span><span class="tv-stat-label">Full</span></div>
+            <div><span class="tv-stat-value">${roundsPlayed[pIdx]}</span><span class="tv-stat-label">Rounds</span></div>
+            <div><span class="tv-stat-value">${lastScoreLabel}</span><span class="tv-stat-label">Last Score</span></div>
           </div>
         </div>` : '';
       return `<div class="${tileClasses}" data-player-idx="${pIdx}">
