@@ -180,6 +180,7 @@
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
+  .avatar-clear-btn[hidden] { display: none; }
 
   .player-avatar {
     border-radius: 50%;
@@ -198,6 +199,41 @@
   }
   .avatar-xs { width: 22px; height: 22px; font-size: 11px; }
   .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
+
+  /* Tap-to-fill chips for players saved from earlier games. */
+  .saved-players-row { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; }
+  .saved-players-row[hidden] { display: none; }
+  .saved-player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px 4px 4px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--white);
+    transition: border-color 0.15s ease;
+  }
+  .saved-player-chip:hover { border-color: var(--green); }
+  .saved-player-chip .chip-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .saved-player-chip .chip-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   .event-points-grid { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 12px; }
   .event-points-sublabel {
@@ -1124,6 +1160,7 @@
     <div class="field-group" id="playerFieldsWrap" hidden>
       <label>Player Names</label>
       <p class="sub" style="margin:-4px 0 12px; font-size:13px;">Tap a player's circle to add a profile picture (optional).</p>
+      <div class="saved-players-row" id="savedPlayersRow" hidden></div>
       <div class="player-fields" id="playerFields"></div>
     </div>
 
@@ -1321,6 +1358,64 @@
   const countSelector = document.getElementById('countSelector');
   const playerFieldsWrap = document.getElementById('playerFieldsWrap');
   const playerFields = document.getElementById('playerFields');
+  const savedPlayersRow = document.getElementById('savedPlayersRow');
+
+  // Players saved from earlier games (name + avatar), most-recently-used first, so
+  // the setup screen can offer them as tap-to-fill chips instead of retyping/re-
+  // uploading each time. Independent of any specific game/session.
+  const RECENT_PLAYERS_KEY = 'rummatrix.recentPlayers';
+  const MAX_RECENT_PLAYERS = 20;
+  let recentPlayers = [];
+  try {
+    const savedRecentPlayers = JSON.parse(localStorage.getItem(RECENT_PLAYERS_KEY));
+    if (Array.isArray(savedRecentPlayers)) {
+      recentPlayers = savedRecentPlayers.filter(p => p && typeof p.name === 'string');
+    }
+  } catch (err) { /* ignore — start with no saved players */ }
+
+  function rememberPlayers(names, avatars) {
+    names.forEach((name, i) => {
+      const avatar = avatars[i] || null;
+      const existingIdx = recentPlayers.findIndex(p => p.name === name);
+      if (existingIdx !== -1) recentPlayers.splice(existingIdx, 1);
+      recentPlayers.unshift({ name, avatar });
+    });
+    if (recentPlayers.length > MAX_RECENT_PLAYERS) recentPlayers.length = MAX_RECENT_PLAYERS;
+    try { localStorage.setItem(RECENT_PLAYERS_KEY, JSON.stringify(recentPlayers)); } catch (err) { /* ignore */ }
+  }
+
+  function renderSavedPlayersRow() {
+    if (recentPlayers.length === 0) {
+      savedPlayersRow.hidden = true;
+      savedPlayersRow.innerHTML = '';
+      return;
+    }
+    savedPlayersRow.hidden = false;
+    savedPlayersRow.innerHTML = recentPlayers.map((p, idx) => {
+      const avatarInner = p.avatar
+        ? `<img src="${p.avatar}" alt="">`
+        : `<span>${escapeHtml(p.name ? p.name[0].toUpperCase() : '?')}</span>`;
+      return `<button type="button" class="saved-player-chip" data-idx="${idx}" title="Fill the next empty slot with ${escapeAttr(p.name)}">
+        <span class="chip-avatar">${avatarInner}</span>
+        <span>${escapeHtml(p.name)}</span>
+      </button>`;
+    }).join('');
+  }
+
+  savedPlayersRow.addEventListener('click', (e) => {
+    const chip = e.target.closest('.saved-player-chip');
+    if (!chip) return;
+    const saved = recentPlayers[Number(chip.dataset.idx)];
+    if (!saved) return;
+    const inputs = [...playerFields.querySelectorAll('.player-name-input')];
+    const targetInput = inputs.find(inp => inp.value.trim() === '');
+    if (!targetInput) return;
+    const i = Number(targetInput.id.replace('player-input-', ''));
+    targetInput.value = saved.name;
+    playerAvatars[i] = saved.avatar || null;
+    updateAvatarPreview(i);
+  });
+
   const setupError = document.getElementById('setupError');
   const startBtn = document.getElementById('startBtn');
   const maxPointsInput = document.getElementById('maxPointsInput');
@@ -2077,6 +2172,7 @@
     }
     playerFieldsWrap.hidden = false;
     setupError.textContent = '';
+    renderSavedPlayersRow();
   }
 
   // Reads the optional Drop / Middle Drop / Full Count inputs, falling back to the
@@ -2133,6 +2229,7 @@
       return;
     }
 
+    rememberPlayers(names, playerAvatars);
     players = names;
     setSize = players.length;
     matches = [];
