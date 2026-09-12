@@ -240,6 +240,35 @@
   .player-field-row .player-name-input,
   .player-field-row .rename-input { flex: 1; min-width: 0; }
 
+  .player-row-move { display: flex; flex-direction: column; gap: 2px; flex: none; }
+  .player-move-btn {
+    width: 22px; height: 17px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+  }
+  .player-move-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+  .player-move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .dealer-pick-btn {
+    flex: none;
+    width: 36px; height: 36px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dealer-pick-btn:hover { border-color: var(--green); }
+  .dealer-pick-btn.selected { background: rgba(var(--green-rgb),0.15); border-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+
+  .dealer-badge { margin-left: 5px; filter: drop-shadow(0 0 2px rgba(var(--green-rgb),0.7)); }
+
   .player-avatar-wrap { position: relative; flex: none; }
   .avatar-btn {
     width: 48px; height: 48px;
@@ -618,6 +647,7 @@
   .tag-pill.tag-lead { background: rgba(var(--orange-rgb),0.12); color: var(--orange); border: 1px solid var(--orange); }
   .tag-pill.tag-out { background: rgba(var(--orange-rgb),0.1); color: var(--orange); border: 1px solid var(--orange); }
   .tag-pill.tag-neutral { background: rgba(127,168,149,0.1); color: var(--muted); border: 1px solid var(--border); }
+  .tag-pill.tag-dealer { background: rgba(var(--green-rgb),0.12); color: var(--green); border: 1px solid var(--green); }
 
   .summary-name {
     font-family: var(--font-body); font-weight: 700; font-size: 20px; color: var(--white);
@@ -1114,6 +1144,15 @@
     border: 1px solid var(--orange);
   }
 
+  .tv-dealer-badge {
+    position: absolute;
+    top: 1.2vh;
+    left: 1.2vw;
+    z-index: 5;
+    font-size: clamp(14px, 3.2cqh, 28px);
+    filter: drop-shadow(0 0.2vh 0.4vh rgba(0,0,0,0.85));
+  }
+
   .tv-overlay {
     position: absolute;
     left: 0;
@@ -1550,6 +1589,8 @@
   let gameHistory = [];          // archive of ended games — persisted to localStorage
   let renamingPlayers = false;   // whether the mid-game player-rename form is open
   let renameError = '';          // validation message shown while renaming players
+  let dealerIdx = 0;             // index into players[] of whoever deals the next round
+  let initialDealerIdx = 0;      // setup-screen pick for who deals first, before a game exists
   let EVENTS = buildEvents(DEFAULT_DROP_POINTS, DEFAULT_MDROP_POINTS, DEFAULT_FULL_POINTS);
   let maxRoundPoints = DEFAULT_FULL_POINTS;  // cap for a single round's score — the configured Full Count value
 
@@ -1717,7 +1758,7 @@
   function saveActiveGame() {
     try {
       localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify({
-        players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount,
+        players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount, dealerIdx,
         eventPoints: {
           dropPts: EVENTS.find(e => e.key === 'drop').points,
           mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -2338,20 +2379,37 @@
     fileInput.click();
   }
 
-  function selectPlayerCount(n) {
-    playerCount = n;
-    [...countSelector.children].forEach(b => b.classList.toggle('selected', Number(b.textContent) === n));
-
-    const existingNames = [...playerFields.querySelectorAll('.player-name-input')].map(i => i.value);
-    const existingAvatars = playerAvatars.slice();
+  // Shared by selectPlayerCount and moveSetupPlayer — rebuilds the setup
+  // screen's player rows (avatar, name, reorder, dealer pick) from a plain
+  // names array, since nothing is committed to `players` until Start Game.
+  function renderPlayerFieldRows(names) {
     playerFields.innerHTML = '';
-    playerAvatars = [];
+    const n = names.length;
 
-    for (let i = 0; i < n; i++) {
-      playerAvatars[i] = existingAvatars[i] || null;
-
+    names.forEach((name, i) => {
       const row = document.createElement('div');
       row.className = 'player-field-row';
+
+      const moveWrap = document.createElement('div');
+      moveWrap.className = 'player-row-move';
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'player-move-btn';
+      upBtn.textContent = '▲';
+      upBtn.title = 'Move up';
+      upBtn.setAttribute('aria-label', 'Move up');
+      upBtn.disabled = i === 0;
+      upBtn.addEventListener('click', () => moveSetupPlayer(i, -1));
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'player-move-btn';
+      downBtn.textContent = '▼';
+      downBtn.title = 'Move down';
+      downBtn.setAttribute('aria-label', 'Move down');
+      downBtn.disabled = i === n - 1;
+      downBtn.addEventListener('click', () => moveSetupPlayer(i, 1));
+      moveWrap.appendChild(upBtn);
+      moveWrap.appendChild(downBtn);
 
       const avatarWrap = document.createElement('div');
       avatarWrap.className = 'player-avatar-wrap';
@@ -2391,7 +2449,7 @@
       input.className = 'player-name-input';
       input.placeholder = `Player ${i + 1} name`;
       input.maxLength = 20;
-      input.value = existingNames[i] || '';
+      input.value = name || '';
       input.id = `player-input-${i}`;
       input.addEventListener('input', () => { if (!playerAvatars[i]) updateAvatarPreview(i); });
       input.addEventListener('keydown', e => {
@@ -2402,11 +2460,55 @@
         }
       });
 
+      const dealerBtn = document.createElement('button');
+      const isDealer = i === initialDealerIdx;
+      dealerBtn.type = 'button';
+      dealerBtn.className = 'dealer-pick-btn' + (isDealer ? ' selected' : '');
+      dealerBtn.textContent = '🃏';
+      dealerBtn.title = isDealer ? 'Deals first' : 'Set as first dealer';
+      dealerBtn.setAttribute('aria-label', dealerBtn.title);
+      dealerBtn.addEventListener('click', () => {
+        initialDealerIdx = i;
+        renderPlayerFieldRows([...playerFields.querySelectorAll('.player-name-input')].map(inp => inp.value));
+      });
+
+      row.appendChild(moveWrap);
       row.appendChild(avatarWrap);
       row.appendChild(input);
+      row.appendChild(dealerBtn);
       playerFields.appendChild(row);
       updateAvatarPreview(i);
+    });
+  }
+
+  // Swaps two adjacent setup rows — names, avatars, and (if it was pointing at
+  // either of them) the first-dealer pick all move together.
+  function moveSetupPlayer(i, dir) {
+    const names = [...playerFields.querySelectorAll('.player-name-input')].map(inp => inp.value);
+    const j = i + dir;
+    if (j < 0 || j >= names.length) return;
+    [names[i], names[j]] = [names[j], names[i]];
+    [playerAvatars[i], playerAvatars[j]] = [playerAvatars[j], playerAvatars[i]];
+    if (initialDealerIdx === i) initialDealerIdx = j;
+    else if (initialDealerIdx === j) initialDealerIdx = i;
+    renderPlayerFieldRows(names);
+  }
+
+  function selectPlayerCount(n) {
+    playerCount = n;
+    [...countSelector.children].forEach(b => b.classList.toggle('selected', Number(b.textContent) === n));
+
+    const existingNames = [...playerFields.querySelectorAll('.player-name-input')].map(i => i.value);
+    const existingAvatars = playerAvatars.slice();
+    playerAvatars = [];
+    const names = [];
+    for (let i = 0; i < n; i++) {
+      playerAvatars[i] = existingAvatars[i] || null;
+      names[i] = existingNames[i] || '';
     }
+    initialDealerIdx = 0;
+    renderPlayerFieldRows(names);
+
     playerFieldsWrap.hidden = false;
     setupError.textContent = '';
     renderSavedPlayersRow();
@@ -2471,6 +2573,7 @@
     setSize = players.length;
     matches = [];
     matchEvents = [];
+    dealerIdx = Math.max(0, Math.min(initialDealerIdx, players.length - 1));
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
     editErrorMsg = '';
@@ -2504,7 +2607,7 @@
 
       const label = document.createElement('label');
       label.setAttribute('for', `entry-${i}`);
-      label.innerHTML = `${avatarHtml(i, 'avatar-xs')}<span class="entry-name-text">${escapeHtml(name)}</span>`;
+      label.innerHTML = `${avatarHtml(i, 'avatar-xs')}<span class="entry-name-text">${escapeHtml(name)}</span>${i === dealerIdx ? '<span class="dealer-badge" title="Dealing this round">🃏</span>' : ''}`;
       if (outFlags[i]) {
         const badge = document.createElement('span');
         badge.className = 'out-badge';
@@ -2590,6 +2693,19 @@
     if (score === 0) return 'rummy';
     if (score === maxRoundPoints) return 'full';
     return null;
+  }
+
+  // Moves the deal to the next player in seat order, skipping anyone already
+  // out — mirrors physical play, where an eliminated player no longer deals.
+  function advanceDealer() {
+    const n = players.length;
+    if (n === 0) return;
+    const totals = getTotals(matches);
+    const outFlags = getOutFlags(totals);
+    for (let step = 1; step <= n; step++) {
+      const next = (dealerIdx + step) % n;
+      if (!outFlags[next]) { dealerIdx = next; return; }
+    }
   }
 
   // ---------- VOICE ENTRY (speech-to-score) ----------
@@ -2775,6 +2891,7 @@
       if (!result) break; // fewer than 2 active players remain — stop generating more rounds
       matches.push(result.scores);
       matchEvents.push(result.events);
+      advanceDealer();
     }
     entryError.textContent = '';
     saveActiveGame();
@@ -2833,6 +2950,7 @@
 
     matches.push(fullScores);
     matchEvents.push(fullEvents);
+    advanceDealer();
     saveActiveGame();
     const winnerIdx = fullScores.findIndex(s => s === 0);
     if (winnerIdx !== -1) {
@@ -2971,6 +3089,7 @@
         ${photo}
         <div class="tv-scrim"></div>
         ${isWinner ? '<div class="tv-shine"></div>' : ''}
+        ${pIdx === dealerIdx ? '<span class="tv-dealer-badge" title="Dealing this round">🃏</span>' : ''}
         ${tag}
         <div class="tv-overlay">
           <div class="tv-name">${escapeHtml(name)}</div>
@@ -3087,6 +3206,20 @@
       renderPlayerNames();
       return;
     }
+    const moveBtn = e.target.closest('.player-move-btn');
+    if (moveBtn) {
+      moveRenamePlayer(Number(moveBtn.dataset.idx), Number(moveBtn.dataset.move));
+      return;
+    }
+    const dealerBtn = e.target.closest('.dealer-pick-btn');
+    if (dealerBtn) {
+      dealerIdx = Number(dealerBtn.dataset.dealerIdx);
+      saveActiveGame();
+      renderPlayerNames();
+      buildEntryGrid();
+      renderBoards();
+      return;
+    }
     const clearBtn = e.target.closest('.avatar-clear-btn');
     if (clearBtn) {
       const i = Number(clearBtn.dataset.idx);
@@ -3162,8 +3295,13 @@
 
   function renderPlayerNames() {
     if (renamingPlayers) {
+      const n = players.length;
       const rows = players.map((name, i) => `
         <div class="player-field-row">
+          <div class="player-row-move">
+            <button type="button" class="player-move-btn" data-move="-1" data-idx="${i}" title="Move up" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
+            <button type="button" class="player-move-btn" data-move="1" data-idx="${i}" title="Move down" aria-label="Move down" ${i === n - 1 ? 'disabled' : ''}>▼</button>
+          </div>
           <div class="player-avatar-wrap">
             <button type="button" class="avatar-btn" data-idx="${i}" title="Set profile picture" aria-label="Set profile picture">
               <span class="avatar-circle" data-idx="${i}">${avatarCircleInnerHtml(i)}</span>
@@ -3171,6 +3309,7 @@
             <button type="button" class="avatar-clear-btn" data-idx="${i}" title="Remove picture" ${playerAvatars[i] ? '' : 'hidden'}>×</button>
           </div>
           <input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">
+          <button type="button" class="dealer-pick-btn${i === dealerIdx ? ' selected' : ''}" data-dealer-idx="${i}" title="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}" aria-label="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}">🃏</button>
         </div>`
       ).join('');
       playerNamesDisplay.innerHTML = `
@@ -3181,8 +3320,29 @@
           <button class="btn-ghost" id="cancelRenameBtn" type="button" style="padding:9px 18px; font-size:12px;">Cancel</button>
         </div>`;
     } else {
-      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map((n, i) => `<span class="player-name-chip">${avatarHtml(i, 'avatar-sm')}${escapeHtml(n)}</span>`).join('')}</div>`;
+      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map((n, i) => `<span class="player-name-chip">${avatarHtml(i, 'avatar-sm')}${escapeHtml(n)}${i === dealerIdx ? '<span class="dealer-badge" title="Dealing this round">🃏</span>' : ''}</span>`).join('')}</div>`;
     }
+  }
+
+  // Swaps two adjacent players mid-game — names, avatars, every round's scores
+  // and event tags, and the dealer marker (if it pointed at either) all move
+  // together. Any in-progress (unsaved) name edits are captured first so a
+  // reorder doesn't silently discard text the user already typed.
+  function moveRenamePlayer(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= players.length) return;
+    const inputs = [...playerNamesDisplay.querySelectorAll('.rename-input')];
+    players = inputs.map((inp, idx) => inp.value.trim() || players[idx]);
+    [players[i], players[j]] = [players[j], players[i]];
+    [playerAvatars[i], playerAvatars[j]] = [playerAvatars[j], playerAvatars[i]];
+    matches.forEach(m => { [m[i], m[j]] = [m[j], m[i]]; });
+    matchEvents.forEach(m => { [m[i], m[j]] = [m[j], m[i]]; });
+    if (dealerIdx === i) dealerIdx = j;
+    else if (dealerIdx === j) dealerIdx = i;
+    saveActiveGame();
+    renderPlayerNames();
+    buildEntryGrid();
+    renderBoards();
   }
 
   // ---------- IMPORT & START ----------
@@ -3216,6 +3376,7 @@
         playerAvatars = players.map(() => null); // CSV imports don't carry profile pictures
         setSize = players.length;
         matches = importedMatches;
+        dealerIdx = 0; // CSV rows carry no dealer info
         maxPoints = maxPointsVal;
         playerCount = players.length;
         editingMatchIndex = null;
@@ -3443,6 +3604,7 @@
         </div>
         <div class="summary-info-col">
           <div class="summary-tags">
+            ${pIdx === dealerIdx ? '<span class="tag-pill tag-dealer">🃏 Dealing</span>' : ''}
             ${isLeader ? '<span class="tag-pill tag-lead">★ Lead</span>' : ''}
             ${isOut ? '<span class="tag-pill tag-out">Out</span>' : ''}
             ${(!isLeader && !isOut) ? '<span class="tag-pill tag-neutral">In Play</span>' : ''}
@@ -3928,6 +4090,7 @@
     setSize = saved.setSize || players.length;
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
     playerCount = saved.playerCount || players.length;
+    dealerIdx = (typeof saved.dealerIdx === 'number' && saved.dealerIdx >= 0 && saved.dealerIdx < players.length) ? saved.dealerIdx : 0;
     EVENTS = buildEvents(ep.dropPts || DEFAULT_DROP_POINTS, ep.mdropPts || DEFAULT_MDROP_POINTS, ep.fullPts || DEFAULT_FULL_POINTS);
     maxRoundPoints = ep.fullPts || DEFAULT_FULL_POINTS;
     editingMatchIndex = null;
