@@ -737,6 +737,11 @@
   .entry-row label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--white); text-transform: none; letter-spacing: 0; font-size: 14px; font-family: var(--font-body); font-weight: 600; }
   .entry-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .entry-row input[type="number"] { width: 100%; flex: none; padding: 8px 10px; font-size: 16px; text-align: center; }
+  @keyframes voiceListenGlow {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(var(--orange-rgb),0.15); }
+    50% { box-shadow: 0 0 12px 2px rgba(var(--orange-rgb),0.55); }
+  }
+  .entry-row.listening { border-color: var(--orange); animation: voiceListenGlow 1.2s infinite ease-in-out; }
   .event-btns { display: flex; gap: 4px; flex-wrap: wrap; }
   .event-btn {
     background: transparent;
@@ -773,6 +778,21 @@
   .announce-toggle:hover { border-color: var(--green); color: var(--green); }
   .announce-toggle.on { background: rgba(var(--green-rgb),0.12); border-color: var(--green); color: var(--green); }
   .announce-toggle[hidden] { display: none; }
+
+  .voice-entry-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    padding: 9px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .voice-entry-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .voice-entry-btn.listening { background: rgba(var(--orange-rgb),0.12); border-color: var(--orange); color: var(--orange); animation: voiceListenGlow 1.2s infinite ease-in-out; }
+  .voice-entry-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .voice-entry-btn[hidden] { display: none; }
 
   /* Stacked under the "Total" label (not beside it) — that label cell is a fixed
      70px-wide grid column, which is too narrow to fit the word "Total" plus a
@@ -1346,6 +1366,7 @@
       <div class="error-text" id="entryError"></div>
       <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <button class="btn-primary" id="addMatchBtn" style="padding:10px 20px; font-size:12px;">Add Match ▹</button>
+        <button type="button" class="voice-entry-btn" id="voiceEntryBtn" title="Speak each active player's round score in turn">🎤 Voice Entry</button>
         <button type="button" class="announce-toggle" id="announceToggle" title="Speak a congratulations for the round winner">🔊 Announce!</button>
       </div>
     </div>
@@ -1583,6 +1604,7 @@
   const entryGrid = document.getElementById('entryGrid');
   const entryError = document.getElementById('entryError');
   const addMatchBtn = document.getElementById('addMatchBtn');
+  const voiceEntryBtn = document.getElementById('voiceEntryBtn');
   const testDumpBtn = document.getElementById('testDumpBtn');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const endGameBtn = document.getElementById('endGameBtn');
@@ -2497,6 +2519,157 @@
     return null;
   }
 
+  // ---------- VOICE ENTRY (speech-to-score) ----------
+  // Chrome's recognizer already transcribes spoken numbers as digits in most cases
+  // ("eighty" -> "80"), but this word list is a fallback for browsers/accents that
+  // spell them out instead.
+  const NUM_WORDS = {
+    zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+    fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+    twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
+    eighty: 80, ninety: 90
+  };
+
+  function wordsToNumber(text) {
+    const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+    let current = 0;
+    let found = false;
+    words.forEach(w => {
+      if (w === 'hundred') { current = (current || 1) * 100; found = true; return; }
+      if (w === 'and') return;
+      if (Object.prototype.hasOwnProperty.call(NUM_WORDS, w)) { current += NUM_WORDS[w]; found = true; return; }
+      if (/^\d+$/.test(w)) { current += parseInt(w, 10); found = true; }
+    });
+    return found ? current : null;
+  }
+
+  // A spoken preset name (e.g. "middle drop") takes priority over any number in the
+  // same phrase — mirrors tapping the D/MD/FC/Rummy chip rather than typing a value.
+  function matchSpokenEvent(transcript) {
+    const t = transcript.toLowerCase();
+    if (/\brummy\b/.test(t)) return EVENTS.find(ev => ev.key === 'rummy');
+    if (/\bmiddle\b/.test(t)) return EVENTS.find(ev => ev.key === 'mdrop');
+    if (/\bfull\b/.test(t)) return EVENTS.find(ev => ev.key === 'full');
+    if (/\bdrop\b/.test(t)) return EVENTS.find(ev => ev.key === 'drop');
+    return null;
+  }
+
+  function parseSpokenScore(transcript) {
+    const evt = matchSpokenEvent(transcript);
+    if (evt) return { score: evt.points, eventKey: evt.key };
+    const digitMatch = transcript.match(/\d+/);
+    if (digitMatch) return { score: parseInt(digitMatch[0], 10), eventKey: null };
+    const wordNum = wordsToNumber(transcript);
+    if (wordNum !== null) return { score: wordNum, eventKey: null };
+    return null;
+  }
+
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let voiceRecognition = null;
+  let voiceChainActive = false;
+  let voiceChainQueue = [];
+  let voiceChainPos = 0;
+
+  function setVoiceListeningUi(playerIdx) {
+    entryGrid.querySelectorAll('.entry-row.listening').forEach(r => r.classList.remove('listening'));
+    const row = playerIdx === null ? null : entryGrid.querySelector(`.entry-row[data-player-idx="${playerIdx}"]`);
+    if (row) row.classList.add('listening');
+    voiceEntryBtn.classList.toggle('listening', playerIdx !== null);
+    voiceEntryBtn.textContent = playerIdx === null ? '🎤 Voice Entry' : `🎤 Listening: ${players[playerIdx]}…`;
+  }
+
+  function stopVoiceEntry() {
+    voiceChainActive = false;
+    if (voiceRecognition) {
+      const r = voiceRecognition;
+      voiceRecognition = null;
+      r.onresult = null;
+      r.onerror = null;
+      r.onend = null;
+      try { r.abort(); } catch (err) { /* already stopped */ }
+    }
+    setVoiceListeningUi(null);
+  }
+
+  function listenForRow(playerIdx) {
+    setVoiceListeningUi(playerIdx);
+    const recog = new SpeechRecognitionCtor();
+    voiceRecognition = recog;
+    recog.lang = 'en-IN';
+    recog.continuous = false;
+    recog.interimResults = false;
+    recog.maxAlternatives = 1;
+
+    recog.onresult = (e) => {
+      handleVoiceResult(playerIdx, e.results[0][0].transcript);
+    };
+    recog.onerror = (e) => {
+      if (!voiceChainActive) return;
+      const name = players[playerIdx];
+      if (e.error === 'no-speech') {
+        entryError.textContent = `Didn't hear anything for ${name} — tap 🎤 Voice Entry to try again.`;
+      } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        entryError.textContent = 'Microphone access was blocked — allow it in your browser settings to use voice entry.';
+      } else {
+        entryError.textContent = `Voice input error (${e.error}) — tap 🎤 Voice Entry to try again.`;
+      }
+      stopVoiceEntry();
+    };
+    try { recog.start(); } catch (err) { entryError.textContent = 'Could not start voice input.'; stopVoiceEntry(); }
+  }
+
+  function handleVoiceResult(playerIdx, transcript) {
+    if (!voiceChainActive) return;
+    const input = document.getElementById(`entry-${playerIdx}`);
+    const parsed = input ? parseSpokenScore(transcript) : null;
+    const score = parsed ? parsed.score : NaN;
+    if (!parsed || Number.isNaN(score) || !Number.isInteger(score) || score < 0 || score > maxRoundPoints) {
+      entryError.textContent = `Heard "${transcript}" — couldn't match a valid score for ${players[playerIdx]}. Tap 🎤 Voice Entry to try again.`;
+      stopVoiceEntry();
+      return;
+    }
+    entryError.textContent = '';
+    input.value = score;
+    if (parsed.eventKey) { input.dataset.eventKey = parsed.eventKey; } else { delete input.dataset.eventKey; }
+    syncEventSelection(input.closest('.entry-row'));
+    updateTestDumpState();
+
+    voiceChainPos++;
+    if (voiceChainPos < voiceChainQueue.length) {
+      setTimeout(() => { if (voiceChainActive) listenForRow(voiceChainQueue[voiceChainPos]); }, 300);
+    } else {
+      stopVoiceEntry();
+    }
+  }
+
+  function startVoiceEntry() {
+    const totals = getTotals(matches);
+    const outFlags = getOutFlags(totals);
+    voiceChainQueue = players.map((_, i) => i).filter(i => {
+      if (outFlags[i]) return false;
+      const inp = document.getElementById(`entry-${i}`);
+      return inp && inp.value.trim() === '';
+    });
+    if (voiceChainQueue.length === 0) {
+      entryError.textContent = 'Every active player already has a score entered.';
+      return;
+    }
+    entryError.textContent = '';
+    voiceChainActive = true;
+    voiceChainPos = 0;
+    listenForRow(voiceChainQueue[0]);
+  }
+
+  if (!SpeechRecognitionCtor) {
+    voiceEntryBtn.hidden = true;
+  } else {
+    voiceEntryBtn.addEventListener('click', () => {
+      if (voiceChainActive) { stopVoiceEntry(); entryError.textContent = ''; return; }
+      startVoiceEntry();
+    });
+  }
+
   function generateRandomMatch(outFlags) {
     const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
     if (activeIdx.length < 2) return null;
@@ -3166,7 +3339,8 @@
 
     const gameOver = maxPoints !== null && activeIdx.length <= 1;
     addMatchBtn.disabled = gameOver;
-    if (gameOver) testDumpBtn.disabled = true;
+    voiceEntryBtn.disabled = gameOver;
+    if (gameOver) { testDumpBtn.disabled = true; stopVoiceEntry(); }
 
     // --- Player Summary: card per player, always visible even before the first match ---
     const rummies = players.map((_, pIdx) => matches.filter(m => m[pIdx] === 0).length);
