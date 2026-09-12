@@ -3742,46 +3742,69 @@
   }
 
   // Playback state for the "Play" button — null means show the full chart;
-  // otherwise the 0-based round index revealed so far during animation.
-  let wormPlaybackTimer = null;
+  // otherwise a fractional 0-based round position revealed so far, advanced
+  // continuously via requestAnimationFrame rather than jumping whole rounds,
+  // so the line grows steadily like a beam sweeping across the chart instead
+  // of snapping from point to point.
+  const WORM_SECONDS_PER_ROUND = 1;
+  const WORM_FRAME_INTERVAL_MS = 1000 / 30; // throttle rebuilds to ~30fps — smooth without redrawing the whole chart 60x/sec
+  let wormPlaybackAnimId = null;
   let wormPlaybackRound = null;
   let wormPlaybackRoundsAtStart = null;
+  let wormPlaybackStartTs = null;
+  let wormPlaybackLastFrameTs = 0;
 
   function stopWormPlayback() {
-    if (wormPlaybackTimer) { clearInterval(wormPlaybackTimer); wormPlaybackTimer = null; }
+    if (wormPlaybackAnimId !== null) { cancelAnimationFrame(wormPlaybackAnimId); wormPlaybackAnimId = null; }
     wormPlaybackRound = null;
     wormPlaybackRoundsAtStart = null;
+    wormPlaybackStartTs = null;
     wormPlayBtn.textContent = '▶ Play';
     wormPlayBtn.classList.remove('is-playing');
   }
 
   function pauseWormPlayback() {
-    if (wormPlaybackTimer) { clearInterval(wormPlaybackTimer); wormPlaybackTimer = null; }
+    if (wormPlaybackAnimId !== null) { cancelAnimationFrame(wormPlaybackAnimId); wormPlaybackAnimId = null; }
     wormPlayBtn.textContent = '▶ Play';
     wormPlayBtn.classList.remove('is-playing');
     // wormPlaybackRound is left as-is so the chart stays frozen where it paused.
   }
 
   function startWormPlayback() {
-    if (matches.length === 0) return;
+    const rounds = matches.length;
+    if (rounds === 0) return;
     wormPlaybackRound = 0;
-    wormPlaybackRoundsAtStart = matches.length;
+    wormPlaybackRoundsAtStart = rounds;
+    wormPlaybackStartTs = null;
+    wormPlaybackLastFrameTs = 0;
     wormPlayBtn.textContent = '⏸ Pause';
     wormPlayBtn.classList.add('is-playing');
-    renderWormChart({ fromPlayback: true });
-    wormPlaybackTimer = setInterval(() => {
-      wormPlaybackRound++;
-      if (wormPlaybackRound >= matches.length) {
+
+    const maxProgress = rounds - 1;
+    const step = (now) => {
+      if (wormPlaybackStartTs === null) wormPlaybackStartTs = now;
+      const elapsedRounds = (now - wormPlaybackStartTs) / 1000 / WORM_SECONDS_PER_ROUND;
+      if (elapsedRounds >= maxProgress) {
+        // Reset first, then render plainly — with wormPlaybackRound back to
+        // null this renders the exact, non-interpolated final state and hides
+        // the tooltip, matching the same "finished" look a real Add Match
+        // would leave behind.
         stopWormPlayback();
-        renderWormChart({ fromPlayback: true });
+        renderWormChart();
         return;
       }
-      renderWormChart({ fromPlayback: true });
-    }, 1000);
+      if (now - wormPlaybackLastFrameTs >= WORM_FRAME_INTERVAL_MS) {
+        wormPlaybackLastFrameTs = now;
+        wormPlaybackRound = elapsedRounds;
+        renderWormChart({ fromPlayback: true });
+      }
+      wormPlaybackAnimId = requestAnimationFrame(step);
+    };
+    wormPlaybackAnimId = requestAnimationFrame(step);
   }
 
   wormPlayBtn.addEventListener('click', () => {
-    if (wormPlaybackTimer) {
+    if (wormPlaybackAnimId !== null) {
       pauseWormPlayback();
     } else {
       startWormPlayback(); // always (re)starts from round 1, per spec
@@ -3871,16 +3894,34 @@
     players.forEach((name, pIdx) => {
       const cum = series[pIdx];
       const outAt = outRounds[pIdx];
-      let lastIdx = outAt === -1 ? cum.length - 1 : outAt;
-      if (wormPlaybackRound !== null) lastIdx = Math.min(lastIdx, wormPlaybackRound);
-      if (lastIdx < 0) return;
+      const capIdx = outAt === -1 ? cum.length - 1 : outAt;
+      if (capIdx < 0) return;
+
+      // During playback the "tip" of the line can sit partway between two
+      // rounds — interpolated linearly along that segment — so it advances
+      // as a continuous beam instead of leaping from point to point.
+      let lastIdx = capIdx;
+      let tip = null;
+      if (wormPlaybackRound !== null) {
+        const effective = Math.min(capIdx, wormPlaybackRound);
+        lastIdx = Math.floor(effective);
+        const frac = effective - lastIdx;
+        if (frac > 0 && lastIdx < capIdx) {
+          const x0 = xFor(lastIdx), y0 = yFor(cum[lastIdx]);
+          const x1 = xFor(lastIdx + 1), y1 = yFor(cum[lastIdx + 1]);
+          tip = { x: x0 + (x1 - x0) * frac, y: y0 + (y1 - y0) * frac };
+        }
+      }
+
       const points = [];
       for (let r = 0; r <= lastIdx; r++) points.push(`${xFor(r)},${yFor(cum[r])}`);
+      if (tip) points.push(`${tip.x},${tip.y}`);
       const color = wormColor(pIdx);
       svg += `<polyline class="worm-chart-line" points="${points.join(' ')}" style="stroke:${color}"></polyline>`;
-      const endX = xFor(lastIdx);
-      const endY = yFor(cum[lastIdx]);
-      if (outAt !== -1) {
+      const endX = tip ? tip.x : xFor(lastIdx);
+      const endY = tip ? tip.y : yFor(cum[lastIdx]);
+      const reachedElimination = outAt !== -1 && !tip && lastIdx === capIdx;
+      if (reachedElimination) {
         svg += `<circle class="worm-chart-end-dot" cx="${endX}" cy="${endY}" r="4" fill="none" style="stroke:${color}"></circle>`;
       } else {
         svg += `<circle class="worm-chart-end-dot" cx="${endX}" cy="${endY}" r="3" style="fill:${color}; stroke:${color}"></circle>`;
@@ -3926,8 +3967,15 @@
       return Math.max(0, Math.min(rounds - 1, Math.round((svgX - plotLeft) / step)));
     }
 
-    function showHoverForRound(idx) {
-      const x = xFor(idx);
+    // `progress` is a round position — an integer from a manual hover, or a
+    // fractional in-between position while the beam is animating. `pin` keeps
+    // an eliminated player's dot showing at their final point (needed so the
+    // animated line has somewhere to end) instead of hiding it once the
+    // position moves past their elimination round, which is what a manual
+    // hover still does.
+    function showHoverForProgress(progress, opts) {
+      const pin = !!(opts && opts.pin);
+      const x = xFor(progress);
       crosshair.setAttribute('x1', x);
       crosshair.setAttribute('x2', x);
       crosshair.removeAttribute('hidden');
@@ -3936,17 +3984,23 @@
       hoverDots.forEach(dot => {
         const pIdx = Number(dot.dataset.pidx);
         const outAt = outRounds[pIdx];
-        const hasPoint = outAt === -1 ? idx < series[pIdx].length : idx <= outAt;
-        if (!hasPoint) { dot.setAttribute('hidden', ''); return; }
-        const val = series[pIdx][idx];
-        dot.setAttribute('cx', x);
+        const capIdx = outAt === -1 ? series[pIdx].length - 1 : outAt;
+        if (capIdx < 0 || (!pin && progress > capIdx)) { dot.setAttribute('hidden', ''); return; }
+        const effective = Math.min(capIdx, progress);
+        const idx = Math.floor(effective);
+        const frac = effective - idx;
+        const val = (frac > 0 && idx < capIdx)
+          ? series[pIdx][idx] + (series[pIdx][idx + 1] - series[pIdx][idx]) * frac
+          : series[pIdx][idx];
+        dot.setAttribute('cx', xFor(effective));
         dot.setAttribute('cy', yFor(val));
         dot.removeAttribute('hidden');
-        rows.push({ pIdx, val });
+        rows.push({ pIdx, val: Math.round(val) });
       });
       rows.sort((a, b) => a.val - b.val);
 
-      wormChartTooltip.innerHTML = `<div class="worm-chart-tooltip-round">Round ${idx + 1}</div>` + rows.map(({ pIdx, val }) => `
+      const displayRound = Math.min(rounds, Math.ceil(progress) + 1);
+      wormChartTooltip.innerHTML = `<div class="worm-chart-tooltip-round">Round ${displayRound}</div>` + rows.map(({ pIdx, val }) => `
         <div class="worm-chart-tooltip-row"><span class="worm-chart-tooltip-swatch" style="background:${wormColor(pIdx)}"></span>${escapeHtml(players[pIdx])}: <b>${val}</b></div>
       `).join('');
       wormChartTooltip.hidden = false;
@@ -3960,7 +4014,7 @@
     }
 
     function showHover(clientX) {
-      showHoverForRound(roundIdxFromClientX(clientX));
+      showHoverForProgress(roundIdxFromClientX(clientX));
     }
 
     function hideHover() {
@@ -3973,10 +4027,11 @@
     hitRect.addEventListener('pointerdown', e => showHover(e.clientX));
     hitRect.addEventListener('pointerleave', hideHover);
 
-    // While playing, surface the currently-revealed round's numbers the same
-    // way a manual hover would, so the readout advances alongside the lines.
+    // While playing, surface the currently-revealed position's numbers the
+    // same way a manual hover would, so the readout advances alongside the
+    // beam instead of only updating once per round.
     if (wormPlaybackRound !== null) {
-      showHoverForRound(wormPlaybackRound);
+      showHoverForProgress(wormPlaybackRound, { pin: true });
     } else {
       wormChartTooltip.hidden = true;
     }
