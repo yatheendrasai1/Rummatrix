@@ -43,6 +43,18 @@
     --font-display: 'Titillium Web', sans-serif;
     --font-body: 'Rajdhani', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+
+    /* Score Worm categorical palette — fixed hue order, one slot per player
+       (players.js assigns by index, never by rank), validated against both
+       theme backgrounds via the dataviz skill's CVD/contrast checker. */
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
   }
 
   /* RUMMY THEME — a classic green-felt card table instead of the default terminal
@@ -763,6 +775,34 @@
   .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
   #tvModeBtn, #endGameBtn { flex: 1 1 100%; width: 100%; }
 
+  /* ---------- SCORE WORM GRAPH ---------- */
+  .worm-chart-wrap { position: relative; }
+  .worm-chart-empty { color: var(--muted); font-size: 14px; padding: 4px 0; font-family: var(--font-mono); }
+  .worm-chart-svg { width: 100%; height: auto; display: block; touch-action: none; }
+  .worm-chart-svg[hidden] { display: none; }
+  .worm-chart-grid-line { stroke: var(--border); stroke-width: 1; }
+  .worm-chart-out-line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; }
+  .worm-chart-out-label, .worm-chart-axis-label { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+  .worm-chart-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .worm-chart-end-dot { stroke-width: 1.5; }
+  .worm-chart-end-label { font-family: var(--font-body); font-size: 11px; font-weight: 700; }
+  .worm-chart-hitrect { fill: transparent; cursor: crosshair; }
+  .worm-chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+  .worm-chart-hover-dot { stroke: var(--panel); stroke-width: 1.5; pointer-events: none; }
+  .worm-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+  .worm-chart-legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .worm-chart-legend-item.is-out { opacity: 0.55; }
+  .worm-chart-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .worm-chart-tooltip {
+    position: absolute; top: 0; pointer-events: none; background: var(--panel-2); border: 1px solid var(--border);
+    padding: 6px 10px; font-family: var(--font-mono); font-size: 11px; color: var(--white); white-space: nowrap;
+    transform: translate(-50%, -100%); margin-top: -8px; z-index: 5;
+  }
+  .worm-chart-tooltip[hidden] { display: none; }
+  .worm-chart-tooltip-round { color: var(--muted); margin-bottom: 3px; }
+  .worm-chart-tooltip-row { display: flex; align-items: center; gap: 6px; }
+  .worm-chart-tooltip-swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+
   /* ---------- VOICE ANNOUNCEMENTS ---------- */
   .announce-toggle {
     font-family: var(--font-mono);
@@ -1399,6 +1439,16 @@
 
     <p class="sub" id="eventLegendText" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
 
+    <details class="collapsible-section" id="wormChartSection">
+      <summary>Score Worm</summary>
+      <div class="worm-chart-wrap">
+        <p class="worm-chart-empty" id="wormChartEmpty">No matches recorded yet — the worm graph will trace each player's running total as you add rounds.</p>
+        <svg class="worm-chart-svg" id="wormChartSvg" hidden></svg>
+        <div class="worm-chart-tooltip" id="wormChartTooltip" hidden></div>
+        <div class="worm-chart-legend" id="wormChartLegend"></div>
+      </div>
+    </details>
+
     <details class="collapsible-section" id="voiceSettingsSection">
       <summary>Voice Settings</summary>
       <div class="voice-settings-row">
@@ -1600,6 +1650,10 @@
   const gameOverBanner = document.getElementById('gameOverBanner');
   const setBreakdownList = document.getElementById('setBreakdownList');
   const matchLogList = document.getElementById('matchLogList');
+  const wormChartEmpty = document.getElementById('wormChartEmpty');
+  const wormChartSvg = document.getElementById('wormChartSvg');
+  const wormChartTooltip = document.getElementById('wormChartTooltip');
+  const wormChartLegend = document.getElementById('wormChartLegend');
   const entryMatchNum = document.getElementById('entryMatchNum');
   const entryGrid = document.getElementById('entryGrid');
   const entryError = document.getElementById('entryError');
@@ -3474,6 +3528,216 @@
     if (!speechSupported) {
       matchLogList.querySelectorAll('.readout-btn').forEach(btn => { btn.hidden = true; });
     }
+    renderWormChart();
+  }
+
+  // ---------- SCORE WORM GRAPH ----------
+  const WORM_SERIES_VARS = ['--series-1', '--series-2', '--series-3', '--series-4', '--series-5', '--series-6', '--series-7', '--series-8'];
+  function wormColor(i) { return `var(${WORM_SERIES_VARS[i % WORM_SERIES_VARS.length]})`; }
+
+  // Cumulative total after each round, per player — a null score (already out
+  // that round) contributes 0, so a line naturally goes flat once eliminated.
+  function wormSeriesData() {
+    const running = players.map(() => 0);
+    const series = players.map(() => []);
+    matches.forEach(m => {
+      players.forEach((_, pIdx) => {
+        running[pIdx] += (m[pIdx] ?? 0);
+        series[pIdx].push(running[pIdx]);
+      });
+    });
+    return series;
+  }
+
+  // First round (0-based) a player's running total crosses the elimination
+  // limit — mirrors getOutFlags' own >= check, just evaluated per round
+  // instead of only at the final total, since totals only ever climb.
+  function wormOutRound(cumSeries) {
+    if (maxPoints === null) return -1;
+    for (let i = 0; i < cumSeries.length; i++) {
+      if (cumSeries[i] >= maxPoints) return i;
+    }
+    return -1;
+  }
+
+  function renderWormChart() {
+    const rounds = matches.length;
+    const series = wormSeriesData();
+    const outRounds = series.map(wormOutRound);
+
+    wormChartLegend.innerHTML = players.map((name, i) => `
+      <span class="worm-chart-legend-item${outRounds[i] !== -1 ? ' is-out' : ''}"><span class="worm-chart-legend-swatch" style="background:${wormColor(i)}"></span>${escapeHtml(name)}</span>
+    `).join('');
+
+    if (rounds === 0) {
+      wormChartEmpty.hidden = false;
+      // Toggled via the raw attribute, not the .hidden property — some engines
+      // don't reflect .hidden on SVGElement the way they do on HTMLElement.
+      wormChartSvg.setAttribute('hidden', '');
+      wormChartTooltip.hidden = true;
+      return;
+    }
+    wormChartEmpty.hidden = true;
+    wormChartSvg.removeAttribute('hidden');
+
+    const observedMax = Math.max(1, ...series.flat());
+    const rawMax = Math.max(maxPoints || 0, observedMax);
+    // Round the axis ceiling up to a "nice" step (1/2/5 x a power of ten) so
+    // gridlines land on numbers like 50/100/150 instead of the raw max/4.
+    const targetStep = rawMax / 4;
+    const stepMag = Math.pow(10, Math.floor(Math.log10(targetStep || 1)));
+    const stepNorm = targetStep / stepMag;
+    const gridStep = (stepNorm <= 1 ? 1 : stepNorm <= 2 ? 2 : stepNorm <= 5 ? 5 : 10) * stepMag;
+    const maxVal = Math.ceil(rawMax / gridStep) * gridStep;
+
+    const leftPad = 30, rightPad = 12, topPad = 14, bottomPad = 20;
+    const showEndLabels = players.length <= 4;
+    const labelPad = showEndLabels ? 70 : 0;
+    const wrapWidth = wormChartSvg.parentElement.clientWidth || 320;
+    const width = Math.max(260, wrapWidth);
+    const height = 220;
+    const plotLeft = leftPad;
+    const plotRight = width - rightPad - labelPad;
+    const plotW = Math.max(1, plotRight - plotLeft);
+    const plotTop = topPad;
+    const plotBottom = height - bottomPad;
+    const plotH = plotBottom - plotTop;
+
+    const xFor = roundIdx => plotLeft + (rounds === 1 ? plotW / 2 : (plotW * roundIdx) / (rounds - 1));
+    const yFor = val => plotBottom - (plotH * val) / maxVal;
+
+    let svg = '';
+
+    const gridSteps = Math.round(maxVal / gridStep);
+    for (let g = 0; g <= gridSteps; g++) {
+      const val = gridStep * g;
+      const y = yFor(val);
+      svg += `<line class="worm-chart-grid-line" x1="${plotLeft}" y1="${y}" x2="${plotRight}" y2="${y}"></line>`;
+      svg += `<text class="worm-chart-axis-label" x="${plotLeft - 6}" y="${y + 3}" text-anchor="end">${Math.round(val)}</text>`;
+    }
+
+    if (maxPoints !== null && maxPoints <= maxVal) {
+      const y = yFor(maxPoints);
+      svg += `<line class="worm-chart-out-line" x1="${plotLeft}" y1="${y}" x2="${plotRight}" y2="${y}"></line>`;
+      svg += `<text class="worm-chart-out-label" x="${plotRight}" y="${y - 4}" text-anchor="end">OUT @ ${maxPoints}</text>`;
+    }
+
+    const maxLabels = Math.max(2, Math.floor(plotW / 40));
+    const labelStep = Math.max(1, Math.ceil(rounds / maxLabels));
+    for (let r = 0; r < rounds; r++) {
+      if (r % labelStep !== 0 && r !== rounds - 1) continue;
+      svg += `<text class="worm-chart-axis-label" x="${xFor(r)}" y="${height - 4}" text-anchor="middle">${r + 1}</text>`;
+    }
+
+    const endLabelSlots = [];
+    players.forEach((name, pIdx) => {
+      const cum = series[pIdx];
+      const outAt = outRounds[pIdx];
+      const lastIdx = outAt === -1 ? cum.length - 1 : outAt;
+      if (lastIdx < 0) return;
+      const points = [];
+      for (let r = 0; r <= lastIdx; r++) points.push(`${xFor(r)},${yFor(cum[r])}`);
+      const color = wormColor(pIdx);
+      svg += `<polyline class="worm-chart-line" points="${points.join(' ')}" style="stroke:${color}"></polyline>`;
+      const endX = xFor(lastIdx);
+      const endY = yFor(cum[lastIdx]);
+      if (outAt !== -1) {
+        svg += `<circle class="worm-chart-end-dot" cx="${endX}" cy="${endY}" r="4" fill="none" style="stroke:${color}"></circle>`;
+      } else {
+        svg += `<circle class="worm-chart-end-dot" cx="${endX}" cy="${endY}" r="3" style="fill:${color}; stroke:${color}"></circle>`;
+      }
+      if (showEndLabels) endLabelSlots.push({ pIdx, x: endX, y: endY });
+    });
+
+    // End-of-line name labels — nudged apart vertically so they never overlap.
+    if (showEndLabels && endLabelSlots.length) {
+      endLabelSlots.sort((a, b) => a.y - b.y);
+      const minGap = 12;
+      for (let i = 1; i < endLabelSlots.length; i++) {
+        if (endLabelSlots[i].y - endLabelSlots[i - 1].y < minGap) {
+          endLabelSlots[i].y = endLabelSlots[i - 1].y + minGap;
+        }
+      }
+      endLabelSlots.forEach(({ pIdx, x, y }) => {
+        svg += `<text class="worm-chart-end-label" x="${x + 8}" y="${y + 4}" style="fill:${wormColor(pIdx)}">${escapeHtml(players[pIdx])}</text>`;
+      });
+    }
+
+    // Hover layer: a crosshair line, one dot per still-charted series, and the
+    // transparent hit-target rect that drives them via pointer events.
+    svg += `<line class="worm-chart-crosshair" id="wormCrosshair" x1="0" y1="${plotTop}" x2="0" y2="${plotBottom}" hidden></line>`;
+    players.forEach((_, pIdx) => {
+      svg += `<circle class="worm-chart-hover-dot" data-pidx="${pIdx}" r="4" style="fill:${wormColor(pIdx)}" hidden></circle>`;
+    });
+    svg += `<rect class="worm-chart-hitrect" id="wormHitRect" x="${plotLeft}" y="0" width="${plotW}" height="${height}"></rect>`;
+
+    wormChartSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    wormChartSvg.setAttribute('preserveAspectRatio', 'none');
+    wormChartSvg.innerHTML = svg;
+
+    const hitRect = wormChartSvg.querySelector('#wormHitRect');
+    const crosshair = wormChartSvg.querySelector('#wormCrosshair');
+    const hoverDots = [...wormChartSvg.querySelectorAll('.worm-chart-hover-dot')];
+
+    function roundIdxFromClientX(clientX) {
+      const rect = wormChartSvg.getBoundingClientRect();
+      if (!rect.width) return 0;
+      const svgX = ((clientX - rect.left) / rect.width) * width;
+      const step = rounds === 1 ? plotW : plotW / (rounds - 1);
+      return Math.max(0, Math.min(rounds - 1, Math.round((svgX - plotLeft) / step)));
+    }
+
+    function showHover(clientX) {
+      const idx = roundIdxFromClientX(clientX);
+      const x = xFor(idx);
+      crosshair.setAttribute('x1', x);
+      crosshair.setAttribute('x2', x);
+      crosshair.removeAttribute('hidden');
+
+      const rows = [];
+      hoverDots.forEach(dot => {
+        const pIdx = Number(dot.dataset.pidx);
+        const outAt = outRounds[pIdx];
+        const hasPoint = outAt === -1 ? idx < series[pIdx].length : idx <= outAt;
+        if (!hasPoint) { dot.setAttribute('hidden', ''); return; }
+        const val = series[pIdx][idx];
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', yFor(val));
+        dot.removeAttribute('hidden');
+        rows.push({ pIdx, val });
+      });
+      rows.sort((a, b) => a.val - b.val);
+
+      wormChartTooltip.innerHTML = `<div class="worm-chart-tooltip-round">Round ${idx + 1}</div>` + rows.map(({ pIdx, val }) => `
+        <div class="worm-chart-tooltip-row"><span class="worm-chart-tooltip-swatch" style="background:${wormColor(pIdx)}"></span>${escapeHtml(players[pIdx])}: <b>${val}</b></div>
+      `).join('');
+      wormChartTooltip.hidden = false;
+
+      const rect = wormChartSvg.getBoundingClientRect();
+      const wrapRect = wormChartSvg.parentElement.getBoundingClientRect();
+      const cssX = (x / width) * rect.width + (rect.left - wrapRect.left);
+      const tooltipHalf = wormChartTooltip.offsetWidth / 2;
+      const clampedX = Math.max(tooltipHalf, Math.min(wrapRect.width - tooltipHalf, cssX));
+      wormChartTooltip.style.left = `${clampedX}px`;
+    }
+
+    function hideHover() {
+      crosshair.setAttribute('hidden', '');
+      hoverDots.forEach(dot => { dot.setAttribute('hidden', ''); });
+      wormChartTooltip.hidden = true;
+    }
+
+    hitRect.addEventListener('pointermove', e => showHover(e.clientX));
+    hitRect.addEventListener('pointerdown', e => showHover(e.clientX));
+    hitRect.addEventListener('pointerleave', hideHover);
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    let wormResizeTimer = null;
+    new ResizeObserver(() => {
+      clearTimeout(wormResizeTimer);
+      wormResizeTimer = setTimeout(() => { if (!gameScreen.hidden) renderWormChart(); }, 150);
+    }).observe(wormChartSvg.parentElement);
   }
 
   function escapeHtml(str) {
