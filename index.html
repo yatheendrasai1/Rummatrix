@@ -699,11 +699,12 @@
     font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 6px;
   }
 
-  /* Player Summary cards shown outside TV Mode — a vertical list of short rows, each
-     roughly half the height of the original card, with a small fixed-size avatar
-     rather than a wide proportional photo column. */
-  .summary-list-compact { display: block; }
-  .summary-list-compact .summary-card { margin-bottom: 4px; border-radius: 7px; }
+  /* Player Summary cards shown outside TV Mode — a 2-column grid of short cards
+     (a 2x2 block for a 4-player game), each roughly half the height of the
+     original card, with a small fixed-size avatar rather than a wide
+     proportional photo column. */
+  .summary-list-compact { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .summary-list-compact .summary-card { margin-bottom: 0; border-radius: 7px; }
   .summary-list-compact .summary-photo-col { flex: 0 0 46px; max-width: 46px; min-height: 0; }
   .summary-list-compact .avatar-photo { font-size: 13px; }
   .summary-list-compact .summary-info-col { padding: 4px 9px; gap: 1px; }
@@ -788,11 +789,13 @@
     margin-top: -4px;
   }
 
-  /* match entry */
-  .entry-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  /* match entry — a 2-column grid so player cards line up in pairs (a 2x2
+     block for a 4-player game, 2 wide with a trailing single card for an odd
+     count) instead of wrapping wherever they happen to fit. */
+  .entry-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
   .entry-row {
     display: flex; flex-direction: column; gap: 8px;
-    flex: 1 1 150px; max-width: 190px;
+    min-width: 0;
     padding: 10px 12px; background: var(--panel);
     border: 1px solid var(--border);
   }
@@ -1356,8 +1359,7 @@
 
     .event-points-grid { grid-template-columns: 1fr; }
 
-    .entry-grid { flex-direction: column; }
-    .entry-row { flex: 1 1 auto; max-width: none; flex-direction: column; align-items: stretch; gap: 6px; }
+    .entry-row { gap: 6px; }
     .entry-row label { min-width: unset; }
     .event-btn { font-size: 11px; padding: 7px 9px; }
 
