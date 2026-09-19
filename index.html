@@ -269,6 +269,27 @@
 
   .dealer-badge { margin-left: 5px; filter: drop-shadow(0 0 2px rgba(var(--green-rgb),0.7)); }
 
+  .forfeit-btn {
+    flex: none;
+    width: 36px; height: 36px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 15px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .forfeit-btn:hover { border-color: var(--orange); color: var(--orange); background: rgba(var(--orange-rgb),0.1); }
+  .player-out-note {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--orange);
+    white-space: nowrap;
+  }
+
   .player-avatar-wrap { position: relative; flex: none; }
   .avatar-btn {
     width: 48px; height: 48px;
@@ -1591,6 +1612,7 @@
   let renameError = '';          // validation message shown while renaming players
   let dealerIdx = 0;             // index into players[] of whoever deals the next round
   let initialDealerIdx = 0;      // setup-screen pick for who deals first, before a game exists
+  let forfeited = [];            // per player: null if still in, else the 0-based index of their last played round
   let EVENTS = buildEvents(DEFAULT_DROP_POINTS, DEFAULT_MDROP_POINTS, DEFAULT_FULL_POINTS);
   let maxRoundPoints = DEFAULT_FULL_POINTS;  // cap for a single round's score — the configured Full Count value
 
@@ -1758,7 +1780,7 @@
   function saveActiveGame() {
     try {
       localStorage.setItem(ACTIVE_GAME_KEY, JSON.stringify({
-        players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount, dealerIdx,
+        players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount, dealerIdx, forfeited,
         eventPoints: {
           dropPts: EVENTS.find(e => e.key === 'drop').points,
           mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -2574,6 +2596,7 @@
     matches = [];
     matchEvents = [];
     dealerIdx = Math.max(0, Math.min(initialDealerIdx, players.length - 1));
+    forfeited = players.map(() => null);
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
     editErrorMsg = '';
@@ -2611,7 +2634,7 @@
       if (outFlags[i]) {
         const badge = document.createElement('span');
         badge.className = 'out-badge';
-        badge.textContent = 'OUT';
+        badge.textContent = forfeited[i] != null ? 'FORFEITED' : 'OUT';
         label.appendChild(badge);
       }
 
@@ -2978,7 +3001,7 @@
       const totals = getTotals(matches);
       const outFlags = getOutFlags(totals);
       const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
-      const winnerName = (maxPoints !== null && activeIdx.length === 1) ? players[activeIdx[0]] : null;
+      const winnerName = activeIdx.length === 1 ? players[activeIdx[0]] : null;
 
       gameHistory.push({
         players: players.slice(),
@@ -3063,7 +3086,7 @@
       const photo = url
         ? `<img class="tv-photo" src="${url}" alt="">`
         : `<span class="tv-photo-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
-      const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? '<span class="tv-tag">Out</span>' : '');
+      const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? `<span class="tv-tag">${forfeited[pIdx] != null ? '🏳 Forfeited' : 'Out'}</span>` : '');
       const changed = !!(tvPrevTotals && tvPrevTotals[pIdx] !== undefined && tvPrevTotals[pIdx] !== totals[pIdx]);
       const tileClasses = [
         'tv-tile',
@@ -3152,10 +3175,14 @@
     if (!tvScreen.hidden) exitTvMode();
   });
 
-  // If the browser exits fullscreen on its own (its own Escape handling, or the
-  // viewer switching apps), make sure the overlay closes with it.
+  // If the browser exits fullscreen on its own — its own Escape handling, the
+  // viewer switching apps, or the screen locking/going to sleep — route through
+  // the same exitTvMode() cleanup rather than just hiding the screen, so the
+  // html/body overflow lock set on entry always gets released too. Without
+  // this, a screen-off exit left scrolling and other page controls dead until
+  // TV Mode was reopened and closed properly.
   document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && !tvScreen.hidden) tvScreen.hidden = true;
+    if (!document.fullscreenElement && !tvScreen.hidden) exitTvMode();
   });
 
   // ---------- TV MODE: add a match without leaving the screen ----------
@@ -3218,6 +3245,11 @@
       renderPlayerNames();
       buildEntryGrid();
       renderBoards();
+      return;
+    }
+    const forfeitBtn = e.target.closest('.forfeit-btn');
+    if (forfeitBtn) {
+      forfeitPlayer(Number(forfeitBtn.dataset.forfeitIdx));
       return;
     }
     const clearBtn = e.target.closest('.avatar-clear-btn');
@@ -3296,6 +3328,7 @@
   function renderPlayerNames() {
     if (renamingPlayers) {
       const n = players.length;
+      const outFlags = getOutFlags(getTotals(matches));
       const rows = players.map((name, i) => `
         <div class="player-field-row">
           <div class="player-row-move">
@@ -3310,6 +3343,9 @@
           </div>
           <input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">
           <button type="button" class="dealer-pick-btn${i === dealerIdx ? ' selected' : ''}" data-dealer-idx="${i}" title="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}" aria-label="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}">🃏</button>
+          ${outFlags[i]
+            ? `<span class="player-out-note">${forfeited[i] != null ? '🏳 Forfeited' : 'Out'}</span>`
+            : `<button type="button" class="forfeit-btn" data-forfeit-idx="${i}" title="Forfeit — mark ${escapeAttr(name)} out for the rest of this game" aria-label="Forfeit ${escapeAttr(name)}">🏳</button>`}
         </div>`
       ).join('');
       playerNamesDisplay.innerHTML = `
@@ -3337,8 +3373,24 @@
     [playerAvatars[i], playerAvatars[j]] = [playerAvatars[j], playerAvatars[i]];
     matches.forEach(m => { [m[i], m[j]] = [m[j], m[i]]; });
     matchEvents.forEach(m => { [m[i], m[j]] = [m[j], m[i]]; });
+    [forfeited[i], forfeited[j]] = [forfeited[j], forfeited[i]];
     if (dealerIdx === i) dealerIdx = j;
     else if (dealerIdx === j) dealerIdx = i;
+    saveActiveGame();
+    renderPlayerNames();
+    buildEntryGrid();
+    renderBoards();
+  }
+
+  // Marks a player out for the rest of the game regardless of their current
+  // score — everything that already reads getOutFlags() (score entry, TV
+  // Mode, the Player Summary, the worm graph) treats them as eliminated from
+  // here on, same as busting past the points limit.
+  function forfeitPlayer(i) {
+    const name = players[i];
+    if (!confirm(`Forfeit ${name}? They'll be marked out and won't be able to score any more rounds this game.`)) return;
+    forfeited[i] = matches.length - 1;
+    if (dealerIdx === i) advanceDealer(); // the deal moves on if it was theirs
     saveActiveGame();
     renderPlayerNames();
     buildEntryGrid();
@@ -3377,6 +3429,7 @@
         setSize = players.length;
         matches = importedMatches;
         dealerIdx = 0; // CSV rows carry no dealer info
+        forfeited = players.map(() => null);
         maxPoints = maxPointsVal;
         playerCount = players.length;
         editingMatchIndex = null;
@@ -3571,7 +3624,9 @@
     const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
     const cols = `70px repeat(${players.length}, minmax(70px, 1fr))`;
 
-    const gameOver = maxPoints !== null && activeIdx.length <= 1;
+    // A forfeit can end the game even with no points limit set, so this no
+    // longer requires maxPoints — dropping to one active player is enough.
+    const gameOver = activeIdx.length <= 1;
     addMatchBtn.disabled = gameOver;
     voiceEntryBtn.disabled = gameOver;
     if (gameOver) { testDumpBtn.disabled = true; stopVoiceEntry(); }
@@ -3606,7 +3661,7 @@
           <div class="summary-tags">
             ${pIdx === dealerIdx ? '<span class="tag-pill tag-dealer">🃏 Dealing</span>' : ''}
             ${isLeader ? '<span class="tag-pill tag-lead">★ Lead</span>' : ''}
-            ${isOut ? '<span class="tag-pill tag-out">Out</span>' : ''}
+            ${isOut ? `<span class="tag-pill tag-out">${forfeited[pIdx] != null ? '🏳 Forfeited' : 'Out'}</span>` : ''}
             ${(!isLeader && !isOut) ? '<span class="tag-pill tag-neutral">In Play</span>' : ''}
           </div>
           <div class="summary-name">${escapeHtml(name)}</div>
@@ -3733,12 +3788,17 @@
   // First round (0-based) a player's running total crosses the elimination
   // limit — mirrors getOutFlags' own >= check, just evaluated per round
   // instead of only at the final total, since totals only ever climb.
-  function wormOutRound(cumSeries) {
-    if (maxPoints === null) return -1;
-    for (let i = 0; i < cumSeries.length; i++) {
-      if (cumSeries[i] >= maxPoints) return i;
+  function wormOutRound(cumSeries, pIdx) {
+    let round = -1;
+    if (maxPoints !== null) {
+      for (let i = 0; i < cumSeries.length; i++) {
+        if (cumSeries[i] >= maxPoints) { round = i; break; }
+      }
     }
-    return -1;
+    if (forfeited[pIdx] != null) {
+      round = round === -1 ? forfeited[pIdx] : Math.min(round, forfeited[pIdx]);
+    }
+    return round;
   }
 
   // Playback state for the "Play" button — null means show the full chart;
@@ -4060,7 +4120,7 @@
   }
 
   function getOutFlags(totals) {
-    return totals.map(t => maxPoints !== null && t >= maxPoints);
+    return totals.map((t, i) => (maxPoints !== null && t >= maxPoints) || forfeited[i] != null);
   }
 
   // ---------- CSV EXPORT / IMPORT ----------
@@ -4146,6 +4206,7 @@
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
     playerCount = saved.playerCount || players.length;
     dealerIdx = (typeof saved.dealerIdx === 'number' && saved.dealerIdx >= 0 && saved.dealerIdx < players.length) ? saved.dealerIdx : 0;
+    forfeited = Array.isArray(saved.forfeited) ? saved.forfeited : players.map(() => null);
     EVENTS = buildEvents(ep.dropPts || DEFAULT_DROP_POINTS, ep.mdropPts || DEFAULT_MDROP_POINTS, ep.fullPts || DEFAULT_FULL_POINTS);
     maxRoundPoints = ep.fullPts || DEFAULT_FULL_POINTS;
     editingMatchIndex = null;
