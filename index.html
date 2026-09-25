@@ -1446,7 +1446,7 @@
       <label>Or Import an Existing Game (CSV)</label>
       <p class="sub" style="margin:0 0 12px; font-size:13px;">Header row: <code>matches,player1,player2,…</code> — each following row is one round's scores. Enter Max Points above first.</p>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <input type="file" id="importCsvInput" accept=".csv" class="csv-file-input">
+        <input type="file" id="importCsvInput" accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel,text/plain" class="csv-file-input">
         <button class="btn-ghost" id="importCsvBtn" type="button" style="padding:10px 18px; font-size:12px;">📥 Import &amp; Start</button>
       </div>
     </div>
@@ -4127,11 +4127,19 @@
 
   // ---------- CSV EXPORT / IMPORT ----------
 
+  // Quotes a field only if it needs it (contains a comma, quote, or newline —
+  // scores never do, but a player name might), matching what parseCsvLine on
+  // the import side expects back.
+  function csvField(value) {
+    const s = String(value);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
   function matchesToCsv(playersArr, matchesArr) {
-    const lines = [['matches', ...playersArr].join(',')];
+    const lines = [['matches', ...playersArr].map(csvField).join(',')];
     matchesArr.forEach((m, i) => {
       const row = [i + 1, ...playersArr.map((_, pIdx) => (m[pIdx] === null || m[pIdx] === undefined) ? '' : m[pIdx])];
-      lines.push(row.join(','));
+      lines.push(row.map(csvField).join(','));
     });
     return lines.join('\n');
   }
@@ -4148,12 +4156,51 @@
     URL.revokeObjectURL(url);
   }
 
+  // A real (if minimal) CSV field splitter — handles quoted fields, commas
+  // inside quotes, and doubled "" as an escaped quote — so a name exported
+  // from Excel/Sheets/Numbers as `"Smith, Jr."` doesn't blow up a plain
+  // String.split(','). Trims each field the same way the old split-based
+  // parser did.
+  function parseCsvLine(line) {
+    const cells = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          cur += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        cells.push(cur.trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur.trim());
+    return cells;
+  }
+
   function parseGameCsv(text, roundCap) {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length < 2) throw new Error('CSV needs a header row plus at least one round.');
 
-    const header = lines[0].split(',').map(s => s.trim());
+    let header = parseCsvLine(lines[0]);
     if (header[0].toLowerCase() !== 'matches') throw new Error('First column header must be "matches".');
+
+    // A trailing comma in the source spreadsheet — a common artifact from an
+    // Excel/Sheets export with a stray empty column — leaves one blank
+    // header cell at the end; drop it rather than treating it as a player
+    // with no name.
+    if (header.length > 1 && header[header.length - 1] === '') {
+      header = header.slice(0, -1);
+    }
 
     const playerNames = header.slice(1);
     if (playerNames.length < MIN_PLAYERS || playerNames.length > MAX_PLAYERS) {
@@ -4164,7 +4211,13 @@
     if (new Set(lowerNames).size !== lowerNames.length) throw new Error('Player names in the CSV must be unique.');
 
     const parsedMatches = lines.slice(1).map((line, idx) => {
-      const cells = line.split(',').map(s => s.trim());
+      let cells = parseCsvLine(line);
+      // Same trailing-comma tolerance as the header, only when the row has
+      // exactly one extra blank cell — a genuinely blank score for the last
+      // (out) player still has the expected cell count and is left alone.
+      if (cells.length === playerNames.length + 2 && cells[cells.length - 1] === '') {
+        cells = cells.slice(0, -1);
+      }
       const scoreCells = cells.slice(1);
       if (scoreCells.length !== playerNames.length) {
         throw new Error(`Row ${idx + 2} doesn't have a score for every player column.`);
