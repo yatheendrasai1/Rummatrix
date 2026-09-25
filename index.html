@@ -1446,7 +1446,12 @@
       <label>Or Import an Existing Game (CSV)</label>
       <p class="sub" style="margin:0 0 12px; font-size:13px;">Header row: <code>matches,player1,player2,…</code> — each following row is one round's scores. Enter Max Points above first.</p>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <input type="file" id="importCsvInput" accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel,text/plain" class="csv-file-input">
+        <!-- Deliberately no `accept` filter — mobile file pickers key it off the
+             file's MIME/UTI tag, which varies wildly by source app and can hide
+             a perfectly valid CSV the user can see right there in the picker.
+             parseGameCsv() below gives a clear error for anything that isn't
+             actually a valid CSV, so filtering here isn't worth that risk. -->
+        <input type="file" id="importCsvInput" class="csv-file-input">
         <button class="btn-ghost" id="importCsvBtn" type="button" style="padding:10px 18px; font-size:12px;">📥 Import &amp; Start</button>
       </div>
     </div>
