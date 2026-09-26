@@ -1076,6 +1076,16 @@
     border: 1px solid var(--border);
     border-radius: 1.4vh;
   }
+
+  /* A faint per-player hue (set via --tile-hue on the tile) washed over the
+     photo/placeholder — just enough to tell tiles apart at a glance without
+     fighting the scrim/text painted on top of it. */
+  .tv-hue-tint {
+    position: absolute;
+    inset: 0;
+    background: hsl(var(--tile-hue, 150) 75% 50% / 0.16);
+    pointer-events: none;
+  }
   .tv-tile.lead { border-color: var(--orange); }
   .tv-tile.out { opacity: 0.5; }
   .tv-tile { cursor: pointer; }
@@ -3220,8 +3230,10 @@
             <div><span class="tv-stat-value">${lastScoreLabel}</span><span class="tv-stat-label">Last Score</span></div>
           </div>
         </div>` : '';
-      return `<div class="${tileClasses}" data-player-idx="${pIdx}">
+      const tileHue = Math.round((360 / MAX_PLAYERS) * pIdx);
+      return `<div class="${tileClasses}" data-player-idx="${pIdx}" style="--tile-hue:${tileHue}">
         ${photo}
+        <div class="tv-hue-tint"></div>
         <div class="tv-scrim"></div>
         ${isWinner ? '<div class="tv-shine"></div>' : ''}
         ${pIdx === dealerIdx ? '<span class="tv-dealer-badge" title="Dealing this round">🃏</span>' : ''}
