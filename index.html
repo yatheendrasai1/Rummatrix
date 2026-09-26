@@ -1202,31 +1202,34 @@
     transition: opacity 0.15s ease;
     padding: 2cqh 3cqw 3cqh;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5cqh;
-    text-align: center;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2cqw;
   }
   .tv-name {
     font-family: var(--font-body);
     font-weight: 700;
     color: #fff;
-    font-size: min(6.5cqh, 15cqw);
-    max-width: 100%;
+    font-size: min(7.15cqh, 16.5cqw);
+    max-width: 58%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 0 0.3cqh 0.8cqh rgba(0,0,0,0.9), 0 0.1cqh 0.3cqh rgba(0,0,0,0.9);
+    text-align: left;
+    background: #000;
+    padding: 0.3cqh 0.8cqw;
+    border-radius: 0.5cqh;
   }
   .tv-score {
     font-family: var(--font-mono);
     font-weight: 700;
-    color: var(--green);
+    color: #fff44f;
     line-height: 1;
     /* Sized off whichever dimension is tighter — cqh alone looks great on wide
        landscape tiles, but on a narrow, tall mobile-portrait tile it would blow
        past the tile's width, so cap it against the container's width too. */
-    font-size: min(19cqh, 26cqw);
+    font-size: min(22.8cqh, 31.2cqw);
     text-shadow: 0 0.4cqh 1cqh rgba(0,0,0,0.9), 0 0.15cqh 0.4cqh rgba(0,0,0,0.95);
   }
   .tv-tile.out .tv-score { color: var(--orange); }
