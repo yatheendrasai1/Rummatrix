@@ -995,6 +995,19 @@
     white-space: nowrap;
   }
   .tv-meta b { color: var(--green); }
+  /* A compact, always-centered scoreboard line under the brand/match-info/exit
+     row — the same row every time, rather than only appearing when it happens
+     to wrap, so the title bar's middle line is predictable. */
+  .tv-scoreboard {
+    flex: 1 1 100%;
+    text-align: center;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    font-size: clamp(10px, 1.3vw, 15px);
+  }
+  .tv-scoreboard b { color: var(--green); font-weight: 700; }
+  .tv-scoreboard .tvsb-out { opacity: 0.55; text-decoration: line-through; }
   /* On a narrow phone, brand + match info + exit button together don't fit one row
      and the exit button was getting pushed off-screen entirely (nowrap never
      shrinks). Give the meta text its own full-width row below instead, so the
@@ -1619,6 +1632,7 @@
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
     <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
+    <div class="tv-scoreboard" id="tvScoreboard"></div>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
 
@@ -1802,6 +1816,7 @@
   const tvMatchNum = document.getElementById('tvMatchNum');
   const tvSetNum = document.getElementById('tvSetNum');
   const tvMaxPoints = document.getElementById('tvMaxPoints');
+  const tvScoreboard = document.getElementById('tvScoreboard');
   const tvAddScoreBtn = document.getElementById('tvAddScoreBtn');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
@@ -3250,6 +3265,9 @@
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
     tvMaxPoints.textContent = maxPoints ?? '—';
+    tvScoreboard.innerHTML = players.map((name, pIdx) =>
+      `<span class="${outFlags[pIdx] ? 'tvsb-out' : ''}">${escapeHtml(name)} <b>${totals[pIdx]}</b></span>`
+    ).join(' · ');
     tvPrevTotals = totals.slice();
   }
 
