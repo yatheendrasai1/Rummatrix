@@ -995,19 +995,6 @@
     white-space: nowrap;
   }
   .tv-meta b { color: var(--green); }
-  /* A compact, always-centered scoreboard line under the brand/match-info/exit
-     row — the same row every time, rather than only appearing when it happens
-     to wrap, so the title bar's middle line is predictable. */
-  .tv-scoreboard {
-    flex: 1 1 100%;
-    text-align: center;
-    font-family: var(--font-mono);
-    color: var(--muted);
-    letter-spacing: 0.5px;
-    font-size: clamp(10px, 1.3vw, 15px);
-  }
-  .tv-scoreboard b { color: var(--green); font-weight: 700; }
-  .tv-scoreboard .tvsb-out { opacity: 0.55; text-decoration: line-through; }
   /* On a narrow phone, brand + match info + exit button together don't fit one row
      and the exit button was getting pushed off-screen entirely (nowrap never
      shrinks). Give the meta text its own full-width row below instead, so the
@@ -1039,14 +1026,6 @@
     padding: 0;
   }
   .tv-add-btn:hover { background: var(--orange-hover); }
-  .tv-names-toggle-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-size: clamp(10px, 1.3vw, 15px);
-  }
-  .tv-names-toggle-btn:hover { border-color: var(--green); color: var(--green); background: transparent; }
-  .tv-names-toggle-btn.active { border-color: var(--green); color: var(--green); background: rgba(var(--green-rgb),0.12); }
   .tv-exit-btn {
     flex: none;
     background: transparent;
@@ -1233,24 +1212,7 @@
     transition: opacity 0.15s ease;
     padding: 2cqh 3cqw 3cqh;
     display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 2cqw;
-  }
-  .tv-name {
-    font-family: var(--font-body);
-    font-weight: 700;
-    color: #fff;
-    font-size: min(7.15cqh, 16.5cqw);
-    max-width: 58%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: left;
-    background: #000;
-    padding: 0.3cqh 0.8cqw;
-    border-radius: 0.5cqh;
+    justify-content: flex-end;
   }
   .tv-score {
     font-family: var(--font-mono);
@@ -1638,9 +1600,8 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-add-btn tv-names-toggle-btn" id="tvNamesToggleBtn" title="Hide names in the scoreboard" aria-label="Hide names in the scoreboard">👁</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
-    <div class="tv-scoreboard" id="tvScoreboard"></div>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
 
@@ -1824,9 +1785,7 @@
   const tvMatchNum = document.getElementById('tvMatchNum');
   const tvSetNum = document.getElementById('tvSetNum');
   const tvMaxPoints = document.getElementById('tvMaxPoints');
-  const tvScoreboard = document.getElementById('tvScoreboard');
   const tvAddScoreBtn = document.getElementById('tvAddScoreBtn');
-  const tvNamesToggleBtn = document.getElementById('tvNamesToggleBtn');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
@@ -3193,29 +3152,6 @@
   const recordMatchPanelHome = { parent: recordMatchPanel.parentNode, next: recordMatchPanel.nextSibling };
   let tvPrevTotals = null; // last-rendered totals, to detect which scores just changed
 
-  // Whether the scoreboard line in the TV Mode title bar shows names next to
-  // each score, or just the bare numbers — a remembered viewer preference,
-  // same pattern as the theme/announce toggles.
-  const TV_HIDE_NAMES_KEY = 'rummatrix.tvHideScoreboardNames';
-  let tvHideScoreboardNames = false;
-  try { tvHideScoreboardNames = localStorage.getItem(TV_HIDE_NAMES_KEY) === 'true'; } catch (err) { /* ignore */ }
-
-  function updateTvNamesToggleBtn() {
-    tvNamesToggleBtn.textContent = tvHideScoreboardNames ? '🙈' : '👁';
-    tvNamesToggleBtn.classList.toggle('active', tvHideScoreboardNames);
-    const label = tvHideScoreboardNames ? 'Show names in the scoreboard' : 'Hide names in the scoreboard';
-    tvNamesToggleBtn.title = label;
-    tvNamesToggleBtn.setAttribute('aria-label', label);
-  }
-  updateTvNamesToggleBtn();
-
-  tvNamesToggleBtn.addEventListener('click', () => {
-    tvHideScoreboardNames = !tvHideScoreboardNames;
-    try { localStorage.setItem(TV_HIDE_NAMES_KEY, String(tvHideScoreboardNames)); } catch (err) { /* ignore */ }
-    updateTvNamesToggleBtn();
-    if (!tvScreen.hidden) renderTvScreen();
-  });
-
   // Index of the player who just won a round as Rummy, set right when that round is
   // added and consumed by the very next TV render — so the winner spotlight animation
   // fires exactly once and never replays on a later, unrelated re-render.
@@ -3287,7 +3223,6 @@
         ${pIdx === dealerIdx ? '<span class="tv-dealer-badge" title="Dealing this round">🃏</span>' : ''}
         ${tag}
         <div class="tv-overlay">
-          <div class="tv-name">${escapeHtml(name)}</div>
           <div class="tv-score ${changed ? 'tv-score-updated' : ''}">${totals[pIdx]}</div>
         </div>
         ${statsOverlay}
@@ -3298,9 +3233,6 @@
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
     tvMaxPoints.textContent = maxPoints ?? '—';
-    tvScoreboard.innerHTML = players.map((name, pIdx) =>
-      `<span class="${outFlags[pIdx] ? 'tvsb-out' : ''}">${tvHideScoreboardNames ? '' : escapeHtml(name) + ' '}<b>${totals[pIdx]}</b></span>`
-    ).join(' · ');
     tvPrevTotals = totals.slice();
   }
 
