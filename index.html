@@ -3201,10 +3201,10 @@
   const tvStatsShown = new Set();
 
   function tvGridShape(n) {
-    // Keep it to one row up through 4 players; beyond that, split into two rows so
-    // each tile stays large and legible rather than shrinking into a long strip.
-    if (n <= 4) return { cols: n, rows: 1 };
-    return { cols: Math.ceil(n / 2), rows: 2 };
+    // Cap every row at 3 tiles so each one stays large and legible, wrapping
+    // to additional rows instead of shrinking into a long strip.
+    const cols = Math.min(n, 3);
+    return { cols, rows: Math.ceil(n / cols) };
   }
 
   function renderTvScreen() {
