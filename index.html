@@ -1157,11 +1157,14 @@
     z-index: 3;
     background: rgba(0,0,0,0.92);
   }
+  /* Always present in the DOM (not conditionally rendered) so tapping a tile can
+     just toggle a class instead of re-rendering the whole grid — see the tvGrid
+     click handler. Hidden by default, shown only on the active tile. */
   .tv-stats-overlay {
     position: absolute;
     inset: 0;
     z-index: 4;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1170,6 +1173,7 @@
     text-align: center;
     pointer-events: none;
   }
+  .tv-tile-stats-active .tv-stats-overlay { display: flex; }
   .tv-stats-name {
     font-family: var(--font-body);
     font-weight: 700;
@@ -1407,7 +1411,7 @@
       0 6px 0 #7a3d00,
       0 10px 28px rgba(0,0,0,0.9);
     padding: 0 24px;
-    animation: tvGameWinnerPop 5s cubic-bezier(.34,1.56,.64,1) forwards;
+    animation: tvGameWinnerPop 3.5s cubic-bezier(.34,1.56,.64,1) forwards;
   }
   @keyframes tvGameWinnerPop {
     0% { opacity: 0; transform: scale(0.5) rotate(-6deg); }
@@ -2345,7 +2349,7 @@
   const CONFETTI_COLORS = ['#ff6a1f', '#33e18a', '#ffd23f', '#4fc3ff', '#ff5d8f', '#ffffff'];
 
   function spawnConfetti(count) {
-    count = count || 70;
+    count = count || 45;
     const frag = document.createDocumentFragment();
     const pieces = [];
     for (let i = 0; i < count; i++) {
@@ -2369,7 +2373,7 @@
     tvGameWinnerBanner.textContent = text;
     tvGameWinnerBanner.hidden = false;
     clearTimeout(showTvGameWinnerBanner._hideTimer);
-    showTvGameWinnerBanner._hideTimer = setTimeout(() => { tvGameWinnerBanner.hidden = true; }, 5000);
+    showTvGameWinnerBanner._hideTimer = setTimeout(() => { tvGameWinnerBanner.hidden = true; }, 3500);
   }
 
   // Fires once when the game actually ends (see the gameOverCelebrated guard in
@@ -3365,7 +3369,10 @@
         isWinner ? 'tv-tile-winner' : (winnerIdx !== null ? 'tv-tile-shrink' : '')
       ].filter(Boolean).join(' ');
       const lastScoreLabel = lastScores[pIdx] === null ? '—' : lastScores[pIdx];
-      const statsOverlay = showStats ? `<div class="tv-stats-overlay">
+      // Rendered for every tile regardless of showStats (hidden via CSS unless the
+      // tile has .tv-tile-stats-active) so a tap can just toggle a class instead
+      // of rebuilding the whole grid — see the tvGrid click handler below.
+      const statsOverlay = `<div class="tv-stats-overlay">
           <div class="tv-stats-name">${escapeHtml(name)}</div>
           <div class="tv-stats-grid">
             <div><span class="tv-stat-value">${totals[pIdx]}</span><span class="tv-stat-label">Total</span></div>
@@ -3375,7 +3382,7 @@
             <div><span class="tv-stat-value">${roundsPlayed[pIdx]}</span><span class="tv-stat-label">Rounds</span></div>
             <div><span class="tv-stat-value">${lastScoreLabel}</span><span class="tv-stat-label">Last Score</span></div>
           </div>
-        </div>` : '';
+        </div>`;
       const tileHue = Math.round((360 / MAX_PLAYERS) * pIdx);
       return `<div class="${tileClasses}" data-player-idx="${pIdx}" style="--tile-hue:${tileHue}">
         ${photo}
@@ -3399,19 +3406,23 @@
   }
 
   // Tapping a tile toggles its dimmed stats overlay on/off; tapping a different tile
-  // switches the spotlight to that one instead of stacking multiple overlays.
+  // switches the spotlight to that one instead of stacking multiple overlays. This
+  // mutates classes directly rather than calling renderTvScreen() — a full re-render
+  // tears down and rebuilds every tile (photos included), which is needless work for
+  // what's purely a local show/hide and was a real source of jank on weaker devices.
   tvGrid.addEventListener('click', (e) => {
     const tile = e.target.closest('.tv-tile');
     if (!tile) return;
     const idx = Number(tile.dataset.playerIdx);
     if (Number.isNaN(idx)) return;
-    if (tvStatsShown.has(idx)) {
-      tvStatsShown.delete(idx);
-    } else {
-      tvStatsShown.clear();
+    const wasShown = tvStatsShown.has(idx);
+    const prevTile = tvGrid.querySelector('.tv-tile.tv-tile-stats-active');
+    if (prevTile) prevTile.classList.remove('tv-tile-stats-active');
+    tvStatsShown.clear();
+    if (!wasShown) {
       tvStatsShown.add(idx);
+      tile.classList.add('tv-tile-stats-active');
     }
-    renderTvScreen();
   });
 
   function exitTvMode() {
