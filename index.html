@@ -482,6 +482,17 @@
     text-transform: none;
   }
   .summary-meta b { color: var(--green); font-size: 14px; }
+  .edit-max-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+  .edit-max-btn:hover { border-color: var(--green); color: var(--green); }
 
   /* score-table-wrap kept for backward compatibility with earlier styles */
   .score-table-wrap { overflow-x: auto; margin-bottom: 22px; }
@@ -1599,7 +1610,7 @@
     <div class="board-section">
       <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
         <span>Player Summary</span>
-        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · MAX <b id="maxPointsDisplay">-</b></span>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · MAX <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button></span>
       </h2>
       <div id="summaryList" class="summary-list-compact"></div>
     </div>
@@ -1843,6 +1854,7 @@
   const matchNumDisplay = document.getElementById('matchNumDisplay');
   const setNumDisplay = document.getElementById('setNumDisplay');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const editMaxPointsBtn = document.getElementById('editMaxPointsBtn');
   const eventLegendText = document.getElementById('eventLegendText');
   const renamePlayersBtn = document.getElementById('renamePlayersBtn');
   const playerNamesDisplay = document.getElementById('playerNamesDisplay');
@@ -3703,6 +3715,35 @@
     buildEntryGrid();
     renderBoards();
   }
+
+  // Changing the elimination limit mid-game. Who's out is always derived from
+  // the current totals vs. maxPoints (see getOutFlags), so re-rendering is
+  // enough to eliminate or bring back players under the new limit.
+  function promptEditMaxPoints() {
+    const raw = prompt('Change the max points (elimination limit) to:', String(maxPoints ?? ''));
+    if (raw === null || raw.trim() === '') return;
+    const val = Number(raw.trim());
+    if (!Number.isInteger(val) || val <= 0) {
+      alert('Enter a positive whole number.');
+      return;
+    }
+    if (val === maxPoints) return;
+    const totals = getTotals(matches);
+    const newlyOut = players.filter((_, i) => forfeited[i] == null && totals[i] < maxPoints && totals[i] >= val);
+    const backIn = players.filter((_, i) => forfeited[i] == null && totals[i] >= maxPoints && totals[i] < val);
+    const notes = [];
+    if (newlyOut.length) notes.push(`Eliminated at ${val}: ${newlyOut.join(', ')}`);
+    if (backIn.length) notes.push(`Back in the game: ${backIn.join(', ')}`);
+    if (notes.length && !confirm(`Change max points from ${maxPoints} to ${val}?\n\n${notes.join('\n')}`)) return;
+    maxPoints = val;
+    maxPointsDisplay.textContent = maxPoints;
+    saveActiveGame();
+    renderPlayerNames();
+    buildEntryGrid();
+    renderBoards();
+  }
+
+  editMaxPointsBtn.addEventListener('click', promptEditMaxPoints);
 
   // ---------- IMPORT & START ----------
 
