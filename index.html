@@ -622,10 +622,40 @@
     font-family: var(--font-display);
     letter-spacing: 1px;
     text-transform: uppercase;
-    padding: 12px 16px;
+    padding: 14px 16px;
     margin-bottom: 14px;
     text-align: center;
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    animation: winnerBannerPop 0.6s cubic-bezier(.34,1.56,.64,1), winnerBannerGlow 1.8s ease-in-out 0.6s 2;
+  }
+  @keyframes winnerBannerPop {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes winnerBannerGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(var(--green-rgb),0); }
+    50% { box-shadow: 0 0 18px rgba(var(--green-rgb),0.55); }
+  }
+
+  /* Confetti burst for the game-over fanfare — plain divs (not canvas), fixed so
+     they fall over whichever screen is visible (main or TV Mode), auto-removed
+     by JS once their fall animation finishes. */
+  .confetti-piece {
+    position: fixed;
+    top: -24px;
+    width: 9px;
+    height: 14px;
+    z-index: 3000;
+    pointer-events: none;
+    opacity: 0.95;
+    animation-name: confettiFall;
+    animation-timing-function: cubic-bezier(.3,0,.7,1);
+    animation-fill-mode: forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translate(0, 0) rotate(var(--confetti-rotate, 0deg)); opacity: 0.95; }
+    100% { transform: translate(var(--confetti-drift, 0px), 108vh) rotate(calc(var(--confetti-rotate, 0deg) + 540deg)); opacity: 0.85; }
   }
 
   .history-item {
@@ -1355,6 +1385,38 @@
     100% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-3deg); }
   }
 
+  /* Game-over fanfare in TV Mode — covers the whole screen (not one tile), fixed
+     so it reads regardless of grid shape, shown once per game alongside confetti. */
+  .tv-game-winner-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    font-family: 'Bangers', cursive;
+    font-weight: 400;
+    font-size: clamp(32px, 9vw, 120px);
+    text-align: center;
+    letter-spacing: 2px;
+    color: #ffd400;
+    -webkit-text-stroke: 2px #7a3d00;
+    text-shadow:
+      0 0 20px rgba(255,212,0,0.9),
+      0 6px 0 #7a3d00,
+      0 10px 28px rgba(0,0,0,0.9);
+    padding: 0 24px;
+    animation: tvGameWinnerPop 5s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes tvGameWinnerPop {
+    0% { opacity: 0; transform: scale(0.5) rotate(-6deg); }
+    12% { opacity: 1; transform: scale(1.1) rotate(2deg); }
+    20% { transform: scale(1) rotate(0deg); }
+    85% { opacity: 1; transform: scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: scale(1.05) rotate(0deg); }
+  }
+
   /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
      just moved on top of the score grid instead of navigating away. */
   .tv-add-modal {
@@ -1624,6 +1686,7 @@
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
+  <div class="tv-game-winner-banner" id="tvGameWinnerBanner" hidden></div>
 
   <div class="tv-add-modal" id="tvAddModal" hidden>
     <div class="tv-add-modal-card" id="tvAddModalCard">
@@ -1662,6 +1725,7 @@
   let forfeited = [];            // per player: null if still in, else the 0-based index of their last played round
   let adjustments = [];          // manual total corrections: { playerIdx, delta } — shown as their own "ADJ" row in the Match Log
   let currentGameId = null;      // id of this game's slot in activeGamesList, or null when no game is loaded (setup screen)
+  let gameOverCelebrated = false; // whether the confetti/fanfare for THIS game's ending already fired
   let EVENTS = buildEvents(DEFAULT_DROP_POINTS, DEFAULT_MDROP_POINTS, DEFAULT_FULL_POINTS);
   let maxRoundPoints = DEFAULT_FULL_POINTS;  // cap for a single round's score — the configured Full Count value
 
@@ -1801,6 +1865,7 @@
   const tvModeBtn = document.getElementById('tvModeBtn');
   const tvScreen = document.getElementById('tvScreen');
   const tvGrid = document.getElementById('tvGrid');
+  const tvGameWinnerBanner = document.getElementById('tvGameWinnerBanner');
   const tvExitBtn = document.getElementById('tvExitBtn');
   const tvMatchNum = document.getElementById('tvMatchNum');
   const tvSetNum = document.getElementById('tvSetNum');
@@ -2273,6 +2338,56 @@
     });
   }
 
+  // ---------- GAME-OVER CELEBRATION ----------
+  // A bigger, once-per-game fanfare for whoever wins the whole game — separate
+  // from announceRoundWinner, which fires every round for the Rummy winner.
+
+  const CONFETTI_COLORS = ['#ff6a1f', '#33e18a', '#ffd23f', '#4fc3ff', '#ff5d8f', '#ffffff'];
+
+  function spawnConfetti(count) {
+    count = count || 70;
+    const frag = document.createDocumentFragment();
+    const pieces = [];
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = (Math.random() * 100) + 'vw';
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+      piece.style.animationDelay = (Math.random() * 0.5) + 's';
+      piece.style.setProperty('--confetti-rotate', Math.round(Math.random() * 360) + 'deg');
+      piece.style.setProperty('--confetti-drift', Math.round((Math.random() - 0.5) * 140) + 'px');
+      if (Math.random() < 0.5) piece.style.borderRadius = '50%';
+      frag.appendChild(piece);
+      pieces.push(piece);
+    }
+    document.body.appendChild(frag);
+    setTimeout(() => { pieces.forEach(p => p.remove()); }, 4200);
+  }
+
+  function showTvGameWinnerBanner(text) {
+    tvGameWinnerBanner.textContent = text;
+    tvGameWinnerBanner.hidden = false;
+    clearTimeout(showTvGameWinnerBanner._hideTimer);
+    showTvGameWinnerBanner._hideTimer = setTimeout(() => { tvGameWinnerBanner.hidden = true; }, 5000);
+  }
+
+  // Fires once when the game actually ends (see the gameOverCelebrated guard in
+  // renderBoards) — confetti plus, if Announce is on, a sound + spoken call-out.
+  // winnerName is null for the rare all-busted/no-winner case, where only the
+  // confetti plays.
+  function celebrateGameOver(winnerName) {
+    spawnConfetti();
+    if (!tvScreen.hidden) {
+      showTvGameWinnerBanner(winnerName ? `🏆 ${winnerName} WINS!` : 'GAME OVER');
+    }
+    if (winnerName && announceEnabled) {
+      playSoundEffect(announceSound).then(() => {
+        speak(`${winnerName} wins the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
+      });
+    }
+  }
+
   function renderAnnounceToggle() {
     announceToggle.classList.toggle('on', announceEnabled);
     announceToggle.textContent = announceEnabled ? '🔊 Announce: On' : '🔇 Announce: Off';
@@ -2705,6 +2820,7 @@
     forfeited = players.map(() => null);
     adjustments = [];
     currentGameId = null; // "Initialize New Game" always starts a fresh slot
+    gameOverCelebrated = false;
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
     editErrorMsg = '';
@@ -3616,6 +3732,7 @@
         forfeited = players.map(() => null);
         adjustments = [];
         currentGameId = null; // "Import & Start" always starts a fresh slot
+        gameOverCelebrated = false;
         maxPoints = maxPointsVal;
         playerCount = players.length;
         editingMatchIndex = null;
@@ -3956,6 +4073,12 @@
       gameOverBanner.innerHTML = activeIdx.length === 1
         ? `<div class="winner-banner">🏆 ${escapeHtml(players[activeIdx[0]])} wins the game!</div>`
         : `<div class="winner-banner" style="color:var(--orange); border-color:var(--orange);">All players have busted — no winner.</div>`;
+      if (!gameOverCelebrated) {
+        gameOverCelebrated = true;
+        celebrateGameOver(activeIdx.length === 1 ? players[activeIdx[0]] : null);
+      }
+    } else {
+      gameOverCelebrated = false;
     }
 
     let summaryHtml = players.map((name, pIdx) => {
@@ -4595,6 +4718,10 @@
     editErrorMsg = '';
     renamingPlayers = false;
     renameError = '';
+    // Suppress the confetti/fanfare replaying if we're resuming a game that was
+    // already over when it was saved — it should only fire the moment it happens.
+    const loadedOutFlags = getOutFlags(getTotals(matches));
+    gameOverCelebrated = players.filter((_, i) => !loadedOutFlags[i]).length <= 1;
 
     setupScreen.hidden = true;
     gameScreen.hidden = false;
