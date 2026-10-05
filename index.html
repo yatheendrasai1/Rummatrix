@@ -473,6 +473,10 @@
     margin-bottom: 16px;
   }
   .game-meta b { color: var(--green); font-size: 19px; }
+  .game-name-display { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #gameNameDisplay { color: var(--white); font-family: var(--font-body); font-weight: 700; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #gameNameDisplay.untitled { color: var(--muted); font-weight: 400; font-style: italic; }
+  .history-game-name { color: var(--white); font-weight: 700; }
 
   .summary-meta {
     font-family: var(--font-mono);
@@ -1030,6 +1034,7 @@
     white-space: nowrap;
   }
   .tv-brand span { color: var(--green); }
+  .tv-brand .tv-game-name { color: var(--white); font-family: var(--font-body); letter-spacing: 0; font-weight: 700; margin-left: 0.8em; }
   .tv-meta {
     font-family: var(--font-mono);
     color: var(--muted);
@@ -1551,6 +1556,11 @@
     </div>
 
     <div class="field-group">
+      <label>Game Name (optional)</label>
+      <input type="text" id="gameNameInput" maxlength="40" placeholder="e.g. Friday Night Rummy" style="max-width:320px;">
+    </div>
+
+    <div class="field-group">
       <label>Max Points (elimination limit)</label>
       <input type="number" id="maxPointsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 200" style="max-width:200px;">
     </div>
@@ -1602,6 +1612,10 @@
   <!-- GAME SCREEN -->
   <section class="panel" id="gameScreen" hidden>
     <div class="game-meta">
+      <div class="game-name-display">
+        <span id="gameNameDisplay"></span>
+        <button type="button" class="edit-max-btn" id="editGameNameBtn" title="Rename this game" aria-label="Rename this game">✎</button>
+      </div>
       <div>SET <b id="setNumDisplay">1</b></div>
     </div>
 
@@ -1718,7 +1732,7 @@
 <!-- TV MODE — a single, no-scroll screen sized for casting to a TV -->
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
-    <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
+    <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
     <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
@@ -1754,6 +1768,7 @@
   let editingMatchIndex = null;  // index of the match currently open for inline editing
   let editErrorMsg = '';         // validation message shown while editing a match
   let maxPoints = null;          // elimination limit for the game
+  let gameName = '';             // optional label for the game ('' = untitled)
   let gameHistory = [];          // archive of ended games — persisted to localStorage
   let renamingPlayers = false;   // whether the mid-game player-rename form is open
   let renameError = '';          // validation message shown while renaming players
@@ -1876,6 +1891,10 @@
   const matchNumDisplay = document.getElementById('matchNumDisplay');
   const setNumDisplay = document.getElementById('setNumDisplay');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const gameNameInput = document.getElementById('gameNameInput');
+  const gameNameDisplay = document.getElementById('gameNameDisplay');
+  const editGameNameBtn = document.getElementById('editGameNameBtn');
+  const tvGameName = document.getElementById('tvGameName');
   const editMaxPointsBtn = document.getElementById('editMaxPointsBtn');
   const eventLegendText = document.getElementById('eventLegendText');
   const renamePlayersBtn = document.getElementById('renamePlayersBtn');
@@ -1947,6 +1966,7 @@
   function snapshotCurrentGame() {
     return {
       id: currentGameId,
+      gameName,
       players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount, dealerIdx, forfeited, adjustments,
       eventPoints: {
         dropPts: EVENTS.find(e => e.key === 'drop').points,
@@ -2859,6 +2879,7 @@
     forfeited = players.map(() => null);
     adjustments = [];
     currentGameId = null; // "Initialize New Game" always starts a fresh slot
+    gameName = gameNameInput.value.trim();
     gameOverCelebrated = false;
     maxPoints = maxPointsVal;
     editingMatchIndex = null;
@@ -3318,7 +3339,7 @@
 
   exportCsvBtn.addEventListener('click', () => {
     if (players.length === 0) return;
-    downloadCsv(`rummy-game-${Date.now()}.csv`, matchesToCsv(players, matches));
+    downloadCsv(`${csvBaseName(gameName) || 'rummy-game'}-${Date.now()}.csv`, matchesToCsv(players, matches));
   });
 
   // Clears the live game state and returns to the setup screen's blank "new
@@ -3332,6 +3353,7 @@
     playerCount = null;
     setSize = 0;
     maxPoints = null;
+    gameName = '';
     forfeited = [];
     adjustments = [];
     editingMatchIndex = null;
@@ -3342,6 +3364,7 @@
     playerFields.innerHTML = '';
     playerFieldsWrap.hidden = true;
     maxPointsInput.value = '';
+    gameNameInput.value = '';
     dropPointsInput.value = '';
     mdropPointsInput.value = '';
     fullPointsInput.value = '';
@@ -3356,7 +3379,7 @@
     if (!confirm('End this game? You will be brought back to the game creation page.')) return;
 
     if (players.length > 0) {
-      archiveGameToHistory({ players, matches, maxPoints, forfeited, adjustments });
+      archiveGameToHistory({ gameName, players, matches, maxPoints, forfeited, adjustments });
     }
     removeActiveGameById(currentGameId);
     currentGameId = null;
@@ -3855,6 +3878,27 @@
 
   editMaxPointsBtn.addEventListener('click', promptEditMaxPoints);
 
+  function renderGameName() {
+    gameNameDisplay.textContent = gameName || 'Untitled game';
+    gameNameDisplay.classList.toggle('untitled', !gameName);
+    gameNameDisplay.title = gameName;
+    tvGameName.textContent = gameName;
+    tvGameName.hidden = !gameName;
+  }
+
+  editGameNameBtn.addEventListener('click', () => {
+    const raw = prompt('Name this game (leave blank to clear):', gameName);
+    if (raw === null) return;
+    gameName = raw.trim().slice(0, 40);
+    saveActiveGame();
+    renderGameName();
+  });
+
+  // Filesystem-safe slug of a game name for CSV downloads ('' if unnamed).
+  function csvBaseName(name) {
+    return (name || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+
   // ---------- IMPORT & START ----------
 
   importCsvBtn.addEventListener('click', () => {
@@ -3894,6 +3938,7 @@
         forfeited = players.map(() => null);
         adjustments = [];
         currentGameId = null; // "Import & Start" always starts a fresh slot
+        gameName = gameNameInput.value.trim();
         gameOverCelebrated = false;
         maxPoints = maxPointsVal;
         playerCount = players.length;
@@ -3943,6 +3988,7 @@
     const activeIdx = game.players.map((_, i) => i).filter(i => !outFlags[i]);
     const winnerName = activeIdx.length === 1 ? game.players[activeIdx[0]] : null;
     gameHistory.push({
+      gameName: game.gameName || '',
       players: game.players.slice(),
       matches: game.matches.map(m => m.slice()),
       maxPoints: game.maxPoints,
@@ -3984,8 +4030,9 @@
       const leadIdx = totals.reduce((best, t, i) => (best === -1 || t < totals[best]) ? i : best, -1);
       return `<div class="history-item">
         <div class="history-row-top">
-          <span class="history-date">${escapeHtml(g.players.join(', '))}</span>
+          <span class="history-date">${g.gameName ? `<span class="history-game-name">${escapeHtml(g.gameName)}</span>` : escapeHtml(g.players.join(', '))}</span>
         </div>
+        ${g.gameName ? `<div class="history-meta">Players: ${escapeHtml(g.players.join(', '))}</div>` : ''}
         <div class="history-meta">Rounds: ${g.matches.length} · Leading: ${leadIdx !== -1 ? escapeHtml(g.players[leadIdx]) : '—'}</div>
         <div class="actions-row" style="margin-top:8px;">
           <button type="button" class="btn-ghost resume-game-btn" data-game-id="${g.id}" style="font-size:11px; padding:6px 12px;">▶ Resume</button>
@@ -4034,7 +4081,7 @@
       const winnerText = g.winner ? `🏆 ${escapeHtml(g.winner)}` : '—';
       return `<div class="history-item">
         <div class="history-row-top">
-          <span class="history-date">${escapeHtml(g.endedAt)}</span>
+          <span class="history-date">${g.gameName ? `<span class="history-game-name">${escapeHtml(g.gameName)}</span> · ` : ''}${escapeHtml(g.endedAt)}</span>
           <button type="button" class="btn-ghost history-export-btn" data-history-index="${idx}" style="font-size:10px; padding:5px 10px;">⬇ Export</button>
         </div>
         <div class="history-meta">Players: ${g.players.map(escapeHtml).join(', ')}</div>
@@ -4049,7 +4096,7 @@
     const idx = Number(btn.dataset.historyIndex);
     const g = gameHistory[idx];
     if (!g) return;
-    downloadCsv(`rummy-game-${idx + 1}.csv`, matchesToCsv(g.players, g.matches));
+    downloadCsv(`${csvBaseName(g.gameName) || `rummy-game-${idx + 1}`}.csv`, matchesToCsv(g.players, g.matches));
   });
 
   // ---------- INLINE MATCH EDITING ----------
@@ -4202,6 +4249,7 @@
     setNumDisplay.textContent = currentSet;
     entryMatchNum.textContent = nextMatchNum;
     eventLegendText.textContent = EVENTS.map(ev => `${ev.code} = ${ev.label} (${ev.points})`).join(' · ');
+    renderGameName();
 
     renderPlayerNames();
     buildEntryGrid();
@@ -4864,6 +4912,7 @@
   function loadGameIntoState(saved) {
     const ep = saved.eventPoints || {};
     currentGameId = saved.id;
+    gameName = typeof saved.gameName === 'string' ? saved.gameName : '';
     players = saved.players;
     playerAvatars = Array.isArray(saved.playerAvatars) ? saved.playerAvatars : players.map(() => null);
     matches = saved.matches;
