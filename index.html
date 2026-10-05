@@ -1171,15 +1171,27 @@
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
   .tv-table-rank { font-family: var(--font-display); color: var(--orange); }
   .tv-table-row.lead .tv-table-rank { color: var(--green); }
-  .tv-table-player { display: flex; align-items: center; gap: 1.2vw; min-width: 0; font-weight: 700; color: var(--white); }
-  .tv-table-player .player-avatar { flex: none; width: 2.1em; height: 2.1em; font-size: 0.7em; }
+  .tv-table-player { display: flex; align-items: center; gap: 1.4vw; min-width: 0; min-height: 0; overflow: hidden; align-self: stretch; padding-block: 0.8vh; font-weight: 700; color: var(--white); }
+  /* Big rectangular photo filling the row's height — the initial stands in
+     when there's no picture. */
+  .tv-table-player .player-avatar {
+    flex: none;
+    height: 100%;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    max-width: 40%;
+    aspect-ratio: 4 / 3;
+    border-radius: 6px;
+    font-size: 1.1em;
+  }
   .tv-table-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tv-table-tag { flex: none; font-family: var(--font-mono); font-size: 0.4em; letter-spacing: 1px; text-transform: uppercase; color: var(--orange); }
   .tv-table-num { font-family: var(--font-mono); text-align: right; color: var(--muted); }
   .tv-table-total { font-family: var(--font-mono); font-weight: 700; text-align: right; color: #fff44f; }
   .tv-table-head .tv-table-num, .tv-table-head .tv-table-total { color: var(--muted); font-weight: 400; }
   @media (max-width: 600px) {
-    .tv-table-row { grid-template-columns: 1fr 5fr 2.2fr; }
+    .tv-table-row { grid-template-columns: 0.8fr 5fr 2fr; font-size: clamp(18px, 6.5vw, 30px); }
     .tv-table-hide-sm { display: none; }
   }
 
