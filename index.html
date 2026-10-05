@@ -881,6 +881,8 @@
     transition: all 0.15s ease;
   }
   .event-btn:hover { border-color: var(--green); color: var(--green); }
+  .entry-row input[type="number"].entry-invalid { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; }
+  .entry-row input[type="number"].entry-auto-rummy::placeholder { color: var(--green); opacity: 1; }
   .event-btn.selected { background: var(--orange); color: var(--ink-on-orange); border-color: var(--orange); }
   .event-btn[data-key="rummy"].selected { background: var(--green); color: var(--ink-on-green); border-color: var(--green); }
 
@@ -2887,11 +2889,13 @@
       input.id = `entry-${i}`;
       input.placeholder = outFlags[i] ? 'OUT' : 'pts';
       if (outFlags[i]) input.disabled = true;
-      input.addEventListener('input', () => { delete input.dataset.eventKey; syncEventSelection(row); updateTestDumpState(); });
+      input.addEventListener('input', () => { delete input.dataset.eventKey; syncEventSelection(row); onEntryChanged(); });
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          const next = document.getElementById(`entry-${i + 1}`);
+          // Skip eliminated players' (disabled) fields — focusing one is a no-op
+          // and would leave Enter stuck on the current row.
+          const next = activeEntryInputs().find(inp => Number(inp.id.replace('entry-', '')) > i);
           if (next) next.focus(); else addMatchBtn.click();
         }
       });
@@ -2912,10 +2916,11 @@
         b.textContent = ev.key === 'rummy' ? ev.code : `${ev.code} ${ev.points}`;
         if (outFlags[i]) b.disabled = true;
         b.addEventListener('click', () => {
+          if (ev.key === 'rummy') clearOtherRummy(i);
           input.value = ev.points;
           input.dataset.eventKey = ev.key;
           syncEventSelection(row);
-          updateTestDumpState();
+          onEntryChanged();
           // Deliberately not focusing the input here — tapping a preset chip shouldn't
           // pop up the on-screen keyboard; that should only happen when the text field
           // itself is tapped directly.
@@ -2926,7 +2931,57 @@
 
       entryGrid.appendChild(row);
     });
+    const active = activeEntryInputs();
+    active.forEach((inp, k) => { inp.enterKeyHint = k === active.length - 1 ? 'done' : 'next'; });
+    onEntryChanged();
+  }
+
+  function activeEntryInputs() {
+    return players.map((_, i) => document.getElementById(`entry-${i}`)).filter(inp => inp && !inp.disabled);
+  }
+
+  // Only one player can go Rummy per match, so picking Rummy for one player
+  // takes it away from whoever had it — rather than erroring at Add Match.
+  function clearOtherRummy(i) {
+    activeEntryInputs().forEach(inp => {
+      if (inp.id === `entry-${i}` || inp.value.trim() === '' || Number(inp.value) !== 0) return;
+      inp.value = '';
+      delete inp.dataset.eventKey;
+      syncEventSelection(inp.closest('.entry-row'));
+    });
+  }
+
+  // When every active player but one has a non-zero score, the remaining one
+  // must be the Rummy winner — Add Match fills that 0 in for them.
+  function autoRummyInput() {
+    const active = activeEntryInputs();
+    const blanks = active.filter(inp => inp.value.trim() === '');
+    if (active.length < 2 || blanks.length !== 1) return null;
+    const anyZero = active.some(inp => inp.value.trim() !== '' && Number(inp.value) === 0);
+    return anyZero ? null : blanks[0];
+  }
+
+  // Live entry feedback after any score change: flags out-of-range values,
+  // hints the auto-filled Rummy winner and shows progress on Add Match.
+  function onEntryChanged() {
     updateTestDumpState();
+    const active = activeEntryInputs();
+    const autoRummy = autoRummyInput();
+    active.forEach(inp => {
+      const v = inp.value.trim();
+      const n = Number(v);
+      inp.classList.toggle('entry-invalid', v !== '' && (!Number.isInteger(n) || n < 0 || n > maxRoundPoints));
+      inp.classList.toggle('entry-auto-rummy', inp === autoRummy);
+      inp.placeholder = inp === autoRummy ? 'Rummy · 0' : 'pts';
+    });
+    const filled = active.filter(inp => inp.value.trim() !== '').length;
+    addMatchBtn.textContent = active.length >= 2 ? `Add Match ▹ (${filled}/${active.length})` : 'Add Match ▹';
+  }
+
+  // Marks the given players' fields after a failed Add Match so it's obvious
+  // which ones need fixing; they clear again on the next edit.
+  function flagEntryInputs(indices) {
+    indices.forEach(i => document.getElementById(`entry-${i}`)?.classList.add('entry-invalid'));
   }
 
   // Highlights the event button actually pressed for this row (tracked via the input's
@@ -3085,7 +3140,7 @@
     input.value = score;
     if (parsed.eventKey) { input.dataset.eventKey = parsed.eventKey; } else { delete input.dataset.eventKey; }
     syncEventSelection(input.closest('.entry-row'));
-    updateTestDumpState();
+    onEntryChanged();
 
     voiceChainPos++;
     if (voiceChainPos < voiceChainQueue.length) {
@@ -3172,31 +3227,42 @@
       return;
     }
 
+    const autoRummy = autoRummyInput();
+    if (autoRummy) {
+      autoRummy.value = '0';
+      autoRummy.dataset.eventKey = 'rummy';
+      syncEventSelection(autoRummy.closest('.entry-row'));
+    }
+
     const activeValues = activeIdx.map(i => {
       const inp = document.getElementById(`entry-${i}`);
       return inp ? inp.value.trim() : '';
     });
+    const failWhere = (msg, pred) => {
+      entryError.textContent = msg;
+      flagEntryInputs(activeIdx.filter((_, k) => pred(activeValues[k], Number(activeValues[k]))));
+    };
 
     if (activeValues.some(v => v === '')) {
-      entryError.textContent = 'Enter a score for every active player.';
+      failWhere('Enter a score for every active player.', v => v === '');
       return;
     }
     const activeScores = activeValues.map(Number);
     if (activeScores.some(s => Number.isNaN(s) || s < 0 || !Number.isInteger(s))) {
-      entryError.textContent = 'Scores must be whole numbers, 0 or higher.';
+      failWhere('Scores must be whole numbers, 0 or higher.', (_, s) => Number.isNaN(s) || s < 0 || !Number.isInteger(s));
       return;
     }
     if (activeScores.some(s => s > maxRoundPoints)) {
-      entryError.textContent = `A score cannot exceed ${maxRoundPoints} points (Full Count) per round.`;
+      failWhere(`A score cannot exceed ${maxRoundPoints} points (Full Count) per round.`, (_, s) => s > maxRoundPoints);
       return;
     }
     const zeroCount = activeScores.filter(s => s === 0).length;
     if (zeroCount === 0) {
-      entryError.textContent = 'One player must win as Rummy (0 points) each match.';
+      failWhere('One player must win as Rummy (0 points) each match — tap Rummy for the winner.', () => true);
       return;
     }
     if (zeroCount > 1) {
-      entryError.textContent = 'Only one player can have a 0 (Rummy) score per match.';
+      failWhere('Only one player can have a 0 (Rummy) score per match.', (_, s) => s === 0);
       return;
     }
 
