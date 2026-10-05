@@ -473,6 +473,22 @@
     margin-bottom: 16px;
   }
   .game-meta b { color: var(--green); font-size: 19px; }
+  .mode-toggle { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mode-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 9px 14px;
+    cursor: pointer;
+  }
+  .mode-toggle-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .mode-toggle-btn.selected { background: var(--orange); color: var(--ink-on-orange); border-color: var(--orange); }
+  .game-mode-display { display: flex; align-items: center; gap: 6px; }
+  .game-mode-display b { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
   .game-name-display { display: flex; align-items: center; gap: 6px; min-width: 0; }
   #gameNameDisplay { color: var(--white); font-family: var(--font-body); font-weight: 700; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #gameNameDisplay.untitled { color: var(--muted); font-weight: 400; font-style: italic; }
@@ -1561,8 +1577,22 @@
     </div>
 
     <div class="field-group">
+      <label>Game Mode</label>
+      <div class="mode-toggle" id="modeToggle">
+        <button type="button" class="mode-toggle-btn selected" data-mode="elimination">Elimination</button>
+        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed Matches</button>
+      </div>
+      <p class="sub" id="modeHint" style="margin:8px 0 0; font-size:13px;"></p>
+    </div>
+
+    <div class="field-group" id="maxPointsField">
       <label>Max Points (elimination limit)</label>
       <input type="number" id="maxPointsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 200" style="max-width:200px;">
+    </div>
+
+    <div class="field-group" id="totalRoundsField" hidden>
+      <label>Number of Matches</label>
+      <input type="number" id="totalRoundsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 10" style="max-width:200px;">
     </div>
 
     <div class="field-group">
@@ -1616,7 +1646,11 @@
         <span id="gameNameDisplay"></span>
         <button type="button" class="edit-max-btn" id="editGameNameBtn" title="Rename this game" aria-label="Rename this game">✎</button>
       </div>
-      <div>SET <b id="setNumDisplay">1</b></div>
+      <div class="game-mode-display">
+        <b id="gameModeDisplay">Elimination</b>
+        <button type="button" class="edit-max-btn" id="switchModeBtn" title="Switch game mode" aria-label="Switch game mode">⇄</button>
+        <span>· SET <b id="setNumDisplay">1</b></span>
+      </div>
     </div>
 
     <div id="gameOverBanner" hidden></div>
@@ -1646,7 +1680,7 @@
     <div class="board-section">
       <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
         <span>Player Summary</span>
-        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · MAX <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button></span>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button></span>
       </h2>
       <div id="summaryList" class="summary-list-compact"></div>
     </div>
@@ -1733,7 +1767,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -1767,7 +1801,10 @@
   let setSize = 0;
   let editingMatchIndex = null;  // index of the match currently open for inline editing
   let editErrorMsg = '';         // validation message shown while editing a match
-  let maxPoints = null;          // elimination limit for the game
+  let maxPoints = null;          // elimination limit for the game (null in 'rounds' mode)
+  let gameMode = 'elimination';  // 'elimination': out at maxPoints, last one standing wins; 'rounds': play totalRounds matches, lowest total wins
+  let totalRounds = null;        // number of matches to play in 'rounds' mode
+  let setupMode = 'elimination'; // mode picked on the setup screen
   let gameName = '';             // optional label for the game ('' = untitled)
   let gameHistory = [];          // archive of ended games — persisted to localStorage
   let renamingPlayers = false;   // whether the mid-game player-rename form is open
@@ -1891,6 +1928,15 @@
   const matchNumDisplay = document.getElementById('matchNumDisplay');
   const setNumDisplay = document.getElementById('setNumDisplay');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const limitLabel = document.getElementById('limitLabel');
+  const tvLimitLabel = document.getElementById('tvLimitLabel');
+  const gameModeDisplay = document.getElementById('gameModeDisplay');
+  const switchModeBtn = document.getElementById('switchModeBtn');
+  const modeToggle = document.getElementById('modeToggle');
+  const modeHint = document.getElementById('modeHint');
+  const maxPointsField = document.getElementById('maxPointsField');
+  const totalRoundsField = document.getElementById('totalRoundsField');
+  const totalRoundsInput = document.getElementById('totalRoundsInput');
   const gameNameInput = document.getElementById('gameNameInput');
   const gameNameDisplay = document.getElementById('gameNameDisplay');
   const editGameNameBtn = document.getElementById('editGameNameBtn');
@@ -1967,7 +2013,7 @@
     return {
       id: currentGameId,
       gameName,
-      players, playerAvatars, matches, matchEvents, setSize, maxPoints, playerCount, dealerIdx, forfeited, adjustments,
+      players, playerAvatars, matches, matchEvents, setSize, maxPoints, gameMode, totalRounds, playerCount, dealerIdx, forfeited, adjustments,
       eventPoints: {
         dropPts: EVENTS.find(e => e.key === 'drop').points,
         mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -2435,14 +2481,14 @@
   // renderBoards) — confetti plus, if Announce is on, a sound + spoken call-out.
   // winnerName is null for the rare all-busted/no-winner case, where only the
   // confetti plays.
-  function celebrateGameOver(winnerName) {
+  function celebrateGameOver(winnerName, plural = false) {
     spawnConfetti();
     if (!tvScreen.hidden) {
-      showTvGameWinnerBanner(winnerName ? `🏆 ${winnerName} WINS!` : 'GAME OVER');
+      showTvGameWinnerBanner(winnerName ? `🏆 ${winnerName} ${plural ? 'WIN' : 'WINS'}!` : 'GAME OVER');
     }
     if (winnerName && announceEnabled) {
       playSoundEffect(announceSound).then(() => {
-        speak(`${winnerName} wins the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
+        speak(`${winnerName} ${plural ? 'win' : 'wins'} the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
       });
     }
   }
@@ -2856,9 +2902,11 @@
       return;
     }
 
-    const maxPointsVal = Number(maxPointsInput.value.trim());
-    if (!maxPointsInput.value.trim() || Number.isNaN(maxPointsVal) || !Number.isInteger(maxPointsVal) || maxPointsVal <= 0) {
-      setupError.textContent = 'Enter a valid max points limit (a positive whole number).';
+    let modeCfg;
+    try {
+      modeCfg = readModeConfig();
+    } catch (err) {
+      setupError.textContent = err.message;
       return;
     }
 
@@ -2881,7 +2929,7 @@
     currentGameId = null; // "Initialize New Game" always starts a fresh slot
     gameName = gameNameInput.value.trim();
     gameOverCelebrated = false;
-    maxPoints = maxPointsVal;
+    ({ gameMode, maxPoints, totalRounds } = modeCfg);
     editingMatchIndex = null;
     editErrorMsg = '';
     renamingPlayers = false;
@@ -2893,7 +2941,6 @@
     setupScreen.hidden = true;
     gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
-    maxPointsDisplay.textContent = maxPoints;
     renderAll();
   });
 
@@ -3247,6 +3294,7 @@
     for (let k = 0; k < 10; k++) {
       const totals = getTotals(matches);
       const outFlags = getOutFlags(totals);
+      if (gameMode === 'rounds' && matches.length >= totalRounds) break;
       const result = generateRandomMatch(outFlags);
       if (!result) break; // fewer than 2 active players remain — stop generating more rounds
       matches.push(result.scores);
@@ -3266,6 +3314,10 @@
 
     if (activeIdx.length < 2) {
       entryError.textContent = 'Not enough active players remain to record a match.';
+      return;
+    }
+    if (gameMode === 'rounds' && matches.length >= totalRounds) {
+      entryError.textContent = `All ${totalRounds} matches have been played.`;
       return;
     }
 
@@ -3353,6 +3405,8 @@
     playerCount = null;
     setSize = 0;
     maxPoints = null;
+    gameMode = 'elimination';
+    totalRounds = null;
     gameName = '';
     forfeited = [];
     adjustments = [];
@@ -3364,6 +3418,8 @@
     playerFields.innerHTML = '';
     playerFieldsWrap.hidden = true;
     maxPointsInput.value = '';
+    totalRoundsInput.value = '';
+    setSetupMode('elimination');
     gameNameInput.value = '';
     dropPointsInput.value = '';
     mdropPointsInput.value = '';
@@ -3379,7 +3435,7 @@
     if (!confirm('End this game? You will be brought back to the game creation page.')) return;
 
     if (players.length > 0) {
-      archiveGameToHistory({ gameName, players, matches, maxPoints, forfeited, adjustments });
+      archiveGameToHistory({ gameName, players, matches, maxPoints, gameMode, totalRounds, forfeited, adjustments });
     }
     removeActiveGameById(currentGameId);
     currentGameId = null;
@@ -3546,7 +3602,8 @@
 
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
-    tvMaxPoints.textContent = maxPoints ?? '—';
+    tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
+    tvMaxPoints.textContent = (gameMode === 'rounds' ? totalRounds : maxPoints) ?? '—';
     tvPrevTotals = totals.slice();
   }
 
@@ -3869,14 +3926,141 @@
     if (backIn.length) notes.push(`Back in the game: ${backIn.join(', ')}`);
     if (notes.length && !confirm(`Change max points from ${maxPoints} to ${val}?\n\n${notes.join('\n')}`)) return;
     maxPoints = val;
-    maxPointsDisplay.textContent = maxPoints;
     saveActiveGame();
+    renderModeMeta();
     renderPlayerNames();
     buildEntryGrid();
     renderBoards();
   }
 
-  editMaxPointsBtn.addEventListener('click', promptEditMaxPoints);
+  editMaxPointsBtn.addEventListener('click', () => {
+    if (gameMode === 'rounds') promptEditTotalRounds(); else promptEditMaxPoints();
+  });
+
+  // ---------- GAME MODES ----------
+  // 'elimination': anyone reaching maxPoints is out; the last player standing wins.
+  // 'rounds': nobody is out on points; after totalRounds matches the lowest
+  // total(s) win. Forfeits knock a player out in either mode.
+
+  function currentGameSnapshotLite() {
+    return { gameMode, totalRounds, matches };
+  }
+
+  // Whether a game (live or saved) is over and who won — winners is a list
+  // since Fixed Matches can end in a tie on the lowest total.
+  function computeGameResult(game, totals, outFlags) {
+    const activeIdx = outFlags.map((out, i) => out ? -1 : i).filter(i => i !== -1);
+    if (game.gameMode === 'rounds') {
+      const over = activeIdx.length <= 1 || (typeof game.totalRounds === 'number' && game.matches.length >= game.totalRounds);
+      if (!over || activeIdx.length === 0) return { over, winners: [] };
+      const best = Math.min(...activeIdx.map(i => totals[i]));
+      return { over, winners: activeIdx.filter(i => totals[i] === best) };
+    }
+    return { over: activeIdx.length <= 1, winners: activeIdx.length === 1 ? activeIdx : [] };
+  }
+
+  function modeLabel(mode) {
+    return mode === 'rounds' ? 'Fixed Matches' : 'Elimination';
+  }
+
+  function renderModeMeta() {
+    gameModeDisplay.textContent = modeLabel(gameMode);
+    const rounds = gameMode === 'rounds';
+    limitLabel.textContent = rounds ? 'OF' : 'MAX';
+    maxPointsDisplay.textContent = (rounds ? totalRounds : maxPoints) ?? '-';
+    if (rounds) matchNumDisplay.textContent = Math.min(matches.length + 1, totalRounds);
+    const label = rounds ? 'Change the number of matches' : 'Change the max points limit';
+    editMaxPointsBtn.title = label;
+    editMaxPointsBtn.setAttribute('aria-label', label);
+  }
+
+  function parsePositiveInt(raw) {
+    if (raw === null || raw.trim() === '') return null;
+    const n = Number(raw.trim());
+    return Number.isInteger(n) && n > 0 ? n : NaN;
+  }
+
+  function promptEditTotalRounds() {
+    const val = parsePositiveInt(prompt(`How many matches should this game have in total?\n(${matches.length} played so far)`, String(totalRounds ?? '')));
+    if (val === null || val === totalRounds) return;
+    if (Number.isNaN(val)) { alert('Enter a positive whole number.'); return; }
+    if (val < matches.length) { alert(`${matches.length} matches have already been played — enter ${matches.length} or more.`); return; }
+    if (val === matches.length && !confirm(`${val} matches have already been played, so this ends the game now. Continue?`)) return;
+    totalRounds = val;
+    saveActiveGame();
+    renderAll();
+  }
+
+  // Converts the live game to the other mode, asking for that mode's
+  // required setting. Scores and history are kept as they are; only who's out
+  // and how the game ends change.
+  function promptSwitchMode() {
+    const totals = getTotals(matches);
+    const pointsOut = players.filter((_, i) => forfeited[i] == null && maxPoints !== null && totals[i] >= maxPoints);
+    if (gameMode === 'elimination') {
+      const val = parsePositiveInt(prompt(
+        `Switch to FIXED MATCHES mode?\nNo one is eliminated on points — after the set number of matches, the lowest total wins.\n\nHow many matches in total? (${matches.length} played so far)`,
+        String(Math.max(matches.length + 1, 10))));
+      if (val === null) return;
+      if (Number.isNaN(val)) { alert('Enter a positive whole number.'); return; }
+      if (val < matches.length) { alert(`${matches.length} matches have already been played — enter ${matches.length} or more.`); return; }
+      const notes = [];
+      if (pointsOut.length) notes.push(`Back in the game: ${pointsOut.join(', ')}`);
+      if (val === matches.length) notes.push('That many matches have already been played, so the game ends now.');
+      if (notes.length && !confirm(`Switch to Fixed Matches (${val} matches)?\n\n${notes.join('\n')}`)) return;
+      gameMode = 'rounds';
+      totalRounds = val;
+      maxPoints = null;
+    } else {
+      const val = parsePositiveInt(prompt(
+        'Switch to ELIMINATION mode?\nAnyone reaching the max points is out — the last player standing wins.\n\nMax points (elimination limit):',
+        '200'));
+      if (val === null) return;
+      if (Number.isNaN(val)) { alert('Enter a positive whole number.'); return; }
+      const newlyOut = players.filter((_, i) => forfeited[i] == null && totals[i] >= val);
+      const remaining = players.filter((_, i) => forfeited[i] == null).length - newlyOut.length;
+      const notes = [];
+      if (newlyOut.length) notes.push(`Eliminated at ${val}: ${newlyOut.join(', ')}`);
+      if (remaining <= 1) notes.push('That leaves one player or fewer, so the game ends now.');
+      if (notes.length && !confirm(`Switch to Elimination (max ${val})?\n\n${notes.join('\n')}`)) return;
+      gameMode = 'elimination';
+      maxPoints = val;
+      totalRounds = null;
+    }
+    saveActiveGame();
+    renderAll();
+  }
+
+  switchModeBtn.addEventListener('click', promptSwitchMode);
+
+  function setSetupMode(mode) {
+    setupMode = mode;
+    [...modeToggle.children].forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    maxPointsField.hidden = mode !== 'elimination';
+    totalRoundsField.hidden = mode !== 'rounds';
+    modeHint.textContent = mode === 'rounds'
+      ? 'Play a set number of matches — no one is eliminated on points; the lowest total at the end wins.'
+      : 'Players are out once they reach the max points — the last player standing wins.';
+  }
+  setSetupMode('elimination');
+
+  modeToggle.addEventListener('click', (e) => {
+    const b = e.target.closest('.mode-toggle-btn');
+    if (b) setSetupMode(b.dataset.mode);
+  });
+
+  // Reads the setup screen's mode + its required setting — throws a
+  // user-facing message if that setting is missing or invalid.
+  function readModeConfig() {
+    if (setupMode === 'rounds') {
+      const n = parsePositiveInt(totalRoundsInput.value);
+      if (n === null || Number.isNaN(n)) throw new Error('Enter the number of matches to play (a positive whole number).');
+      return { gameMode: 'rounds', maxPoints: null, totalRounds: n };
+    }
+    const n = parsePositiveInt(maxPointsInput.value);
+    if (n === null || Number.isNaN(n)) throw new Error('Enter a valid max points limit (a positive whole number).');
+    return { gameMode: 'elimination', maxPoints: n, totalRounds: null };
+  }
 
   function renderGameName() {
     gameNameDisplay.textContent = gameName || 'Untitled game';
@@ -3912,9 +4096,11 @@
       setupError.textContent = 'Choose a CSV file to import first.';
       return;
     }
-    const maxPointsVal = Number(maxPointsInput.value.trim());
-    if (!maxPointsInput.value.trim() || Number.isNaN(maxPointsVal) || !Number.isInteger(maxPointsVal) || maxPointsVal <= 0) {
-      setupError.textContent = 'Enter a valid max points limit before importing.';
+    let modeCfg;
+    try {
+      modeCfg = readModeConfig();
+    } catch (err) {
+      setupError.textContent = err.message;
       return;
     }
 
@@ -3940,7 +4126,7 @@
         currentGameId = null; // "Import & Start" always starts a fresh slot
         gameName = gameNameInput.value.trim();
         gameOverCelebrated = false;
-        maxPoints = maxPointsVal;
+        ({ gameMode, maxPoints, totalRounds } = modeCfg);
         playerCount = players.length;
         editingMatchIndex = null;
         editErrorMsg = '';
@@ -3955,7 +4141,6 @@
         setupScreen.hidden = true;
         gameScreen.hidden = false;
         statusText.textContent = 'GAME ACTIVE';
-        maxPointsDisplay.textContent = maxPoints;
         renderAll();
       } catch (err) {
         setupError.textContent = err.message || 'Could not parse that CSV file.';
@@ -3985,13 +4170,15 @@
   function archiveGameToHistory(game) {
     const totals = computeTotalsForSnapshot(game);
     const outFlags = computeOutFlagsForSnapshot(game, totals);
-    const activeIdx = game.players.map((_, i) => i).filter(i => !outFlags[i]);
-    const winnerName = activeIdx.length === 1 ? game.players[activeIdx[0]] : null;
+    const { winners } = computeGameResult(game, totals, outFlags);
+    const winnerName = winners.length ? winners.map(i => game.players[i]).join(' & ') : null;
     gameHistory.push({
       gameName: game.gameName || '',
       players: game.players.slice(),
       matches: game.matches.map(m => m.slice()),
       maxPoints: game.maxPoints,
+      gameMode: game.gameMode || 'elimination',
+      totalRounds: game.totalRounds ?? null,
       winner: winnerName,
       endedAt: new Date().toLocaleString()
     });
@@ -4085,7 +4272,7 @@
           <button type="button" class="btn-ghost history-export-btn" data-history-index="${idx}" style="font-size:10px; padding:5px 10px;">⬇ Export</button>
         </div>
         <div class="history-meta">Players: ${g.players.map(escapeHtml).join(', ')}</div>
-        <div class="history-meta">Rounds: ${g.matches.length} · Max Points: ${g.maxPoints} · Winner: ${winnerText}</div>
+        <div class="history-meta">Rounds: ${g.matches.length} · ${g.gameMode === 'rounds' ? `Fixed Matches: ${g.totalRounds}` : `Max Points: ${g.maxPoints}`} · Winner: ${winnerText}</div>
       </div>`;
     }).reverse().join('');
   }
@@ -4250,6 +4437,7 @@
     entryMatchNum.textContent = nextMatchNum;
     eventLegendText.textContent = EVENTS.map(ev => `${ev.code} = ${ev.label} (${ev.points})`).join(' · ');
     renderGameName();
+    renderModeMeta();
 
     renderPlayerNames();
     buildEntryGrid();
@@ -4262,9 +4450,8 @@
     const activeIdx = players.map((_, i) => i).filter(i => !outFlags[i]);
     const cols = `70px repeat(${players.length}, minmax(70px, 1fr))`;
 
-    // A forfeit can end the game even with no points limit set, so this no
-    // longer requires maxPoints — dropping to one active player is enough.
-    const gameOver = activeIdx.length <= 1;
+    const result = computeGameResult(currentGameSnapshotLite(), totals, outFlags);
+    const gameOver = result.over;
     addMatchBtn.disabled = gameOver;
     voiceEntryBtn.disabled = gameOver;
     if (gameOver) { testDumpBtn.disabled = true; stopVoiceEntry(); }
@@ -4280,12 +4467,15 @@
 
     gameOverBanner.hidden = !gameOver;
     if (gameOver) {
-      gameOverBanner.innerHTML = activeIdx.length === 1
-        ? `<div class="winner-banner">🏆 ${escapeHtml(players[activeIdx[0]])} wins the game!</div>`
-        : `<div class="winner-banner" style="color:var(--orange); border-color:var(--orange);">All players have busted — no winner.</div>`;
+      const winnerNames = result.winners.map(i => players[i]);
+      gameOverBanner.innerHTML = winnerNames.length === 1
+        ? `<div class="winner-banner">🏆 ${escapeHtml(winnerNames[0])} wins the game!</div>`
+        : winnerNames.length > 1
+          ? `<div class="winner-banner">🏆 ${winnerNames.map(escapeHtml).join(' & ')} tie for the win!</div>`
+          : `<div class="winner-banner" style="color:var(--orange); border-color:var(--orange);">All players have busted — no winner.</div>`;
       if (!gameOverCelebrated) {
         gameOverCelebrated = true;
-        celebrateGameOver(activeIdx.length === 1 ? players[activeIdx[0]] : null);
+        celebrateGameOver(winnerNames.length ? winnerNames.join(' and ') : null, winnerNames.length > 1);
       }
     } else {
       gameOverCelebrated = false;
@@ -4315,7 +4505,7 @@
             <div class="stat"><span class="stat-value">${drops[pIdx]}</span><span class="stat-label">Drops</span></div>
             <div class="stat"><span class="stat-value">${fulls[pIdx]}</span><span class="stat-label">Full</span></div>
           </div>
-          <div class="summary-timeline">
+          <div class="summary-timeline" ${gameMode === 'rounds' ? 'hidden' : ''}>
             <div class="timeline-track">
               <div class="timeline-fill ${isOut ? 'out' : ''}" style="width:${markerPct}%"></div>
               <div class="timeline-marker ${isOut ? 'out' : ''}" style="left:${markerPct}%"></div>
@@ -4919,6 +5109,8 @@
     matchEvents = Array.isArray(saved.matchEvents) ? saved.matchEvents : matches.map(m => m.map(() => null));
     setSize = saved.setSize || players.length;
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
+    gameMode = saved.gameMode === 'rounds' ? 'rounds' : 'elimination';
+    totalRounds = typeof saved.totalRounds === 'number' ? saved.totalRounds : null;
     playerCount = saved.playerCount || players.length;
     dealerIdx = (typeof saved.dealerIdx === 'number' && saved.dealerIdx >= 0 && saved.dealerIdx < players.length) ? saved.dealerIdx : 0;
     forfeited = Array.isArray(saved.forfeited) ? saved.forfeited : players.map(() => null);
@@ -4931,13 +5123,12 @@
     renameError = '';
     // Suppress the confetti/fanfare replaying if we're resuming a game that was
     // already over when it was saved — it should only fire the moment it happens.
-    const loadedOutFlags = getOutFlags(getTotals(matches));
-    gameOverCelebrated = players.filter((_, i) => !loadedOutFlags[i]).length <= 1;
+    const loadedTotals = getTotals(matches);
+    gameOverCelebrated = computeGameResult(currentGameSnapshotLite(), loadedTotals, getOutFlags(loadedTotals)).over;
 
     setupScreen.hidden = true;
     gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
-    maxPointsDisplay.textContent = maxPoints;
     renderAll();
   }
 
