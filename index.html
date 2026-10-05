@@ -1143,16 +1143,16 @@
   .tv-table[hidden] { display: none; }
   .tv-table-row {
     display: grid;
-    grid-template-columns: 1.1fr 6fr 1.6fr 1.8fr 2fr;
+    grid-template-columns: 1.1fr 6fr 1.8fr 2fr;
     align-items: center;
     gap: 1.5vw;
     padding: 0 2vw;
     flex: 1 1 0;
-    max-height: 14vh;
-    min-height: 44px;
+    max-height: 16vh;
+    min-height: 52px;
     background: var(--panel);
     border: 1px solid var(--border);
-    font-size: clamp(16px, 4.2vh, 44px);
+    font-size: clamp(22px, 6.2vh, 68px);
   }
   .tv-table-row.tv-table-head {
     flex: 0 0 auto;
@@ -1161,7 +1161,7 @@
     background: transparent;
     border-color: transparent;
     font-family: var(--font-mono);
-    font-size: clamp(10px, 1.8vh, 16px);
+    font-size: clamp(12px, 2.4vh, 22px);
     letter-spacing: 2px;
     text-transform: uppercase;
     color: var(--muted);
@@ -3581,7 +3581,7 @@
 
   // Rows sorted lowest total first; forfeited players sink to the bottom.
   // Tied totals share a rank (1, 1, 3 …).
-  function renderTvTable(totals, outFlags, lastScores, rummies, minActiveTotal) {
+  function renderTvTable(totals, outFlags, rummies, minActiveTotal) {
     const order = players.map((_, i) => i).sort((a, b) => (outFlags[a] - outFlags[b]) || (totals[a] - totals[b]) || (a - b));
     let rank = 0;
     const rows = order.map((pIdx, pos) => {
@@ -3592,14 +3592,12 @@
       return `<div class="tv-table-row ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'updated' : ''}">
         <span class="tv-table-rank">${isOut ? '—' : rank}</span>
         <span class="tv-table-player">${avatarHtml(pIdx, '')}<span class="tv-table-name">${escapeHtml(players[pIdx])}</span>${pIdx === dealerIdx ? '<span title="Dealing this round">🃏</span>' : ''}${isOut ? `<span class="tv-table-tag">${forfeited[pIdx] != null ? 'Forfeited' : 'Out'}</span>` : ''}</span>
-        <span class="tv-table-num tv-table-hide-sm">${lastScores[pIdx] ?? '—'}</span>
         <span class="tv-table-num tv-table-hide-sm">${rummies[pIdx]}</span>
         <span class="tv-table-total">${totals[pIdx]}</span>
       </div>`;
     }).join('');
     tvTable.innerHTML = `<div class="tv-table-row tv-table-head">
         <span>#</span><span>Player</span>
-        <span class="tv-table-num tv-table-hide-sm">Last</span>
         <span class="tv-table-num tv-table-hide-sm">Rummies</span>
         <span class="tv-table-total">Total</span>
       </div>${rows}`;
@@ -3706,7 +3704,7 @@
     tvShowNamesBtn.hidden = tableOn;
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
-    if (tableOn) renderTvTable(totals, outFlags, lastScores, rummies, minActiveTotal);
+    if (tableOn) renderTvTable(totals, outFlags, rummies, minActiveTotal);
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
     tvMaxPoints.textContent = (gameMode === 'rounds' ? totalRounds : maxPoints) ?? '—';
