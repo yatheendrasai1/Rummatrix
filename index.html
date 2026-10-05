@@ -1139,7 +1139,7 @@
   /* Points-table alternative to the tile grid (Fixed Matches mode only) —
      one row per player, lowest total first. Rows share the height so up to
      7 players fill a TV without scrolling. */
-  .tv-table { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0.8vh; overflow-y: auto; }
+  .tv-table { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0.8vh; overflow-y: auto; padding-bottom: 1px; }
   .tv-table[hidden] { display: none; }
   .tv-table-row {
     display: grid;
@@ -1149,10 +1149,12 @@
     padding: 0 2vw;
     flex: 1 1 0;
     max-height: 16vh;
-    min-height: 52px;
+    min-height: 0;
     background: var(--panel);
     border: 1px solid var(--border);
-    font-size: clamp(22px, 6.2vh, 68px);
+    /* Sized off the height so up to 7 rows always fit without scrolling,
+       however short the screen (landscape phone, browser with toolbars). */
+    font-size: clamp(13px, 5.4vh, 64px);
   }
   .tv-table-row.tv-table-head {
     flex: 0 0 auto;
@@ -1191,7 +1193,7 @@
   .tv-table-total { font-family: var(--font-mono); font-weight: 700; text-align: right; color: #fff44f; }
   .tv-table-head .tv-table-num, .tv-table-head .tv-table-total { color: var(--muted); font-weight: 400; }
   @media (max-width: 600px) {
-    .tv-table-row { grid-template-columns: 0.8fr 5fr 2fr; font-size: clamp(18px, 6.5vw, 30px); }
+    .tv-table-row { grid-template-columns: 0.8fr 5fr 2fr; font-size: min(6.5vw, 4.6vh, 30px); }
     .tv-table-hide-sm { display: none; }
   }
 
