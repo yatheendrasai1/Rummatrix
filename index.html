@@ -1293,6 +1293,26 @@
     text-shadow: 0 0.4cqh 1cqh rgba(0,0,0,0.9), 0 0.15cqh 0.4cqh rgba(0,0,0,0.95);
   }
   .tv-tile.out .tv-score { color: var(--orange); }
+  /* Player name, bottom-left opposite the score — only shown when the TV
+     "Aa" toggle is on (.tv-names-on on the grid), so toggling needs no rebuild. */
+  .tv-name {
+    display: none;
+    flex: 1;
+    min-width: 0;
+    align-self: flex-end;
+    margin-right: 2cqw;
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: #fff;
+    font-size: min(9cqh, 11cqw);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 0.3cqh 0.8cqh rgba(0,0,0,0.9), 0 0.1cqh 0.3cqh rgba(0,0,0,0.95);
+  }
+  .tv-grid.tv-names-on .tv-name { display: block; }
+  .tv-toggle-btn.tv-names-btn { width: auto; padding: 0 0.6em; border-radius: 999px; font-size: clamp(11px, 1.4vw, 15px); }
 
   /* Pulse/glow the tile and pop the number whenever a score actually changes,
      so an update reads clearly on a TV from across a room. */
@@ -1699,7 +1719,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · MAX <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -1890,6 +1910,7 @@
   const tvMaxPoints = document.getElementById('tvMaxPoints');
   const tvAddScoreBtn = document.getElementById('tvAddScoreBtn');
   const tvShowOutBtn = document.getElementById('tvShowOutBtn');
+  const tvShowNamesBtn = document.getElementById('tvShowNamesBtn');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
@@ -3391,6 +3412,28 @@
     renderTvScreen();
   });
 
+  // Player names on the TV tiles — off by default (photos + scores only) and
+  // remembered per device, since it's a display preference rather than game state.
+  const TV_SHOW_NAMES_KEY = 'rummatrix.tvShowNames';
+  let tvShowNames = false;
+  try { tvShowNames = localStorage.getItem(TV_SHOW_NAMES_KEY) === 'true'; } catch (err) { /* ignore */ }
+
+  function updateTvShowNames() {
+    tvGrid.classList.toggle('tv-names-on', tvShowNames);
+    tvShowNamesBtn.classList.toggle('active', tvShowNames);
+    const label = tvShowNames ? 'Hide player names' : 'Show player names';
+    tvShowNamesBtn.title = label;
+    tvShowNamesBtn.setAttribute('aria-label', label);
+    tvShowNamesBtn.setAttribute('aria-pressed', String(tvShowNames));
+  }
+  updateTvShowNames();
+
+  tvShowNamesBtn.addEventListener('click', () => {
+    tvShowNames = !tvShowNames;
+    try { localStorage.setItem(TV_SHOW_NAMES_KEY, String(tvShowNames)); } catch (err) { /* ignore */ }
+    updateTvShowNames();
+  });
+
   // Index of the player who just won a round as Rummy, set right when that round is
   // added and consumed by the very next TV render — so the winner spotlight animation
   // fires exactly once and never replays on a later, unrelated re-render.
@@ -3470,6 +3513,7 @@
         ${pIdx === dealerIdx ? '<span class="tv-dealer-badge" title="Dealing this round">🃏</span>' : ''}
         ${tag}
         <div class="tv-overlay">
+          <div class="tv-name">${escapeHtml(name)}</div>
           <div class="tv-score ${changed ? 'tv-score-updated' : ''}">${totals[pIdx]}</div>
         </div>
         ${statsOverlay}
