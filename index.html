@@ -3720,7 +3720,9 @@
     tvShowNamesBtn.hidden = tableOn;
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
-    if (tableOn) renderTvTable(totals, outFlags, rummies, drops, minActiveTotal);
+    // The points table counts plain Drops only — Middle Drops are left out.
+    const plainDrops = players.map((_, pIdx) => matchEvents.filter(evRow => evRow && evRow[pIdx] === 'drop').length);
+    if (tableOn) renderTvTable(totals, outFlags, rummies, plainDrops, minActiveTotal);
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
     tvMaxPoints.textContent = (gameMode === 'rounds' ? totalRounds : maxPoints) ?? '—';
