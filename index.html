@@ -1534,33 +1534,20 @@
 
   /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
      just moved on top of the score grid instead of navigating away. */
-  /* Per-player Rummy voice clip dialog (opened from Edit Players). */
-  .clip-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    background: rgba(0,0,0,0.72);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
+  /* Voice Settings: per-player Rummy voice clips. */
+  #voiceSettingsSection { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--border); }
+  .clip-row {
+    display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
   }
-  .clip-modal[hidden] { display: none; }
-  .clip-modal-card {
-    width: min(100%, 420px);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .clip-modal-card h3 { margin: 0 0 4px; color: var(--white); font-family: var(--font-body); font-size: 18px; }
-  .clip-modal-card .sub { margin: 0 0 14px; font-size: 13px; }
-  .clip-modal-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 14px; min-height: 1.4em; }
-  .clip-modal-status.recording { color: var(--orange); }
-  .clip-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .clip-modal-actions button { font-size: 12px; padding: 9px 14px; }
-  .voice-clip-btn.has-clip { border-color: var(--green); color: var(--green); }
-  .chip-clip-badge { margin-left: 4px; font-size: 11px; }
+  .clip-row:last-of-type { border-bottom: none; }
+  .clip-row-player { display: flex; align-items: center; gap: 8px; flex: 1 1 140px; min-width: 0; color: var(--white); font-weight: 600; }
+  .clip-row-player span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip-row-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); flex: 1 1 130px; }
+  .clip-row-status.has-clip { color: var(--green); }
+  .clip-row-status.recording { color: var(--orange); }
+  .clip-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .clip-row-actions button { font-size: 11px; padding: 7px 11px; }
 
   .tv-add-modal {
     position: absolute;
@@ -1805,6 +1792,14 @@
       </div>
     </details>
 
+    <details class="collapsible-section" id="voiceSettingsSection">
+      <summary>Voice Settings</summary>
+      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy. Record up to 10 seconds, or upload an audio file (under 3 MB).</p>
+      <div id="playerClipList"></div>
+      <div class="error-text" id="playerClipError"></div>
+      <input type="file" id="clipFileInput" accept="audio/*" hidden>
+    </details>
+
   </section>
 
   <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
@@ -1825,22 +1820,6 @@
     <div class="tv-add-modal-card" id="tvAddModalCard">
       <button type="button" class="btn-ghost tv-add-done-btn" id="tvAddDoneBtn">✓ Done — Back to TV Mode</button>
     </div>
-  </div>
-</div>
-
-<div class="clip-modal" id="clipModal" hidden>
-  <div class="clip-modal-card" role="dialog" aria-modal="true" aria-labelledby="clipModalTitle">
-    <h3 id="clipModalTitle">Rummy voice clip</h3>
-    <p class="sub">Plays 1 second after this player wins a round with Rummy. Record up to 10 seconds, or upload an audio file.</p>
-    <div class="clip-modal-status" id="clipModalStatus"></div>
-    <div class="clip-modal-actions">
-      <button type="button" class="btn-primary" id="clipRecordBtn">● Record</button>
-      <button type="button" class="btn-ghost" id="clipUploadBtn">⬆ Upload</button>
-      <button type="button" class="btn-ghost" id="clipPlayBtn">▶ Play</button>
-      <button type="button" class="btn-ghost danger" id="clipRemoveBtn">🗑 Remove</button>
-      <button type="button" class="btn-ghost" id="clipDoneBtn" style="margin-left:auto;">Done</button>
-    </div>
-    <input type="file" id="clipFileInput" accept="audio/*" hidden>
   </div>
 </div>
 
@@ -2337,7 +2316,7 @@
     if (!hasPlayerClip(oldName)) return;
     clipStoreOp('readonly', store => store.get(clipKey(oldName)))
       .then(blob => blob ? savePlayerClip(newName, blob).then(() => removePlayerClip(oldName)) : null)
-      .then(() => renderPlayerNames())
+      .then(() => { renderPlayerNames(); renderPlayerClipList(); })
       .catch(() => { /* best-effort */ });
   }
 
@@ -2380,40 +2359,38 @@
     }, RUMMY_CLIP_DELAY_MS);
   }
 
-  // --- Clip dialog (record / upload / play / remove) ---
-  const clipModal = document.getElementById('clipModal');
-  const clipModalTitle = document.getElementById('clipModalTitle');
-  const clipModalStatus = document.getElementById('clipModalStatus');
-  const clipRecordBtn = document.getElementById('clipRecordBtn');
-  const clipUploadBtn = document.getElementById('clipUploadBtn');
-  const clipPlayBtn = document.getElementById('clipPlayBtn');
-  const clipRemoveBtn = document.getElementById('clipRemoveBtn');
-  const clipDoneBtn = document.getElementById('clipDoneBtn');
+  // --- Voice Settings list: one row per player (record / upload / play / remove) ---
+  const playerClipList = document.getElementById('playerClipList');
+  const playerClipError = document.getElementById('playerClipError');
   const clipFileInput = document.getElementById('clipFileInput');
-  let clipModalName = null;
-  let clipRecorder = null;
+  let clipRecorder = null;       // active MediaRecorder, if any
+  let clipRecordingIdx = null;   // player index being recorded
   let clipRecordTimer = null;
+  let clipUploadIdx = null;      // player index awaiting a chosen file
 
-  function setClipStatus(text, recording) {
-    clipModalStatus.textContent = text;
-    clipModalStatus.classList.toggle('recording', !!recording);
+  function setClipMessage(text) {
+    playerClipError.style.color = '';
+    playerClipError.textContent = text || '';
   }
 
-  function refreshClipModal() {
-    const has = hasPlayerClip(clipModalName);
-    clipPlayBtn.disabled = !has;
-    clipRemoveBtn.disabled = !has;
-    clipRecordBtn.textContent = clipRecorder ? '■ Stop' : '● Record';
-    if (!clipRecorder) setClipStatus(has ? '✓ Clip saved.' : 'No clip yet.');
-  }
-
-  function openClipModal(i) {
-    clipModalName = players[i];
-    if (!clipModalName) return;
-    clipModalTitle.textContent = `Rummy voice clip — ${clipModalName}`;
-    clipRecordBtn.hidden = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-    clipModal.hidden = false;
-    refreshClipModal();
+  function renderPlayerClipList() {
+    if (players.length === 0) { playerClipList.innerHTML = ''; return; }
+    const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+    playerClipList.innerHTML = players.map((name, i) => {
+      const has = hasPlayerClip(name);
+      const recording = clipRecordingIdx === i;
+      const busyElsewhere = clipRecordingIdx !== null && !recording;
+      return `<div class="clip-row" data-clip-idx="${i}">
+        <span class="clip-row-player">${avatarHtml(i, 'avatar-xs')}<span>${escapeHtml(name)}</span></span>
+        <span class="clip-row-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? '✓ Clip saved' : 'No clip')}</span>
+        <span class="clip-row-actions">
+          ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
+          <button type="button" class="btn-ghost" data-clip-action="upload" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ Upload</button>
+          <button type="button" class="btn-ghost" data-clip-action="play" ${has ? '' : 'disabled'}>▶ Play</button>
+          <button type="button" class="btn-ghost danger" data-clip-action="remove" ${has ? '' : 'disabled'}>🗑 Remove</button>
+        </span>
+      </div>`;
+    }).join('');
   }
 
   function stopClipRecording() {
@@ -2421,58 +2398,70 @@
     if (clipRecorder && clipRecorder.state !== 'inactive') clipRecorder.stop();
   }
 
-  function closeClipModal() {
-    stopClipRecording();
-    clipModal.hidden = true;
-    clipModalName = null;
-    renderPlayerNames();
-  }
-
   function storeClipFor(name, blob) {
-    if (blob.size > PLAYER_CLIP_MAX_BYTES) { setClipStatus('That clip is too large — keep it under 3 MB.'); return; }
+    if (blob.size > PLAYER_CLIP_MAX_BYTES) { setClipMessage(`That clip is too large — keep it under 3 MB.`); renderPlayerClipList(); return; }
     savePlayerClip(name, blob)
-      .then(() => { if (clipModalName === name) refreshClipModal(); renderPlayerNames(); })
-      .catch(() => setClipStatus('Could not save the clip on this device.'));
+      .then(() => { setClipMessage(''); renderPlayerClipList(); renderPlayerNames(); })
+      .catch(() => { setClipMessage('Could not save the clip on this device.'); renderPlayerClipList(); });
   }
 
-  clipRecordBtn.addEventListener('click', () => {
-    if (clipRecorder) { stopClipRecording(); return; }
-    const name = clipModalName;
+  function startClipRecording(i) {
+    const name = players[i];
+    setClipMessage('');
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       const chunks = [];
       const rec = new MediaRecorder(stream);
       clipRecorder = rec;
+      clipRecordingIdx = i;
       rec.addEventListener('dataavailable', e => { if (e.data && e.data.size) chunks.push(e.data); });
       rec.addEventListener('stop', () => {
         stream.getTracks().forEach(t => t.stop());
         clipRecorder = null;
+        clipRecordingIdx = null;
         const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-        if (blob.size) storeClipFor(name, blob); else refreshClipModal();
+        if (blob.size) storeClipFor(name, blob); else renderPlayerClipList();
       });
       rec.start();
-      refreshClipModal();
-      setClipStatus('● Recording… tap Stop when done (max 10 seconds).', true);
+      renderPlayerClipList();
       clipRecordTimer = setTimeout(stopClipRecording, PLAYER_CLIP_MAX_RECORD_MS);
-    }).catch(() => setClipStatus('Microphone access was blocked — allow it in your browser settings, or upload a file instead.'));
+    }).catch(() => setClipMessage('Microphone access was blocked — allow it in your browser settings, or upload a file instead.'));
+  }
+
+  playerClipList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-clip-action]');
+    if (!btn || btn.disabled) return;
+    const i = Number(btn.closest('.clip-row').dataset.clipIdx);
+    const name = players[i];
+    if (!name) return;
+    switch (btn.dataset.clipAction) {
+      case 'record':
+        if (clipRecorder) stopClipRecording(); else startClipRecording(i);
+        break;
+      case 'upload':
+        clipUploadIdx = i;
+        clipFileInput.value = '';
+        clipFileInput.click();
+        break;
+      case 'play':
+        playPlayerClip(name);
+        break;
+      case 'remove':
+        if (!confirm(`Remove ${name}'s Rummy voice clip?`)) return;
+        removePlayerClip(name).then(() => { renderPlayerClipList(); renderPlayerNames(); }).catch(() => {});
+        break;
+    }
   });
 
-  clipUploadBtn.addEventListener('click', () => { clipFileInput.value = ''; clipFileInput.click(); });
   clipFileInput.addEventListener('change', () => {
     const file = clipFileInput.files && clipFileInput.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('audio/')) { setClipStatus('Please choose an audio file.'); return; }
-    storeClipFor(clipModalName, file);
+    const name = players[clipUploadIdx];
+    clipUploadIdx = null;
+    if (!file || !name) return;
+    if (!file.type.startsWith('audio/')) { setClipMessage('Please choose an audio file.'); return; }
+    storeClipFor(name, file);
   });
-  clipPlayBtn.addEventListener('click', () => { if (clipModalName) playPlayerClip(clipModalName); });
-  clipRemoveBtn.addEventListener('click', () => {
-    const name = clipModalName;
-    if (!name || !confirm(`Remove ${name}'s Rummy voice clip?`)) return;
-    removePlayerClip(name).then(() => { refreshClipModal(); renderPlayerNames(); }).catch(() => {});
-  });
-  clipDoneBtn.addEventListener('click', closeClipModal);
-  clipModal.addEventListener('click', e => { if (e.target === clipModal) closeClipModal(); });
 
-  loadPlayerClips().then(() => { if (players.length) renderPlayerNames(); });
+  loadPlayerClips().then(() => { renderPlayerClipList(); if (players.length) renderPlayerNames(); });
 
   // ---------- GAME-OVER CELEBRATION ----------
   // A bigger, once-per-game fanfare for whoever wins the whole game — separate
@@ -3904,11 +3893,6 @@
       forfeitPlayer(Number(forfeitBtn.dataset.forfeitIdx));
       return;
     }
-    const clipBtn = e.target.closest('.voice-clip-btn');
-    if (clipBtn) {
-      openClipModal(Number(clipBtn.dataset.clipIdx));
-      return;
-    }
     const adjustBtn = e.target.closest('.adjust-score-btn');
     if (adjustBtn) {
       promptAdjustScore(Number(adjustBtn.dataset.adjustPlayerIdx));
@@ -4006,7 +3990,6 @@
             <button type="button" class="avatar-clear-btn" data-idx="${i}" title="Remove picture" ${playerAvatars[i] ? '' : 'hidden'}>×</button>
           </div>
           <input type="text" class="rename-input" data-pidx="${i}" maxlength="20" value="${escapeAttr(name)}">
-          <button type="button" class="adjust-score-btn voice-clip-btn${hasPlayerClip(name) ? ' has-clip' : ''}" data-clip-idx="${i}" title="Rummy voice clip for ${escapeAttr(name)}" aria-label="Rummy voice clip for ${escapeAttr(name)}">🎙</button>
           <button type="button" class="adjust-score-btn" data-adjust-player-idx="${i}" title="Adjust ${escapeAttr(name)}'s total score" aria-label="Adjust ${escapeAttr(name)}'s total score">±</button>
           <button type="button" class="dealer-pick-btn${i === dealerIdx ? ' selected' : ''}" data-dealer-idx="${i}" title="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}" aria-label="${i === dealerIdx ? 'Currently dealing' : 'Set as current dealer'}">🃏</button>
           ${outFlags[i]
@@ -4022,8 +4005,10 @@
           <button class="btn-ghost" id="cancelRenameBtn" type="button" style="padding:9px 18px; font-size:12px;">Cancel</button>
         </div>`;
     } else {
-      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map((n, i) => `<span class="player-name-chip">${avatarHtml(i, 'avatar-sm')}${escapeHtml(n)}${hasPlayerClip(n) ? '<span class="chip-clip-badge" title="Has a Rummy voice clip">🎙</span>' : ''}${i === dealerIdx ? '<span class="dealer-badge" title="Dealing this round">🃏</span>' : ''}</span>`).join('')}</div>`;
+      playerNamesDisplay.innerHTML = `<div class="player-names-row">${players.map((n, i) => `<span class="player-name-chip">${avatarHtml(i, 'avatar-sm')}${escapeHtml(n)}${i === dealerIdx ? '<span class="dealer-badge" title="Dealing this round">🃏</span>' : ''}</span>`).join('')}</div>`;
     }
+    // Voice Settings lists the same players (names, order, avatars).
+    renderPlayerClipList();
   }
 
   // Swaps two adjacent players mid-game — names, avatars, every round's scores
