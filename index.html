@@ -1543,7 +1543,7 @@
   .clip-row:last-of-type { border-bottom: none; }
   .clip-row-player { display: flex; align-items: center; gap: 8px; flex: 1 1 140px; min-width: 0; color: var(--white); font-weight: 600; }
   .clip-row-player span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .clip-row-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); flex: 1 1 130px; }
+  .clip-row-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); flex: 1 1 130px; min-width: 0; overflow-wrap: anywhere; }
   .clip-row-status.has-clip { color: var(--green); }
   .clip-row-status.recording { color: var(--orange); }
   .clip-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -2284,6 +2284,7 @@
   const PLAYER_CLIP_MAX_RECORD_MS = 10000;
   const RUMMY_CLIP_DELAY_MS = 1000;
   const playerClipUrls = new Map(); // lower-cased name -> object URL
+  const playerClipFileNames = new Map(); // lower-cased name -> file name shown in Voice Settings
 
   function clipKey(name) { return PLAYER_CLIP_PREFIX + name.trim().toLowerCase(); }
   function hasPlayerClip(name) { return playerClipUrls.has(name.trim().toLowerCase()); }
@@ -2291,8 +2292,13 @@
   function setClipUrl(name, blob) {
     const k = name.trim().toLowerCase();
     if (playerClipUrls.has(k)) URL.revokeObjectURL(playerClipUrls.get(k));
-    if (blob) playerClipUrls.set(k, URL.createObjectURL(blob));
-    else playerClipUrls.delete(k);
+    if (blob) {
+      playerClipUrls.set(k, URL.createObjectURL(blob));
+      playerClipFileNames.set(k, blob.name || 'Recorded clip');
+    } else {
+      playerClipUrls.delete(k);
+      playerClipFileNames.delete(k);
+    }
   }
 
   function clipStoreOp(mode, fn) {
@@ -2329,7 +2335,9 @@
         const cur = req.result;
         if (!cur) { resolve(); return; }
         if (typeof cur.key === 'string' && cur.key.startsWith(PLAYER_CLIP_PREFIX) && cur.value) {
-          playerClipUrls.set(cur.key.slice(PLAYER_CLIP_PREFIX.length), URL.createObjectURL(cur.value));
+          const k = cur.key.slice(PLAYER_CLIP_PREFIX.length);
+          playerClipUrls.set(k, URL.createObjectURL(cur.value));
+          playerClipFileNames.set(k, cur.value.name || 'Recorded clip');
         }
         cur.continue();
       };
@@ -2382,7 +2390,7 @@
       const busyElsewhere = clipRecordingIdx !== null && !recording;
       return `<div class="clip-row" data-clip-idx="${i}">
         <span class="clip-row-player">${avatarHtml(i, 'avatar-xs')}<span>${escapeHtml(name)}</span></span>
-        <span class="clip-row-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? '✓ Clip saved' : 'No clip')}</span>
+        <span class="clip-row-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(name.trim().toLowerCase()) || 'Clip saved')}` : 'No clip')}</span>
         <span class="clip-row-actions">
           ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
           <button type="button" class="btn-ghost" data-clip-action="upload" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ Upload</button>
@@ -2418,7 +2426,9 @@
         stream.getTracks().forEach(t => t.stop());
         clipRecorder = null;
         clipRecordingIdx = null;
-        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+        const type = rec.mimeType || 'audio/webm';
+        const ext = /ogg/.test(type) ? 'ogg' : /mp4|aac/.test(type) ? 'm4a' : 'webm';
+        const blob = new File(chunks, `Recording ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.${ext}`, { type });
         if (blob.size) storeClipFor(name, blob); else renderPlayerClipList();
       });
       rec.start();
