@@ -562,48 +562,6 @@
   }
   .collapsible-section[open] summary::before { transform: rotate(90deg); }
 
-  /* The Voice Settings summary otherwise sits flush against the event-legend text
-     right above it — give it its own breathing room and a divider, like the CSV
-     import section gets on the setup screen. */
-  #voiceSettingsSection { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--border); }
-  .voice-phrase-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .voice-phrase-input { flex: 1; min-width: 0; }
-  .voice-phrase-input[lang="te"] { font-family: 'Noto Sans Telugu', 'Gautami', sans-serif; }
-  .voice-phrase-play-btn {
-    flex: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 12px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .voice-phrase-play-btn:hover { border-color: var(--green); color: var(--green); }
-
-  .voice-settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .voice-settings-row[hidden] { display: none; }
-  .voice-settings-row label {
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .select-control {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--white);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    padding: 9px 12px;
-    outline: none;
-    transition: border-color 0.15s ease;
-  }
-  .select-control:focus { border-color: var(--green); }
-  .custom-sound-input { color: var(--muted); font-family: var(--font-mono); font-size: 12px; max-width: 100%; }
-
   .match-log-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .match-log-table { display: grid; gap: 6px; min-width: fit-content; }
   .match-log-header, .match-log-row {
@@ -1847,44 +1805,6 @@
       </div>
     </details>
 
-    <details class="collapsible-section" id="voiceSettingsSection">
-      <summary>Voice Settings</summary>
-      <div class="voice-settings-row">
-        <label for="announceLangSelect">Phrase language</label>
-        <select id="announceLangSelect" class="select-control">
-          <option value="en">English</option>
-          <option value="te">Telugu</option>
-        </select>
-      </div>
-      <div class="voice-settings-row">
-        <label for="announceSoundSelect">Sound before announcement</label>
-        <select id="announceSoundSelect" class="select-control">
-          <option value="none">None</option>
-          <option value="drumroll">Drumroll</option>
-          <option value="claps">Claps</option>
-          <option value="trumpet">Trumpet fanfare</option>
-          <option value="custom">Custom...</option>
-        </select>
-        <button type="button" class="voice-phrase-play-btn" id="announceSoundPreviewBtn" title="Preview this sound" aria-label="Preview this sound">▶</button>
-      </div>
-      <div class="voice-settings-row" id="customSoundRow" hidden>
-        <label for="customSoundInput">Custom sound file</label>
-        <input type="file" id="customSoundInput" accept="audio/*" class="custom-sound-input">
-        <span class="sub" id="customSoundStatus" style="font-size:12px; margin:0;"></span>
-      </div>
-      <div class="voice-settings-row">
-        <label for="voiceEnergySelect">Voice energy</label>
-        <select id="voiceEnergySelect" class="select-control">
-          <option value="normal">Normal</option>
-          <option value="excited">Excited</option>
-          <option value="hype">Hype!</option>
-        </select>
-      </div>
-      <p class="sub" style="margin:0 0 14px; font-size:13px;">Edit the congratulation phrases below — use <code>{name}</code> wherever the winner's name should go. Tap ▶ to preview a phrase using whatever is currently typed in its field.</p>
-      <div id="voiceSettingsList"></div>
-      <div class="error-text" id="voiceSettingsError"></div>
-      <button type="button" class="btn-primary" id="voiceSettingsSaveBtn" style="padding:10px 20px; font-size:12px;">Save Phrases</button>
-    </details>
   </section>
 
   <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
@@ -2129,17 +2049,6 @@
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
   const recordMatchPanel = document.getElementById('recordMatchPanel');
   const announceToggle = document.getElementById('announceToggle');
-  const voiceSettingsSection = document.getElementById('voiceSettingsSection');
-  const voiceSettingsList = document.getElementById('voiceSettingsList');
-  const voiceSettingsError = document.getElementById('voiceSettingsError');
-  const voiceSettingsSaveBtn = document.getElementById('voiceSettingsSaveBtn');
-  const announceLangSelect = document.getElementById('announceLangSelect');
-  const announceSoundSelect = document.getElementById('announceSoundSelect');
-  const announceSoundPreviewBtn = document.getElementById('announceSoundPreviewBtn');
-  const voiceEnergySelect = document.getElementById('voiceEnergySelect');
-  const customSoundRow = document.getElementById('customSoundRow');
-  const customSoundInput = document.getElementById('customSoundInput');
-  const customSoundStatus = document.getElementById('customSoundStatus');
 
   // ---------- PERSISTENCE (localStorage) ----------
   // Keeps the in-progress game and the ended-game archive across page reloads.
@@ -2240,34 +2149,23 @@
   // beside "Total" speaks every active player's name and current score on demand.
 
   const ANNOUNCE_PREF_KEY = 'rummatrix.announceEnabled';
-  const CONGRATS_PHRASES_KEY = 'rummatrix.congratsPhrases';
-  const CONGRATS_PHRASES_TE_KEY = 'rummatrix.congratsPhrasesTelugu';
-  const ANNOUNCE_LANG_KEY = 'rummatrix.announceLanguage';
-  const ANNOUNCE_SOUND_KEY = 'rummatrix.announceSound';
-  const VOICE_ENERGY_KEY = 'rummatrix.voiceEnergy';
   const speechSupported = 'speechSynthesis' in window;
 
   // Web Speech API has no real emotional TTS — no SSML support in browsers — but each
   // utterance can carry its own pitch/rate, and a higher pitch spoken slightly faster
   // reads as "excited" to a listener. The congratulation gets the full boost; the score
   // readout gets a lighter touch (40%) so the numbers stay clearly understandable.
-  const VOICE_ENERGY_LEVELS = {
-    normal: { pitchBoost: 0, rateBoost: 0 },
-    excited: { pitchBoost: 0.25, rateBoost: 0.15 },
-    hype: { pitchBoost: 0.45, rateBoost: 0.3 }
-  };
+  const VOICE_ENERGY = { pitchBoost: 0.25, rateBoost: 0.15 };
 
   function emotionForAnnounce() {
-    const e = VOICE_ENERGY_LEVELS[voiceEnergy] || VOICE_ENERGY_LEVELS.normal;
-    return { pitch: 1 + e.pitchBoost, rate: 1 + e.rateBoost };
+    return { pitch: 1 + VOICE_ENERGY.pitchBoost, rate: 1 + VOICE_ENERGY.rateBoost };
   }
 
   function emotionForReadout() {
-    const e = VOICE_ENERGY_LEVELS[voiceEnergy] || VOICE_ENERGY_LEVELS.normal;
-    return { pitch: 1 + e.pitchBoost * 0.4, rate: 1 + e.rateBoost * 0.4 };
+    return { pitch: 1 + VOICE_ENERGY.pitchBoost * 0.4, rate: 1 + VOICE_ENERGY.rateBoost * 0.4 };
   }
 
-  const DEFAULT_CONGRATS_PHRASES = [
+  const CONGRATS_PHRASES = [
     '{name}, congratulations!',
     '{name}, thaggedhe leyy!',
     '{name}, is back!',
@@ -2276,72 +2174,24 @@
     'Evaru kodithey dhimma tirigi mind block ayipoddho vaalleyy {name}'
   ];
 
-  const DEFAULT_CONGRATS_PHRASES_TE = [
-    '{name}, అభినందనలు!',
-    '{name}, తగ్గేదే లే!',
-    '{name}, తిరిగి వచ్చేశారు!',
-    'నువ్వు సూపర్ {name}!',
-    'బాగా ఆడారు {name}!',
-    'ఎవరు కొట్టినా దిమ్మ తిరిగి మైండ్ బ్లాక్ అయిపోద్ది వాళ్ళే {name}'
-  ];
-
-  let CONGRATS_PHRASES = DEFAULT_CONGRATS_PHRASES.slice();
-  try {
-    const savedPhrases = JSON.parse(localStorage.getItem(CONGRATS_PHRASES_KEY));
-    if (Array.isArray(savedPhrases) && savedPhrases.length > 0) CONGRATS_PHRASES = savedPhrases;
-  } catch (err) { /* ignore — keep defaults */ }
-
-  let CONGRATS_PHRASES_TE = DEFAULT_CONGRATS_PHRASES_TE.slice();
-  try {
-    const savedPhrasesTe = JSON.parse(localStorage.getItem(CONGRATS_PHRASES_TE_KEY));
-    if (Array.isArray(savedPhrasesTe) && savedPhrasesTe.length > 0) CONGRATS_PHRASES_TE = savedPhrasesTe;
-  } catch (err) { /* ignore — keep defaults */ }
-
   let announceEnabled = false;
   try { announceEnabled = localStorage.getItem(ANNOUNCE_PREF_KEY) === 'true'; } catch (err) { /* ignore */ }
 
-  let announceLanguage = 'en';
-  try {
-    const savedLang = localStorage.getItem(ANNOUNCE_LANG_KEY);
-    if (savedLang === 'te' || savedLang === 'en') announceLanguage = savedLang;
-  } catch (err) { /* ignore */ }
-
-  let announceSound = 'drumroll';
-  try {
-    const savedSound = localStorage.getItem(ANNOUNCE_SOUND_KEY);
-    if (['none', 'drumroll', 'claps', 'trumpet', 'custom'].includes(savedSound)) announceSound = savedSound;
-  } catch (err) { /* ignore */ }
-
-  let voiceEnergy = 'excited';
-  try {
-    const savedEnergy = localStorage.getItem(VOICE_ENERGY_KEY);
-    if (Object.prototype.hasOwnProperty.call(VOICE_ENERGY_LEVELS, savedEnergy)) voiceEnergy = savedEnergy;
-  } catch (err) { /* ignore */ }
-
-  function activePhrases() {
-    return announceLanguage === 'te' ? CONGRATS_PHRASES_TE : CONGRATS_PHRASES;
-  }
-
-  // Cycles through the active language's phrases in order rather than picking one at
-  // random, so every phrase gets an even turn. Tracked separately per language and
-  // persisted, so switching languages (or reloading) doesn't reset or skip around.
+  // Cycles through the phrases in order rather than picking one at random, so
+  // every phrase gets an even turn. The position is persisted, so reloading
+  // doesn't reset or skip around.
   const PHRASE_CURSOR_KEY = 'rummatrix.phraseCursor';
-  let phraseCursor = { en: 0, te: 0 };
+  let phraseCursor = 0;
   try {
     const savedCursor = JSON.parse(localStorage.getItem(PHRASE_CURSOR_KEY));
-    if (savedCursor && typeof savedCursor === 'object') {
-      if (Number.isInteger(savedCursor.en)) phraseCursor.en = savedCursor.en;
-      if (Number.isInteger(savedCursor.te)) phraseCursor.te = savedCursor.te;
-    }
+    if (savedCursor && Number.isInteger(savedCursor.en)) phraseCursor = savedCursor.en;
   } catch (err) { /* ignore */ }
 
   function nextPhrase() {
-    const phrases = activePhrases();
-    if (phrases.length === 0) return null;
-    const idx = ((phraseCursor[announceLanguage] % phrases.length) + phrases.length) % phrases.length;
-    phraseCursor[announceLanguage] = (idx + 1) % phrases.length;
-    try { localStorage.setItem(PHRASE_CURSOR_KEY, JSON.stringify(phraseCursor)); } catch (err) { /* ignore */ }
-    return phrases[idx];
+    const idx = ((phraseCursor % CONGRATS_PHRASES.length) + CONGRATS_PHRASES.length) % CONGRATS_PHRASES.length;
+    phraseCursor = (idx + 1) % CONGRATS_PHRASES.length;
+    try { localStorage.setItem(PHRASE_CURSOR_KEY, JSON.stringify({ en: phraseCursor })); } catch (err) { /* ignore */ }
+    return CONGRATS_PHRASES[idx];
   }
 
   // Prefer an Indian-English voice if the device/browser has one installed (common
@@ -2349,9 +2199,6 @@
   // stays null and speech just uses the browser's default voice. getVoices() often
   // loads asynchronously on first page load, so we also re-check on voiceschanged.
   let preferredVoice = null;
-  // Telugu voice for the "Telugu" phrase language option — stays null (and speech
-  // falls back to the default voice) if the device has no Telugu voice installed.
-  let preferredTeluguVoice = null;
   // Normalizes a BCP-47 language tag for comparison — lowercases it and treats
   // underscore/hyphen as equivalent, since some Android/WebView builds report
   // "en_IN" instead of the standard "en-IN".
@@ -2370,11 +2217,6 @@
       // which speaks the wrong language entirely rather than just the wrong accent.
       voices.find(v => normalizeLang(v.lang).startsWith('en') && /india|indian/i.test(v.name)) ||
       null;
-    preferredTeluguVoice =
-      voices.find(v => normalizeLang(v.lang) === 'te-in') ||
-      voices.find(v => normalizeLang(v.lang).startsWith('te')) ||
-      voices.find(v => /telugu/i.test(v.name)) ||
-      null;
   }
   if (speechSupported) {
     pickPreferredVoice();
@@ -2382,7 +2224,7 @@
   }
 
   function activeVoice() {
-    return announceLanguage === 'te' ? preferredTeluguVoice : preferredVoice;
+    return preferredVoice;
   }
 
   function makeUtterance(text, opts) {
@@ -2426,104 +2268,14 @@
     return `${hundredsWord} ${remainderWord}`;
   }
 
-  // ---------- SOUND EFFECTS: a short synthesized clip before the announcement ----------
-  // Generated with the Web Audio API (noise bursts + oscillators) rather than an
-  // embedded audio file, so the page stays a single self-contained HTML file.
-
-  let audioCtx = null;
-  function getAudioCtx() {
-    if (audioCtx) return audioCtx;
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch (err) { audioCtx = null; }
-    return audioCtx;
-  }
-
-  function createNoiseBuffer(ctx, seconds) {
-    const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * seconds)), ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    return buffer;
-  }
-
-  function playNoiseBurst(ctx, noiseBuffer, startTime, duration, peakGain, filterType, filterFreq) {
-    const source = ctx.createBufferSource();
-    source.buffer = noiseBuffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = filterType;
-    filter.frequency.value = filterFreq;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(peakGain, startTime + duration * 0.25);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(startTime);
-    source.stop(startTime + duration + 0.05);
-  }
-
-  function playTone(ctx, startTime, duration, freq, peakGain, type) {
-    const osc = ctx.createOscillator();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, startTime);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(peakGain, startTime + Math.min(0.03, duration * 0.2));
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(startTime);
-    osc.stop(startTime + duration + 0.05);
-  }
-
-  function scheduleDrumroll(ctx, startTime) {
-    const rollDuration = 1.9;
-    const noiseBuffer = createNoiseBuffer(ctx, 0.15);
-    const hitInterval = 0.04;
-    for (let t = startTime; t < startTime + rollDuration; t += hitInterval) {
-      playNoiseBurst(ctx, noiseBuffer, t, hitInterval * 1.4, 0.35, 'bandpass', 320);
-    }
-    playNoiseBurst(ctx, createNoiseBuffer(ctx, 0.6), startTime + rollDuration, 0.6, 0.65, 'highpass', 2500);
-    return rollDuration + 0.6;
-  }
-
-  // Distinct claps rather than a continuous applause hiss — each clap layers a sharp
-  // "smack" transient (highpass) with a slightly-delayed hollow "ring" (bandpass), and
-  // claps are spaced with a little randomness so it doesn't sound robotically even.
-  function scheduleClaps(ctx, startTime) {
-    const clapCount = 9;
-    const totalDuration = 2.1;
-    const clapBuffer = createNoiseBuffer(ctx, 0.1);
-    for (let i = 0; i < clapCount; i++) {
-      const t = startTime + (i / clapCount) * totalDuration + (Math.random() * 0.04 - 0.02);
-      playNoiseBurst(ctx, clapBuffer, t, 0.05, 0.55 + Math.random() * 0.15, 'highpass', 1200);
-      playNoiseBurst(ctx, clapBuffer, t + 0.008, 0.09, 0.3 + Math.random() * 0.1, 'bandpass', 2200);
-    }
-    return totalDuration + 0.15;
-  }
-
-  function scheduleTrumpet(ctx, startTime) {
-    playTone(ctx, startTime, 0.3, 523.25, 0.3, 'sawtooth');
-    playTone(ctx, startTime, 0.3, 659.25, 0.15, 'sawtooth');
-    playTone(ctx, startTime + 0.34, 0.3, 587.33, 0.28, 'sawtooth');
-    playTone(ctx, startTime + 0.34, 0.3, 739.99, 0.14, 'sawtooth');
-    playTone(ctx, startTime + 0.68, 1.05, 783.99, 0.34, 'sawtooth');
-    playTone(ctx, startTime + 0.68, 1.05, 987.77, 0.17, 'sawtooth');
-    return 1.8;
-  }
-
-  // ---------- CUSTOM SOUND: a user-uploaded audio clip, stored in IndexedDB ----------
-  // Kept in IndexedDB rather than localStorage since an audio file is too large for
+  // ---------- AUDIO STORAGE: uploaded/recorded clips, kept in IndexedDB ----------
+  // Kept in IndexedDB rather than localStorage since audio is too large for
   // localStorage's small per-origin quota. This is device/browser-local — there's no
-  // server, so an uploaded clip doesn't follow you to a different device.
+  // server, so a clip doesn't follow you to a different device. Anything already
+  // saved in this store (e.g. a previously uploaded sound) is left untouched.
 
   const CUSTOM_SOUND_DB = 'rummatrixCustomSound';
   const CUSTOM_SOUND_STORE = 'sounds';
-  const CUSTOM_SOUND_KEY = 'announceCustomSound';
-  const CUSTOM_SOUND_MAX_BYTES = 5 * 1024 * 1024;
-
-  let customSoundObjectUrl = null;
-  let customSoundFileName = '';
 
   function openCustomSoundDb() {
     return new Promise((resolve, reject) => {
@@ -2535,60 +2287,11 @@
     });
   }
 
-  function saveCustomSoundFile(file) {
-    return openCustomSoundDb().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(CUSTOM_SOUND_STORE, 'readwrite');
-      tx.objectStore(CUSTOM_SOUND_STORE).put(file, CUSTOM_SOUND_KEY);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    }));
-  }
-
-  function loadCustomSoundFile() {
-    return openCustomSoundDb().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(CUSTOM_SOUND_STORE, 'readonly');
-      const req = tx.objectStore(CUSTOM_SOUND_STORE).get(CUSTOM_SOUND_KEY);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    }));
-  }
-
-  // Plays the uploaded custom clip and resolves once it ends (or immediately if none
-  // has been uploaded yet, or autoplay is blocked — never leaves the announcement stuck).
-  function playCustomSound() {
-    return new Promise((resolve) => {
-      if (!customSoundObjectUrl) { resolve(); return; }
-      const audio = new Audio(customSoundObjectUrl);
-      audio.addEventListener('ended', resolve, { once: true });
-      audio.addEventListener('error', resolve, { once: true });
-      audio.play().catch(resolve);
-    });
-  }
-
-  // Plays the chosen sound effect and resolves once it's finished, so callers can
-  // await it before starting the spoken announcement.
-  function playSoundEffect(kind) {
-    if (kind === 'custom') return playCustomSound();
-    return new Promise((resolve) => {
-      const ctx = kind !== 'none' && getAudioCtx();
-      if (!ctx) { resolve(); return; }
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      const startTime = ctx.currentTime + 0.03;
-      let duration = 0;
-      if (kind === 'drumroll') duration = scheduleDrumroll(ctx, startTime);
-      else if (kind === 'claps') duration = scheduleClaps(ctx, startTime);
-      else if (kind === 'trumpet') duration = scheduleTrumpet(ctx, startTime);
-      setTimeout(resolve, Math.max(0, duration * 1000));
-    });
-  }
-
   function announceRoundWinner(winnerName) {
     if (!announceEnabled || !winnerName) return;
     const template = nextPhrase();
     if (!template) return;
-    playSoundEffect(announceSound).then(() => {
-      speak(template.replace('{name}', winnerName), { voice: activeVoice(), ...emotionForAnnounce() });
-    });
+    speak(template.replace('{name}', winnerName), { voice: activeVoice(), ...emotionForAnnounce() });
   }
 
   // ---------- PLAYER RUMMY VOICE CLIPS ----------
@@ -2806,7 +2509,7 @@
   }
 
   // Fires once when the game actually ends (see the gameOverCelebrated guard in
-  // renderBoards) — confetti plus, if Announce is on, a sound + spoken call-out.
+  // renderBoards) — confetti plus, if Announce is on, a spoken call-out.
   // winnerName is null for the rare all-busted/no-winner case, where only the
   // confetti plays.
   function celebrateGameOver(winnerName, plural = false) {
@@ -2815,9 +2518,7 @@
       showTvGameWinnerBanner(winnerName ? `🏆 ${winnerName} ${plural ? 'WIN' : 'WINS'}!` : 'GAME OVER');
     }
     if (winnerName && announceEnabled) {
-      playSoundEffect(announceSound).then(() => {
-        speak(`${winnerName} ${plural ? 'win' : 'wins'} the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
-      });
+      speak(`${winnerName} ${plural ? 'win' : 'wins'} the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
     }
   }
 
@@ -2834,119 +2535,6 @@
       announceEnabled = !announceEnabled;
       try { localStorage.setItem(ANNOUNCE_PREF_KEY, String(announceEnabled)); } catch (err) { /* ignore */ }
       renderAnnounceToggle();
-    });
-  }
-
-  // ---------- VOICE SETTINGS: editable congratulation phrases ----------
-
-  function renderVoiceSettingsList() {
-    const langAttr = announceLanguage === 'te' ? ' lang="te"' : '';
-    voiceSettingsList.innerHTML = activePhrases().map((phrase, i) => `
-      <div class="voice-phrase-row">
-        <input type="text" class="voice-phrase-input" data-idx="${i}" maxlength="200" value="${escapeAttr(phrase)}"${langAttr}>
-        <button type="button" class="voice-phrase-play-btn" data-idx="${i}" title="Preview this phrase" aria-label="Preview this phrase">▶</button>
-      </div>`
-    ).join('');
-  }
-
-  if (!speechSupported) {
-    voiceSettingsSection.hidden = true;
-  } else {
-    announceLangSelect.value = announceLanguage;
-    announceSoundSelect.value = announceSound;
-    voiceEnergySelect.value = voiceEnergy;
-    renderVoiceSettingsList();
-
-    function updateCustomSoundStatus() {
-      if (customSoundFileName) {
-        customSoundStatus.textContent = `✓ ${customSoundFileName}`;
-        customSoundStatus.style.color = 'var(--green)';
-      } else {
-        customSoundStatus.textContent = 'No file uploaded yet.';
-        customSoundStatus.style.color = '';
-      }
-    }
-
-    customSoundRow.hidden = announceSoundSelect.value !== 'custom';
-    updateCustomSoundStatus();
-    loadCustomSoundFile().then(file => {
-      if (file) {
-        customSoundObjectUrl = URL.createObjectURL(file);
-        customSoundFileName = file.name || 'Custom sound';
-        updateCustomSoundStatus();
-      }
-    }).catch(() => { /* no custom sound saved, or IndexedDB unavailable — stays silent */ });
-
-    announceLangSelect.addEventListener('change', () => {
-      announceLanguage = announceLangSelect.value === 'te' ? 'te' : 'en';
-      try { localStorage.setItem(ANNOUNCE_LANG_KEY, announceLanguage); } catch (err) { /* ignore */ }
-      voiceSettingsError.textContent = '';
-      renderVoiceSettingsList();
-    });
-
-    announceSoundSelect.addEventListener('change', () => {
-      announceSound = announceSoundSelect.value;
-      try { localStorage.setItem(ANNOUNCE_SOUND_KEY, announceSound); } catch (err) { /* ignore */ }
-      customSoundRow.hidden = announceSound !== 'custom';
-    });
-
-    announceSoundPreviewBtn.addEventListener('click', () => { playSoundEffect(announceSound); });
-
-    customSoundInput.addEventListener('change', () => {
-      const file = customSoundInput.files && customSoundInput.files[0];
-      if (!file) return;
-      if (file.size > CUSTOM_SOUND_MAX_BYTES) {
-        customSoundStatus.textContent = 'File too large — please use a clip under 5MB.';
-        customSoundStatus.style.color = 'var(--orange)';
-        customSoundInput.value = '';
-        return;
-      }
-      saveCustomSoundFile(file).then(() => {
-        if (customSoundObjectUrl) URL.revokeObjectURL(customSoundObjectUrl);
-        customSoundObjectUrl = URL.createObjectURL(file);
-        customSoundFileName = file.name;
-        updateCustomSoundStatus();
-      }).catch(() => {
-        customSoundStatus.textContent = 'Could not save this file on this device.';
-        customSoundStatus.style.color = 'var(--orange)';
-      });
-    });
-
-    voiceEnergySelect.addEventListener('change', () => {
-      voiceEnergy = voiceEnergySelect.value;
-      try { localStorage.setItem(VOICE_ENERGY_KEY, voiceEnergy); } catch (err) { /* ignore */ }
-    });
-
-    voiceSettingsList.addEventListener('click', (e) => {
-      const playBtn = e.target.closest('.voice-phrase-play-btn');
-      if (!playBtn) return;
-      const input = voiceSettingsList.querySelector(`.voice-phrase-input[data-idx="${playBtn.dataset.idx}"]`);
-      const text = input ? input.value.trim() : '';
-      if (text) speak(text.replace('{name}', 'Player'), { voice: activeVoice(), ...emotionForAnnounce() });
-    });
-
-    voiceSettingsSaveBtn.addEventListener('click', () => {
-      const inputs = [...voiceSettingsList.querySelectorAll('.voice-phrase-input')];
-      const newPhrases = inputs.map(inp => inp.value.trim()).filter(v => v !== '');
-      if (newPhrases.length === 0) {
-        voiceSettingsError.style.color = '';
-        voiceSettingsError.textContent = 'Keep at least one phrase.';
-        return;
-      }
-      if (announceLanguage === 'te') {
-        CONGRATS_PHRASES_TE = newPhrases;
-        try { localStorage.setItem(CONGRATS_PHRASES_TE_KEY, JSON.stringify(CONGRATS_PHRASES_TE)); } catch (err) { /* ignore */ }
-      } else {
-        CONGRATS_PHRASES = newPhrases;
-        try { localStorage.setItem(CONGRATS_PHRASES_KEY, JSON.stringify(CONGRATS_PHRASES)); } catch (err) { /* ignore */ }
-      }
-      renderVoiceSettingsList();
-      voiceSettingsError.style.color = 'var(--green)';
-      voiceSettingsError.textContent = '✓ Phrases saved.';
-      setTimeout(() => {
-        voiceSettingsError.textContent = '';
-        voiceSettingsError.style.color = '';
-      }, 2000);
     });
   }
 
