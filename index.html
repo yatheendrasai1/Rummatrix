@@ -1209,6 +1209,7 @@
       grid-auto-rows: minmax(120px, 1fr);
       overflow-y: auto;
     }
+    .tv-photo { touch-action: pan-y; }
   }
 
   /* Full-bleed photo tile — the avatar fills the whole tile, with name + score
@@ -1309,7 +1310,15 @@
     height: 100%;
     object-fit: cover;
     transition: filter 0.15s ease;
+    /* Drag to reposition the photo in its frame (see the tvGrid pointer
+       handlers). Touch drags are all ours, except on a scrolling portrait
+       phone grid where vertical swipes must still scroll. */
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
+  .tv-photo.dragging { cursor: grabbing; }
   .tv-photo-placeholder {
     position: absolute;
     inset: 0;
@@ -1860,6 +1869,7 @@
 
   let playerCount = null;
   let players = [];      // finalized names, set at game start
+  let photoPositions = {};       // photo framing per avatar (keyed by photoKey(url)): { x, y } object-position %, default centered
   let playerAvatars = []; // data URLs (or null) indexed the same as players — set on the setup screen
   let matches = [];      // array of arrays: matches[i][playerIdx] = score
   let matchEvents = [];  // array of arrays: matchEvents[i][playerIdx] = event key ('drop'/'mdrop'/'full'/'rummy') actually pressed, or null for a manually-typed value
@@ -2080,7 +2090,7 @@
     return {
       id: currentGameId,
       gameName,
-      players, playerAvatars, matches, matchEvents, setSize, maxPoints, gameMode, totalRounds, playerCount, dealerIdx, forfeited, adjustments,
+      players, playerAvatars, photoPositions, matches, matchEvents, setSize, maxPoints, gameMode, totalRounds, playerCount, dealerIdx, forfeited, adjustments,
       eventPoints: {
         dropPts: EVENTS.find(e => e.key === 'drop').points,
         mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -2747,7 +2757,7 @@
   // they're safe to interpolate directly.
   function avatarHtml(i, sizeClass) {
     const url = playerAvatars[i];
-    if (url) return `<img class="player-avatar ${sizeClass}" src="${url}" alt="">`;
+    if (url) return `<img class="player-avatar ${sizeClass}" src="${url}" alt=""${photoPosStyle(url)}>`;
     const initial = players[i] ? players[i][0].toUpperCase() : '?';
     return `<span class="player-avatar player-avatar-placeholder ${sizeClass}" aria-hidden="true">${escapeHtml(initial)}</span>`;
   }
@@ -2994,6 +3004,7 @@
     forfeited = players.map(() => null);
     adjustments = [];
     currentGameId = null; // "Initialize New Game" always starts a fresh slot
+    photoPositions = {};
     gameName = gameNameInput.value.trim();
     gameOverCelebrated = false;
     ({ gameMode, maxPoints, totalRounds } = modeCfg);
@@ -3472,6 +3483,7 @@
     playerCount = null;
     setSize = 0;
     maxPoints = null;
+    photoPositions = {};
     gameMode = 'elimination';
     totalRounds = null;
     gameName = '';
@@ -3662,7 +3674,7 @@
       const showStats = tvStatsShown.has(pIdx);
       const url = playerAvatars[pIdx];
       const photo = url
-        ? `<img class="tv-photo" src="${url}" alt="">`
+        ? `<img class="tv-photo" src="${url}" alt="" draggable="false"${photoPosStyle(url)}>`
         : `<span class="tv-photo-placeholder" aria-hidden="true">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
       const tag = isLeader ? '<span class="tv-tag">★ Lead</span>' : (isOut ? `<span class="tv-tag">${forfeited[pIdx] != null ? '🏳 Forfeited' : 'Out'}</span>` : '');
       const changed = !!(tvPrevTotals && tvPrevTotals[pIdx] !== undefined && tvPrevTotals[pIdx] !== totals[pIdx]);
@@ -3734,7 +3746,91 @@
   // mutates classes directly rather than calling renderTvScreen() — a full re-render
   // tears down and rebuilds every tile (photos included), which is needless work for
   // what's purely a local show/hide and was a real source of jank on weaker devices.
+  // ---------- PHOTO FRAMING (drag to reposition in TV Mode) ----------
+  // Positions are keyed by a short hash of the photo itself rather than the
+  // player's index, so reordering/renaming players keeps them, and swapping
+  // in a new photo starts centered again.
+  const photoKeyCache = new Map();
+  function photoKey(url) {
+    let key = photoKeyCache.get(url);
+    if (!key) {
+      let h = 5381;
+      for (let i = 0; i < url.length; i++) h = ((h << 5) + h + url.charCodeAt(i)) | 0;
+      key = (h >>> 0).toString(36) + '_' + url.length.toString(36);
+      photoKeyCache.set(url, key);
+    }
+    return key;
+  }
+
+  function photoPosStyle(url) {
+    const pos = photoPositions[photoKey(url)];
+    return pos ? ` style="object-position:${pos.x}% ${pos.y}%"` : '';
+  }
+
+  let tvPhotoDrag = null;
+  let tvSuppressClick = false; // a drag shouldn't also toggle the tile's stats
+
+  tvGrid.addEventListener('pointerdown', (e) => {
+    const img = e.target.closest('.tv-photo');
+    if (!img || e.button > 0) return;
+    const tile = img.closest('.tv-tile');
+    if (!tile || tile.classList.contains('tv-tile-stats-active')) return;
+    const url = playerAvatars[Number(tile.dataset.playerIdx)];
+    if (!url) return;
+    const key = photoKey(url);
+    const start = photoPositions[key] || { x: 50, y: 50 };
+    // object-fit: cover scales the photo to fill the frame; whatever spills
+    // over on each axis is how far it can be panned.
+    const box = img.getBoundingClientRect();
+    const scale = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
+    tvPhotoDrag = {
+      img, key, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY,
+      start: { x: start.x, y: start.y }, pos: { x: start.x, y: start.y },
+      overX: img.naturalWidth * scale - box.width, overY: img.naturalHeight * scale - box.height,
+      moved: false
+    };
+  });
+
+  tvGrid.addEventListener('pointermove', (e) => {
+    const d = tvPhotoDrag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved) {
+      if (Math.hypot(dx, dy) < 6) return;
+      d.moved = true;
+      d.img.classList.add('dragging');
+      try { tvGrid.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    }
+    const clamp = v => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10;
+    // Dragging right reveals more of the photo's left side, so position drops.
+    if (d.overX > 1) d.pos.x = clamp(d.start.x - (dx / d.overX) * 100);
+    if (d.overY > 1) d.pos.y = clamp(d.start.y - (dy / d.overY) * 100);
+    d.img.style.objectPosition = `${d.pos.x}% ${d.pos.y}%`;
+  });
+
+  function endTvPhotoDrag(e, commit) {
+    const d = tvPhotoDrag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    tvPhotoDrag = null;
+    d.img.classList.remove('dragging');
+    if (!d.moved) return;
+    // Swallow the click this drag would otherwise fire, but don't let the flag
+    // outlive it (no click follows a cancelled or off-tile release).
+    tvSuppressClick = true;
+    setTimeout(() => { tvSuppressClick = false; }, 0);
+    if (commit) {
+      photoPositions[d.key] = d.pos;
+      saveActiveGame();
+    } else {
+      d.img.style.objectPosition = `${d.start.x}% ${d.start.y}%`;
+    }
+  }
+  tvGrid.addEventListener('pointerup', e => endTvPhotoDrag(e, true));
+  tvGrid.addEventListener('pointercancel', e => endTvPhotoDrag(e, false));
+
   tvGrid.addEventListener('click', (e) => {
+    if (tvSuppressClick) { tvSuppressClick = false; return; }
     const tile = e.target.closest('.tv-tile');
     if (!tile) return;
     const idx = Number(tile.dataset.playerIdx);
@@ -4246,6 +4342,7 @@
         forfeited = players.map(() => null);
         adjustments = [];
         currentGameId = null; // "Import & Start" always starts a fresh slot
+        photoPositions = {};
         gameName = gameNameInput.value.trim();
         gameOverCelebrated = false;
         ({ gameMode, maxPoints, totalRounds } = modeCfg);
@@ -5227,6 +5324,7 @@
     gameName = typeof saved.gameName === 'string' ? saved.gameName : '';
     players = saved.players;
     playerAvatars = Array.isArray(saved.playerAvatars) ? saved.playerAvatars : players.map(() => null);
+    photoPositions = (saved.photoPositions && typeof saved.photoPositions === 'object') ? saved.photoPositions : {};
     matches = saved.matches;
     matchEvents = Array.isArray(saved.matchEvents) ? saved.matchEvents : matches.map(m => m.map(() => null));
     setSize = saved.setSize || players.length;
