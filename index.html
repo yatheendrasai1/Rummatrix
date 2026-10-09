@@ -1113,6 +1113,9 @@
     /* Sized off the height so up to 7 rows always fit without scrolling,
        however short the screen (landscape phone, browser with toolbars). */
     font-size: clamp(13px, 5.4vh, 64px);
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .tv-table-row.tv-table-head {
     flex: 0 0 auto;
@@ -1130,6 +1133,109 @@
   .tv-table-row.out { opacity: 0.5; }
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
   .tv-table.animating { overflow: hidden; }
+
+  /* ---- Quick scoring: drag a name to set the round's points ---- */
+  .tv-table-row[data-player-idx]:not(.out) .tv-table-player { touch-action: none; cursor: ew-resize; }
+  .tv-table-hint { font-size: 0.8em; text-transform: none; letter-spacing: 0; opacity: 0.75; white-space: nowrap; }
+  .tv-staged {
+    flex: none;
+    font-size: 0.5em;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--green);
+    border: 1px dashed var(--green);
+    border-radius: 999px;
+    padding: 0.1em 0.7em;
+    white-space: nowrap;
+    background: rgba(var(--green-rgb),0.12);
+  }
+  .tv-table-row.has-staged { border-color: var(--green); }
+  .tv-drag-track {
+    position: absolute;
+    left: 20%; right: 10%; top: 0; bottom: 0;
+    z-index: 6;
+    background: rgba(5, 12, 10, 0.94);
+    border-left: 1px solid var(--green);
+    pointer-events: none;
+  }
+  .tv-drag-bar {
+    position: absolute;
+    left: 0; right: 0; top: 54%;
+    height: 0.32em;
+    border-radius: 999px;
+    background: var(--border);
+  }
+  .tv-drag-fill {
+    height: 100%; width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--green), var(--orange));
+  }
+  .tv-drag-ticks { position: absolute; left: 0; right: 0; bottom: 6%; height: 1.2em; font-family: var(--font-mono); font-size: 0.34em; color: var(--muted); }
+  .tv-drag-ticks span { position: absolute; transform: translateX(-50%); }
+  .tv-drag-thumb {
+    position: absolute;
+    top: 54%;
+    width: 0; height: 0;
+  }
+  .tv-drag-value {
+    position: absolute;
+    left: 0; bottom: 0.6em;
+    transform: translateX(-50%);
+    min-width: 2.2em;
+    padding: 0.05em 0.4em;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.8em;
+    line-height: 1.2;
+    color: var(--ink-on-orange);
+    background: var(--orange);
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .tv-drag-value.zero { background: var(--green); color: var(--ink-on-green); }
+  .tv-drag-dot {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0.8em; height: 0.8em;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 0.12em var(--orange);
+  }
+
+  .tv-commit-btn.tv-toggle-btn { width: auto; padding: 0 0.7em; border-radius: 999px; font-size: clamp(11px, 1.4vw, 15px); }
+  .tv-commit-btn:not(:disabled) { background: var(--green); border-color: var(--green); color: var(--ink-on-green); }
+  .tv-commit-btn:disabled, .tv-clear-stage-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Long-press menu: pick D / MD / FC / R for a player. */
+  .tv-event-menu-backdrop { position: absolute; inset: 0; z-index: 20; }
+  .tv-event-menu-backdrop[hidden] { display: none; }
+  .tv-event-menu {
+    position: absolute;
+    background: var(--bg);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 10px 12px 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  .tv-event-menu-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .tv-event-menu-btns { display: flex; gap: 8px; }
+  .tv-event-menu-btns button {
+    min-width: 56px; padding: 10px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: var(--panel); border: 1px solid var(--border); color: var(--white);
+    font-family: var(--font-mono); font-size: 18px; font-weight: 700; cursor: pointer;
+  }
+  .tv-event-menu-btns button small { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .tv-event-menu-btns button:hover { border-color: var(--green); color: var(--green); }
+  .tv-toast {
+    position: absolute; left: 50%; bottom: 4vh; transform: translateX(-50%);
+    z-index: 25; max-width: 90vw;
+    background: var(--orange); color: var(--ink-on-orange);
+    font-family: var(--font-mono); font-size: 14px; padding: 10px 16px; border-radius: 8px;
+  }
+  .tv-toast[hidden] { display: none; }
   .tv-table-row.moving { position: relative; z-index: 2; }
   .tv-table-row.moving-up { border-color: var(--green); box-shadow: 0 0 2.2vh rgba(var(--green-rgb),0.55); }
   .tv-table-row.moving-down { border-color: var(--orange); box-shadow: 0 0 2.2vh rgba(var(--orange-rgb),0.45); }
@@ -1809,12 +1915,14 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
   <div class="tv-table" id="tvTable" hidden></div>
   <div class="tv-game-winner-banner" id="tvGameWinnerBanner" hidden></div>
+  <div class="tv-event-menu-backdrop" id="tvEventMenuBackdrop" hidden><div class="tv-event-menu" id="tvEventMenu"></div></div>
+  <div class="tv-toast" id="tvToast" hidden></div>
 
   <div class="tv-add-modal" id="tvAddModal" hidden>
     <div class="tv-add-modal-card" id="tvAddModalCard">
@@ -2022,6 +2130,11 @@
   const tvShowNamesBtn = document.getElementById('tvShowNamesBtn');
   const tvTableBtn = document.getElementById('tvTableBtn');
   const tvReplayBtn = document.getElementById('tvReplayBtn');
+  const tvCommitBtn = document.getElementById('tvCommitBtn');
+  const tvClearStageBtn = document.getElementById('tvClearStageBtn');
+  const tvEventMenuBackdrop = document.getElementById('tvEventMenuBackdrop');
+  const tvEventMenu = document.getElementById('tvEventMenu');
+  const tvToast = document.getElementById('tvToast');
   const tvTable = document.getElementById('tvTable');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
@@ -3504,11 +3617,12 @@
       </div>`;
     }).join('');
     tvTable.innerHTML = `<div class="tv-table-row tv-table-head">
-        <span>#</span><span>Player</span>
+        <span>#</span><span>Player<span class="tv-table-hint tv-table-hide-sm"> · drag a name for points · hold for D/MD/FC/R</span></span>
         <span class="tv-table-num tv-table-hide-sm">Rummies</span>
         <span class="tv-table-num tv-table-hide-sm">Drops</span>
         <span class="tv-table-total">Total</span>
       </div>${rows}`;
+    if (data.matchCount === matches.length) applyStagedChips();
 
     if (!opts.animate || oldTops.size === 0) return;
     // Web Animations rather than a CSS transition, so the slide doesn't depend
@@ -3569,6 +3683,216 @@
   }
 
   tvReplayBtn.addEventListener('click', playLatestRound);
+
+  // ---------- TV QUICK SCORING ----------
+  // Drag sideways on a player's name in the points table to set their points for
+  // the round (0 → full count across 20%–90% of the row); hold to pick D / MD / FC /
+  // R instead. Nothing is recorded until Commit — the points sit "staged" next to
+  // each total, and Commit unlocks once every active player has some.
+
+  const TV_DRAG_START_PX = 8;
+  const TV_LONG_PRESS_MS = 500;
+  const TV_TRACK_START = 0.2, TV_TRACK_END = 0.9;
+  let tvStaged = { matchCount: 0, values: {} };   // pIdx -> { points, eventKey|null }
+  let tvGesture = null;
+
+  function tvActiveIndices() {
+    const outs = getOutFlags(getTotals(matches));
+    return players.map((_, i) => i).filter(i => !outs[i]);
+  }
+
+  function stagedChipText(v) {
+    const ev = v.eventKey ? EVENTS.find(e => e.key === v.eventKey) : null;
+    return ev ? `${ev.code} ${v.points}` : `${v.points}`;
+  }
+
+  function applyStagedChips() {
+    if (tvStaged.matchCount !== matches.length) return;
+    tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(row => {
+      const v = tvStaged.values[row.dataset.playerIdx];
+      const total = row.querySelector('.tv-table-total');
+      const old = total && total.querySelector('.tv-staged');
+      if (old) old.remove();
+      row.classList.toggle('has-staged', !!v);
+      if (v && total) {
+        const chip = document.createElement('span');
+        chip.className = 'tv-staged';
+        chip.title = 'Set — not recorded until Commit';
+        chip.textContent = stagedChipText(v);
+        total.insertBefore(chip, total.firstChild);
+      }
+    });
+  }
+
+  // Keeps the staged points valid (dropped if the round count or who's still in
+  // changed underneath them) and the ribbon buttons in step with them.
+  function syncTvStaged() {
+    if (tvStaged.matchCount !== matches.length) tvStaged = { matchCount: matches.length, values: {} };
+    const active = tvActiveIndices();
+    Object.keys(tvStaged.values).forEach(k => { if (!active.includes(Number(k))) delete tvStaged.values[k]; });
+    const n = Object.keys(tvStaged.values).length;
+    tvCommitBtn.disabled = !(active.length >= 2 && n === active.length && !addMatchBtn.disabled);
+    tvCommitBtn.textContent = active.length ? `✓ Commit ${n}/${active.length}` : '✓ Commit';
+    tvClearStageBtn.disabled = n === 0;
+    applyStagedChips();
+  }
+
+  function stageTvPoints(pIdx, points, eventKey) {
+    if (tvStaged.matchCount !== matches.length) tvStaged = { matchCount: matches.length, values: {} };
+    // Only one Rummy (0) per round — giving it to someone takes it from whoever had it.
+    if (points === 0) Object.keys(tvStaged.values).forEach(k => { if (Number(k) !== pIdx && tvStaged.values[k].points === 0) delete tvStaged.values[k]; });
+    tvStaged.values[pIdx] = { points, eventKey: eventKey || null };
+    syncTvStaged();
+  }
+
+  function showTvToast(text) {
+    tvToast.textContent = text;
+    tvToast.hidden = false;
+    clearTimeout(showTvToast._timer);
+    showTvToast._timer = setTimeout(() => { tvToast.hidden = true; }, 3500);
+  }
+
+  // --- drag overlay ---
+  function startTvDrag(g) {
+    const rect = g.row.getBoundingClientRect();
+    g.trackLeft = rect.left + rect.width * TV_TRACK_START;
+    g.trackW = rect.width * (TV_TRACK_END - TV_TRACK_START);
+    const max = maxRoundPoints;
+    const ticks = [0, 1, 2, 3, 4].map(k => `<span style="left:${k * 25}%">${Math.round(max * k / 4)}</span>`).join('');
+    const overlay = document.createElement('div');
+    overlay.className = 'tv-drag-track';
+    overlay.innerHTML = `<div class="tv-drag-bar"><div class="tv-drag-fill"></div></div>
+      <div class="tv-drag-ticks">${ticks}</div>
+      <div class="tv-drag-thumb"><span class="tv-drag-value"></span><span class="tv-drag-dot"></span></div>`;
+    g.row.appendChild(overlay);
+    g.overlay = overlay;
+  }
+
+  function updateTvDrag(g, clientX) {
+    const pct = Math.max(0, Math.min(1, (clientX - g.trackLeft) / g.trackW));
+    g.value = Math.round(pct * maxRoundPoints);
+    const shown = g.value / maxRoundPoints;
+    g.overlay.querySelector('.tv-drag-fill').style.width = `${shown * 100}%`;
+    g.overlay.querySelector('.tv-drag-thumb').style.left = `${shown * 100}%`;
+    const label = g.overlay.querySelector('.tv-drag-value');
+    label.textContent = g.value === 0 ? '0 · R' : String(g.value);
+    label.classList.toggle('zero', g.value === 0);
+  }
+
+  function cancelTvGesture() {
+    if (!tvGesture) return;
+    clearTimeout(tvGesture.timer);
+    if (tvGesture.overlay) tvGesture.overlay.remove();
+    tvGesture = null;
+  }
+
+  tvTable.addEventListener('pointerdown', (e) => {
+    const cell = e.target.closest('.tv-table-player');
+    const row = cell && cell.closest('.tv-table-row[data-player-idx]');
+    if (!row || row.classList.contains('out') || e.button > 0 || tvGesture) return;
+    const pIdx = Number(row.dataset.playerIdx);
+    const g = { pIdx, row, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, mode: 'pending', overlay: null, value: null, timer: null };
+    g.timer = setTimeout(() => {
+      if (tvGesture !== g || g.mode !== 'pending') return;
+      g.mode = 'menu';
+      openTvEventMenu(pIdx, g.startX, g.startY);
+    }, TV_LONG_PRESS_MS);
+    tvGesture = g;
+    try { cell.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+
+  tvTable.addEventListener('pointermove', (e) => {
+    const g = tvGesture;
+    if (!g || e.pointerId !== g.pointerId || g.mode === 'menu') return;
+    if (g.mode === 'pending') {
+      const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
+      if (Math.hypot(dx, dy) < TV_DRAG_START_PX) return;
+      clearTimeout(g.timer);
+      if (Math.abs(dx) < Math.abs(dy)) { cancelTvGesture(); return; } // a vertical swipe isn't a score
+      g.mode = 'drag';
+      startTvDrag(g);
+    }
+    updateTvDrag(g, e.clientX);
+  });
+
+  tvTable.addEventListener('pointerup', (e) => {
+    const g = tvGesture;
+    if (!g || e.pointerId !== g.pointerId) return;
+    clearTimeout(g.timer);
+    const wasDrag = g.mode === 'drag';
+    const { pIdx, value } = g;
+    if (g.overlay) g.overlay.remove();
+    tvGesture = null;
+    if (wasDrag && value !== null) stageTvPoints(pIdx, value, null);
+  });
+
+  tvTable.addEventListener('pointercancel', cancelTvGesture);
+  tvTable.addEventListener('contextmenu', (e) => { if (e.target.closest('.tv-table-player')) e.preventDefault(); });
+
+  // --- long-press menu ---
+  function closeTvEventMenu() {
+    tvEventMenuBackdrop.hidden = true;
+    tvEventMenu.innerHTML = '';
+  }
+
+  function openTvEventMenu(pIdx, x, y) {
+    tvEventMenu.dataset.playerIdx = pIdx;
+    tvEventMenu.innerHTML = `<div class="tv-event-menu-title">${escapeHtml(players[pIdx])}</div>
+      <div class="tv-event-menu-btns">${EVENTS.map(ev => `<button type="button" data-ev="${ev.key}">${ev.key === 'rummy' ? 'R' : ev.code}<small>${ev.points}</small></button>`).join('')}</div>`;
+    tvEventMenuBackdrop.hidden = false;
+    const host = tvScreen.getBoundingClientRect();
+    const w = tvEventMenu.offsetWidth, h = tvEventMenu.offsetHeight;
+    const left = Math.max(8, Math.min(host.width - w - 8, x - host.left - w / 2));
+    const above = y - host.top - h - 18;
+    const top = above >= 8 ? above : Math.min(host.height - h - 8, y - host.top + 18);
+    tvEventMenu.style.left = `${left}px`;
+    tvEventMenu.style.top = `${top}px`;
+  }
+
+  // A new press outside the menu dismisses it (pointerdown, not click, so the
+  // release of the long press that opened it doesn't close it again).
+  tvEventMenuBackdrop.addEventListener('pointerdown', (e) => { if (e.target === tvEventMenuBackdrop) closeTvEventMenu(); });
+  tvEventMenu.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-ev]');
+    if (!btn) return;
+    const ev = EVENTS.find(x => x.key === btn.dataset.ev);
+    const pIdx = Number(tvEventMenu.dataset.playerIdx);
+    closeTvEventMenu();
+    if (ev) stageTvPoints(pIdx, ev.points, ev.key);
+  });
+
+  // --- ribbon buttons ---
+  tvClearStageBtn.addEventListener('click', () => {
+    tvStaged = { matchCount: matches.length, values: {} };
+    syncTvStaged();
+  });
+
+  // Commit feeds the staged points through the normal Add Match path, so it
+  // gets all the same checks (one Rummy, 0–full count), history, dealer move,
+  // announcements and standings animation.
+  tvCommitBtn.addEventListener('click', () => {
+    if (tvCommitBtn.disabled) return;
+    const active = tvActiveIndices();
+    players.forEach((_, i) => {
+      const inp = document.getElementById(`entry-${i}`);
+      if (inp && !inp.disabled) { inp.value = ''; delete inp.dataset.eventKey; }
+    });
+    active.forEach(i => {
+      const inp = document.getElementById(`entry-${i}`);
+      const v = tvStaged.values[i];
+      if (!inp || !v) return;
+      inp.value = String(v.points);
+      if (v.eventKey) inp.dataset.eventKey = v.eventKey; else delete inp.dataset.eventKey;
+    });
+    entryError.textContent = '';
+    const before = matches.length;
+    addMatchBtn.click();
+    if (matches.length === before) {
+      // Rejected (e.g. no Rummy) — say why, keep the staged points to fix, and don't leave stray values in the entry form.
+      showTvToast(entryError.textContent || 'Could not record the round.');
+      buildEntryGrid();
+    }
+  });
 
   // Index of the player who just won a round as Rummy, set right when that round is
   // added and consumed by the very next TV render — so the winner spotlight animation
@@ -3671,6 +3995,8 @@
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
     tvReplayBtn.hidden = !tableOn || matches.length === 0;
+    tvCommitBtn.hidden = !tableOn;
+    tvClearStageBtn.hidden = !tableOn;
     if (tableOn) {
       if (tvPlayback && tvPlayback.count === matches.length) {
         // A playback is already under way — it renders the latest standings itself.
@@ -3684,6 +4010,7 @@
     } else {
       cancelTvPlayback();
     }
+    syncTvStaged();
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
     tvMaxPoints.textContent = (gameMode === 'rounds' ? totalRounds : maxPoints) ?? '—';
@@ -3795,6 +4122,8 @@
   });
 
   function exitTvMode() {
+    cancelTvGesture();
+    closeTvEventMenu();
     tvScreen.hidden = true;
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
