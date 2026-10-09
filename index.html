@@ -1171,7 +1171,31 @@
   .tv-table-row.lead { border-color: var(--green); background: rgba(var(--green-rgb),0.10); }
   .tv-table-row.out { opacity: 0.5; }
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
-  .tv-table-rank { font-family: var(--font-display); color: var(--orange); }
+  .tv-table.animating { overflow: hidden; }
+  .tv-table-row.moving { position: relative; z-index: 2; }
+  .tv-table-rank { font-family: var(--font-display); color: var(--orange); display: flex; align-items: baseline; gap: 0.25em; white-space: nowrap; }
+  /* Places moved in the latest round, next to the rank. */
+  .tv-rank-move { font-family: var(--font-mono); font-size: 0.42em; }
+  .tv-rank-move.up { color: var(--green); }
+  .tv-rank-move.down { color: var(--orange); }
+  .tv-table-total { display: flex; justify-content: flex-end; align-items: baseline; gap: 0.35em; }
+  /* This round's points, floated beside the total for a few seconds after the
+     standings change. */
+  .tv-delta {
+    font-size: 0.5em;
+    font-weight: 700;
+    color: var(--orange);
+    white-space: nowrap;
+    opacity: 0;
+    animation: tvDeltaPop 3.2s ease-out forwards;
+  }
+  .tv-delta.zero { color: var(--green); }
+  @keyframes tvDeltaPop {
+    0% { opacity: 0; transform: translateX(0.6em); }
+    12% { opacity: 1; transform: none; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
   .tv-table-row.lead .tv-table-rank { color: var(--green); }
   .tv-table-player { display: flex; align-items: center; gap: 1.4vw; min-width: 0; min-height: 0; overflow: hidden; align-self: stretch; padding-block: 0.8vh; font-weight: 700; color: var(--white); }
   /* Big rectangular photo filling the row's height — the initial stands in
@@ -1840,7 +1864,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table" hidden>☰ Table</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table" hidden>☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -2052,6 +2076,7 @@
   const tvShowOutBtn = document.getElementById('tvShowOutBtn');
   const tvShowNamesBtn = document.getElementById('tvShowNamesBtn');
   const tvTableBtn = document.getElementById('tvTableBtn');
+  const tvReplayBtn = document.getElementById('tvReplayBtn');
   const tvTable = document.getElementById('tvTable');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
@@ -3605,22 +3630,62 @@
     renderTvScreen();
   });
 
-  // Rows sorted lowest total first; forfeited players sink to the bottom.
-  // Tied totals share a rank (1, 1, 3 …).
-  function renderTvTable(totals, outFlags, rummies, drops, minActiveTotal) {
+  // Standings after the first `matchCount` matches — what the points table
+  // shows. Built for any prefix of the game so Replay can show the table as
+  // it stood before the latest round.
+  function tvTableData(matchCount) {
+    const ms = matches.slice(0, matchCount);
+    const evs = matchEvents.slice(0, matchCount);
+    const totals = getTotals(ms);
+    const outFlags = getOutFlags(totals);
+    // Rows sorted lowest total first; forfeited players sink to the bottom.
     const order = players.map((_, i) => i).sort((a, b) => (outFlags[a] - outFlags[b]) || (totals[a] - totals[b]) || (a - b));
-    let rank = 0;
-    const rows = order.map((pIdx, pos) => {
+    // Tied totals share a rank (1, 1, 3 …).
+    const ranks = [];
+    order.forEach((pIdx, pos) => {
+      if (outFlags[pIdx]) { ranks[pIdx] = null; return; }
+      const prev = order[pos - 1];
+      ranks[pIdx] = (pos > 0 && !outFlags[prev] && totals[prev] === totals[pIdx]) ? ranks[prev] : pos + 1;
+    });
+    const activeTotals = totals.filter((_, i) => !outFlags[i]);
+    return {
+      matchCount, totals, outFlags, order, ranks,
+      minActiveTotal: activeTotals.length ? Math.min(...activeTotals) : null,
+      rummies: players.map((_, p) => ms.filter(m => m[p] === 0).length),
+      // The points table counts plain Drops only — Middle Drops are left out.
+      drops: players.map((_, p) => evs.filter(ev => ev && ev[p] === 'drop').length)
+    };
+  }
+
+  // Renders the points table. With opts.fromTotals, rows whose total changed
+  // flash and show the difference; with opts.animate, rows slide from where
+  // they were on screen to their new place (FLIP), so overtakes are visible.
+  function renderTvTable(data, opts = {}) {
+    const { totals, outFlags, order, ranks, minActiveTotal, rummies, drops } = data;
+    // Rank movement over the latest round shown in this table — from round 2
+    // on, since before round 1 everyone is tied at the top.
+    const before = data.matchCount > 1 ? tvTableData(data.matchCount - 1) : null;
+    const oldTops = new Map();
+    if (opts.animate) {
+      tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(r => oldTops.set(r.dataset.playerIdx, r.getBoundingClientRect().top));
+    }
+    const rows = order.map(pIdx => {
       const isOut = outFlags[pIdx];
-      if (!isOut && (pos === 0 || totals[pIdx] !== totals[order[pos - 1]])) rank = pos + 1;
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
-      const changed = !!(tvPrevTotals && tvPrevTotals[pIdx] !== undefined && tvPrevTotals[pIdx] !== totals[pIdx]);
-      return `<div class="tv-table-row ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'updated' : ''}">
-        <span class="tv-table-rank">${isOut ? '—' : rank}</span>
+      const delta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined ? totals[pIdx] - opts.fromTotals[pIdx] : 0;
+      const changed = !!opts.fromTotals && delta !== 0;
+      let move = '';
+      if (before && ranks[pIdx] !== null && before.ranks[pIdx] !== null && before.ranks[pIdx] !== ranks[pIdx]) {
+        const n = before.ranks[pIdx] - ranks[pIdx];
+        move = `<span class="tv-rank-move ${n > 0 ? 'up' : 'down'}" title="${n > 0 ? 'Up' : 'Down'} ${Math.abs(n)} this round">${n > 0 ? '▲' : '▼'}${Math.abs(n)}</span>`;
+      }
+      const showDelta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined && (changed || opts.showZeroDelta) && !isOut;
+      return `<div class="tv-table-row ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'updated' : ''}" data-player-idx="${pIdx}">
+        <span class="tv-table-rank">${isOut ? '—' : ranks[pIdx]}${move}</span>
         <span class="tv-table-player">${avatarHtml(pIdx, '')}<span class="tv-table-name">${escapeHtml(players[pIdx])}</span>${pIdx === dealerIdx ? '<span title="Dealing this round">🃏</span>' : ''}${isOut ? `<span class="tv-table-tag">${forfeited[pIdx] != null ? 'Forfeited' : 'Out'}</span>` : ''}</span>
         <span class="tv-table-num tv-table-hide-sm">${rummies[pIdx]}</span>
         <span class="tv-table-num tv-table-hide-sm">${drops[pIdx]}</span>
-        <span class="tv-table-total">${totals[pIdx]}</span>
+        <span class="tv-table-total">${showDelta ? `<span class="tv-delta ${delta === 0 ? 'zero' : ''}">${delta >= 0 ? '+' : ''}${delta}</span>` : ''}${totals[pIdx]}</span>
       </div>`;
     }).join('');
     tvTable.innerHTML = `<div class="tv-table-row tv-table-head">
@@ -3629,7 +3694,49 @@
         <span class="tv-table-num tv-table-hide-sm">Drops</span>
         <span class="tv-table-total">Total</span>
       </div>${rows}`;
+
+    if (!opts.animate || oldTops.size === 0) return;
+    const moving = [];
+    tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(r => {
+      const oldTop = oldTops.get(r.dataset.playerIdx);
+      if (oldTop === undefined) return;
+      const dy = oldTop - r.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) return;
+      r.style.transition = 'none';
+      r.style.transform = `translateY(${dy}px)`;
+      r.classList.add('moving');
+      moving.push(r);
+    });
+    if (!moving.length) return;
+    tvTable.classList.add('animating');
+    tvTable.getBoundingClientRect(); // commit the start positions before animating
+    requestAnimationFrame(() => {
+      moving.forEach(r => {
+        r.style.transition = 'transform 1.1s cubic-bezier(0.22, 0.8, 0.25, 1)';
+        r.style.transform = '';
+      });
+      clearTimeout(renderTvTable._doneTimer);
+      renderTvTable._doneTimer = setTimeout(() => {
+        tvTable.classList.remove('animating');
+        moving.forEach(r => { r.classList.remove('moving'); r.style.transition = ''; });
+      }, 1200);
+    });
   }
+
+  // Replay: show the table as it stood before the latest round, then animate
+  // into the current standings with each player's round points.
+  let tvReplayTimer = null;
+  tvReplayBtn.addEventListener('click', () => {
+    if (matches.length === 0) return;
+    clearTimeout(tvReplayTimer);
+    const before = tvTableData(matches.length - 1);
+    renderTvTable(before);
+    tvReplayTimer = setTimeout(() => {
+      tvReplayTimer = null;
+      if (tvTable.hidden) return;
+      renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: before.totals, showZeroDelta: true });
+    }, 1100);
+  });
 
   // Index of the player who just won a round as Rummy, set right when that round is
   // added and consumed by the very next TV render — so the winner spotlight animation
@@ -3732,9 +3839,13 @@
     tvShowNamesBtn.hidden = tableOn;
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
-    // The points table counts plain Drops only — Middle Drops are left out.
-    const plainDrops = players.map((_, pIdx) => matchEvents.filter(evRow => evRow && evRow[pIdx] === 'drop').length);
-    if (tableOn) renderTvTable(totals, outFlags, rummies, plainDrops, minActiveTotal);
+    tvReplayBtn.hidden = !tableOn || matches.length === 0;
+    if (tableOn) {
+      // A pending Replay is superseded by any real update.
+      clearTimeout(tvReplayTimer);
+      tvReplayTimer = null;
+      renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: tvPrevTotals });
+    }
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
     tvMaxPoints.textContent = (gameMode === 'rounds' ? totalRounds : maxPoints) ?? '—';
