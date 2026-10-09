@@ -1173,6 +1173,8 @@
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
   .tv-table.animating { overflow: hidden; }
   .tv-table-row.moving { position: relative; z-index: 2; }
+  .tv-table-row.moving-up { border-color: var(--green); box-shadow: 0 0 2.2vh rgba(var(--green-rgb),0.55); }
+  .tv-table-row.moving-down { border-color: var(--orange); box-shadow: 0 0 2.2vh rgba(var(--orange-rgb),0.45); }
   .tv-table-rank { font-family: var(--font-display); color: var(--orange); display: flex; align-items: baseline; gap: 0.25em; white-space: nowrap; }
   /* Places moved in the latest round, next to the rank. */
   .tv-rank-move { font-family: var(--font-mono); font-size: 0.42em; }
@@ -3696,47 +3698,64 @@
       </div>${rows}`;
 
     if (!opts.animate || oldTops.size === 0) return;
-    const moving = [];
+    // Web Animations rather than a CSS transition, so the slide doesn't depend
+    // on the browser committing the start position first.
+    const anims = [];
     tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(r => {
       const oldTop = oldTops.get(r.dataset.playerIdx);
-      if (oldTop === undefined) return;
+      if (oldTop === undefined || typeof r.animate !== 'function') return;
       const dy = oldTop - r.getBoundingClientRect().top;
       if (Math.abs(dy) < 1) return;
-      r.style.transition = 'none';
-      r.style.transform = `translateY(${dy}px)`;
-      r.classList.add('moving');
-      moving.push(r);
+      r.classList.add('moving', dy > 0 ? 'moving-up' : 'moving-down');
+      // The biggest mover is drawn on top, so a player dropping several places
+      // isn't hidden behind the rows climbing past them.
+      r.style.zIndex = String(2 + Math.round(Math.abs(dy)));
+      const anim = r.animate(
+        [{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
+        { duration: 1400, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' }
+      );
+      anims.push(anim.finished.catch(() => {}).then(() => {
+        r.classList.remove('moving', 'moving-up', 'moving-down');
+        r.style.zIndex = '';
+      }));
     });
-    if (!moving.length) return;
+    if (!anims.length) return;
     tvTable.classList.add('animating');
-    tvTable.getBoundingClientRect(); // commit the start positions before animating
-    requestAnimationFrame(() => {
-      moving.forEach(r => {
-        r.style.transition = 'transform 1.1s cubic-bezier(0.22, 0.8, 0.25, 1)';
-        r.style.transform = '';
-      });
-      clearTimeout(renderTvTable._doneTimer);
-      renderTvTable._doneTimer = setTimeout(() => {
-        tvTable.classList.remove('animating');
-        moving.forEach(r => { r.classList.remove('moving'); r.style.transition = ''; });
-      }, 1200);
-    });
+    Promise.all(anims).then(() => tvTable.classList.remove('animating'));
   }
 
-  // Replay: show the table as it stood before the latest round, then animate
-  // into the current standings with each player's round points.
-  let tvReplayTimer = null;
-  tvReplayBtn.addEventListener('click', () => {
+  // Plays the latest round on the table: holds the standings as they were
+  // before it for a moment (so the change is visible even right after the
+  // entry panel closes), then slides rows into the current order with each
+  // player's round points. Used for new rounds, Replay, and rounds entered
+  // while TV Mode was closed.
+  let tvPlayback = null;                              // { timer, count } while one is pending
+  let tvSeenRound = { gameId: null, count: 0 };       // latest round the table has played
+
+  function cancelTvPlayback() {
+    if (!tvPlayback) return;
+    clearTimeout(tvPlayback.timer);
+    tvPlayback = null;
+  }
+
+  function playLatestRound() {
     if (matches.length === 0) return;
-    clearTimeout(tvReplayTimer);
-    const before = tvTableData(matches.length - 1);
+    cancelTvPlayback();
+    const count = matches.length;
+    const before = tvTableData(count - 1);
     renderTvTable(before);
-    tvReplayTimer = setTimeout(() => {
-      tvReplayTimer = null;
-      if (tvTable.hidden) return;
-      renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: before.totals, showZeroDelta: true });
-    }, 1100);
-  });
+    tvSeenRound = { gameId: currentGameId, count };
+    tvPlayback = {
+      count,
+      timer: setTimeout(() => {
+        tvPlayback = null;
+        if (tvTable.hidden) return;
+        renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: before.totals, showZeroDelta: true });
+      }, 900)
+    };
+  }
+
+  tvReplayBtn.addEventListener('click', playLatestRound);
 
   // Index of the player who just won a round as Rummy, set right when that round is
   // added and consumed by the very next TV render — so the winner spotlight animation
@@ -3841,10 +3860,17 @@
     tvTable.hidden = !tableOn;
     tvReplayBtn.hidden = !tableOn || matches.length === 0;
     if (tableOn) {
-      // A pending Replay is superseded by any real update.
-      clearTimeout(tvReplayTimer);
-      tvReplayTimer = null;
-      renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: tvPrevTotals });
+      if (tvPlayback && tvPlayback.count === matches.length) {
+        // A playback is already under way — it renders the latest standings itself.
+      } else if (matches.length > 0 && (tvSeenRound.gameId !== currentGameId || matches.length > tvSeenRound.count)) {
+        playLatestRound(); // a round the table hasn't shown yet
+      } else {
+        cancelTvPlayback();
+        renderTvTable(tvTableData(matches.length), { animate: true, fromTotals: tvPrevTotals });
+        tvSeenRound = { gameId: currentGameId, count: matches.length };
+      }
+    } else {
+      cancelTvPlayback();
     }
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
