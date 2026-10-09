@@ -1136,7 +1136,7 @@
 
   .tv-grid[hidden] { display: none; }
 
-  /* Points-table alternative to the tile grid (Fixed Matches mode only) —
+  /* Points-table alternative to the tile grid —
      one row per player, lowest total first. Rows share the height so up to
      7 players fill a TV without scrolling. */
   .tv-table { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0.8vh; overflow-y: auto; padding-bottom: 1px; }
@@ -1866,7 +1866,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table" hidden>☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -3619,8 +3619,8 @@
     updateTvShowNames();
   });
 
-  // Points-table view instead of photo tiles — only offered in Fixed Matches
-  // mode (where standings, not eliminations, decide the game). Remembered per
+  // Points-table view instead of photo tiles, in either game mode (in
+  // Elimination, players out on points drop to the bottom). Remembered per
   // device like the names toggle.
   const TV_TABLE_VIEW_KEY = 'rummatrix.tvTableView';
   let tvTableView = false;
@@ -3681,7 +3681,9 @@
         const n = before.ranks[pIdx] - ranks[pIdx];
         move = `<span class="tv-rank-move ${n > 0 ? 'up' : 'down'}" title="${n > 0 ? 'Up' : 'Down'} ${Math.abs(n)} this round">${n > 0 ? '▲' : '▼'}${Math.abs(n)}</span>`;
       }
-      const showDelta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined && (changed || opts.showZeroDelta) && !isOut;
+      // Eliminated players still show the points that knocked them out; only
+      // the no-change "+0" is limited to players still in.
+      const showDelta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined && (changed || (opts.showZeroDelta && !isOut));
       return `<div class="tv-table-row ${isLeader ? 'lead' : ''} ${isOut ? 'out' : ''} ${changed ? 'updated' : ''}" data-player-idx="${pIdx}">
         <span class="tv-table-rank">${isOut ? '—' : ranks[pIdx]}${move}</span>
         <span class="tv-table-player">${avatarHtml(pIdx, '')}<span class="tv-table-name">${escapeHtml(players[pIdx])}</span>${pIdx === dealerIdx ? '<span title="Dealing this round">🃏</span>' : ''}${isOut ? `<span class="tv-table-tag">${forfeited[pIdx] != null ? 'Forfeited' : 'Out'}</span>` : ''}</span>
@@ -3846,8 +3848,7 @@
 
     tvMatchNum.textContent = matches.length + 1;
     tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
-    const tableOn = tvTableView && gameMode === 'rounds';
-    tvTableBtn.hidden = gameMode !== 'rounds';
+    const tableOn = tvTableView;
     tvTableBtn.classList.toggle('active', tableOn);
     tvTableBtn.textContent = tableOn ? '▦ Tiles' : '☰ Table';
     const tableLabel = tableOn ? 'Show player tiles' : 'Show points table';
