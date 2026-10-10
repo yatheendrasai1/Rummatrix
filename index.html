@@ -1216,32 +1216,7 @@
     30%, 70% { transform: rotate(-16deg) translateY(-6%) scale(1.12); }
   }
 
-  .win-name {
-    position: relative; z-index: 3; max-width: 92vw;
-    font-family: var(--font-body); font-weight: 800;
-    font-size: clamp(24px, 7vw, 56px);
-    color: var(--white);
-    text-align: center;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-    animation: winRise 0.5s ease-out 0.5s both;
-  }
-  .win-score {
-    position: relative; z-index: 3;
-    font-family: var(--font-mono); letter-spacing: 2px; text-transform: uppercase;
-    font-size: clamp(13px, 3.6vw, 24px);
-    color: var(--green);
-    animation: winRise 0.5s ease-out 0.65s both;
-  }
-  .win-score b { color: #fff44f; font-size: 1.5em; }
-  @keyframes winRise { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-  .win-hint {
-    position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom));
-    text-align: center; z-index: 3;
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--muted); opacity: 0.8;
-  }
   .win-mute {
     position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 5;
     width: 40px; height: 40px; border-radius: 50%;
@@ -1258,14 +1233,14 @@
   }
 
   /* Landscape: not enough height for a tall column, so put the avatar on the left and
-     the banner, name and score stacked on the right. */
+     the banner on the right. */
   @media (orientation: landscape) {
     .win-overlay {
       --win-pad: clamp(16px, 4vw, 56px);
       --win-av-l: min(76vh, 40vw);
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
-      grid-template-rows: 1fr auto auto auto 1fr;
+      grid-template-rows: 1fr auto 1fr;
       column-gap: clamp(16px, 4vw, 56px);
       row-gap: clamp(4px, 1.6vh, 14px);
       align-items: center;
@@ -1277,9 +1252,6 @@
     .win-rings span { animation-name: winRingLandscape; }
     /* sized from the width left beside the avatar so "ROUND WON!" always fits */
     .win-banner { grid-column: 2; grid-row: 2; font-size: min(16vh, calc((100vw - var(--win-av-l) - 3 * var(--win-pad)) / 7.6)); justify-self: start; margin: 0; }
-    .win-name { grid-column: 2; grid-row: 3; justify-self: start; max-width: 100%; text-align: left; font-size: min(12vh, 5vw); }
-    .win-score { grid-column: 2; grid-row: 4; justify-self: start; text-align: left; font-size: min(5.4vh, 2.4vw); }
-    .win-hint { bottom: max(8px, env(safe-area-inset-bottom)); }
   }
 
   @keyframes winRingLandscape {
@@ -1298,10 +1270,6 @@
     text-align: center; pointer-events: none;
   }
   .win-caption b { font-family: var(--font-display); font-size: clamp(16px, 4vmin, 30px); letter-spacing: 0.08em; color: #fff44f; text-shadow: 0 0 12px rgba(255, 170, 0, 0.9); }
-  .win-caption-name { font-weight: 800; font-size: clamp(16px, 4vmin, 30px); color: #fff; }
-  .win-caption-score { font-family: var(--font-mono); letter-spacing: 1px; text-transform: uppercase; font-size: clamp(11px, 2.4vmin, 16px); color: var(--green); }
-  .win-caption-score b { color: #fff44f; font-size: 1.4em; text-shadow: none; letter-spacing: 0; }
-  .win-fullvideo .win-hint { bottom: max(8px, env(safe-area-inset-bottom)); z-index: 4; }
 
   /* Reduced motion: a plain static card — no sliding, shaking, spinning or sparkles. */
   .win-overlay.win-static, .win-overlay.win-static * { animation: none !important; }
@@ -3603,7 +3571,6 @@
   function playRoundWon(pIdx, info, opts) {
     if (winOverlay || !players[pIdx]) return;
     const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const scoreText = `${info && info.round ? `Round ${info.round} · ` : ''}Round score <b>${info && info.score !== undefined ? info.score : 0}</b>`;
 
     // ---- full-screen video ----
     const videoUrl = !reduced && !(opts && opts.noVideo) ? playerVideoUrls.get((players[pIdx] || '').trim().toLowerCase()) : null;   // the static card never plays video
@@ -3614,8 +3581,7 @@
       el.setAttribute('aria-label', `Round won by ${players[pIdx]}`);
       el.innerHTML = `<video class="win-video" src="${escapeAttr(videoUrl)}" playsinline preload="auto"></video>
         <button type="button" class="win-mute" aria-label="Mute or unmute the win sound">${winMuted ? '🔇' : '🔊'}</button>
-        <div class="win-caption"><b>ROUND WON!</b><span class="win-caption-name">${escapeHtml(players[pIdx])}</span><span class="win-caption-score">${scoreText}</span></div>
-        <div class="win-hint">Tap to skip</div>`;
+        <div class="win-caption"><b>ROUND WON!</b></div>`;
       bindWinOverlay(el);
       document.body.appendChild(el);
       winOverlay = el;
@@ -3652,10 +3618,7 @@
     el.innerHTML = `<div class="win-rays"></div>
       <button type="button" class="win-mute" aria-label="Mute or unmute the win sound">${winMuted ? '🔇' : '🔊'}</button>
       <div class="win-banner">ROUND WON!</div>
-      <div class="win-stage">${rings}<div class="win-av"><div class="win-av-shake"><div class="win-av-body">${avatarMarkup}</div></div></div></div>
-      <div class="win-name">${escapeHtml(players[pIdx])}</div>
-      <div class="win-score">${scoreText}</div>
-      <div class="win-hint">Tap to skip</div>`;
+      <div class="win-stage">${rings}<div class="win-av"><div class="win-av-shake"><div class="win-av-body">${avatarMarkup}</div></div></div></div>`;
 
     if (!reduced) {
       let extra = '';
