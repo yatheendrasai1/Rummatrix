@@ -1479,6 +1479,7 @@
   .tv-table.animating { overflow: hidden; }
 
   /* ---- Quick scoring: drag a name to set the round's points ---- */
+  .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
   .tv-table-row[data-player-idx]:not(.out) .tv-table-player { touch-action: none; cursor: ew-resize; }
   .tv-table-hint { font-size: 0.8em; text-transform: none; letter-spacing: 0; opacity: 0.75; white-space: nowrap; }
   .tv-staged {
@@ -1552,7 +1553,7 @@
   .tv-commit-btn:not(:disabled) { background: var(--green); border-color: var(--green); color: var(--ink-on-green); }
   .tv-commit-btn:disabled, .tv-clear-stage-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Long-press menu: pick D / MD / FC / R for a player. */
+  /* Tap menu: pick D / MD / FC / R for a player. */
   .tv-event-menu-backdrop { position: absolute; inset: 0; z-index: 20; }
   .tv-event-menu-backdrop[hidden] { display: none; }
   .tv-event-menu {
@@ -4838,7 +4839,7 @@
       </div>`;
     }).join('');
     tvTable.innerHTML = `<div class="tv-table-row tv-table-head">
-        <span>#</span><span>Player<span class="tv-table-hint tv-table-hide-sm"> · drag a name for points · hold for D/MD/FC/R</span></span>
+        <span>#</span><span>Player<span class="tv-table-hint tv-table-hide-sm"> · drag a name for points · tap a row for D/MD/FC/R</span></span>
         <span class="tv-table-num tv-table-hide-sm">Rummies</span>
         <span class="tv-table-num tv-table-hide-sm">Drops</span>
         <span class="tv-table-total">Total</span>
@@ -4918,12 +4919,11 @@
 
   // ---------- TV QUICK SCORING ----------
   // Drag sideways on a player's name in the points table to set their points for
-  // the round (0 → full count across 20%–90% of the row); hold to pick D / MD / FC /
+  // the round (0 → full count across 20%–90% of the row); tap a row to pick D / MD / FC /
   // R instead. Nothing is recorded until Commit — the points sit "staged" next to
   // each total, and Commit unlocks once every active player has some.
 
   const TV_DRAG_START_PX = 8;
-  const TV_LONG_PRESS_MS = 500;
   const TV_TRACK_START = 0.2, TV_TRACK_END = 0.9;
   let tvStaged = { matchCount: 0, values: {} };   // pIdx -> { points, eventKey|null }
   let tvGesture = null;
@@ -5013,34 +5013,29 @@
 
   function cancelTvGesture() {
     if (!tvGesture) return;
-    clearTimeout(tvGesture.timer);
     if (tvGesture.overlay) tvGesture.overlay.remove();
     tvGesture = null;
   }
 
+  // A press on a player's row: a tap anywhere on the row opens the D / MD / FC / R
+  // menu; a sideways drag starting on the name sets points with the slider.
   tvTable.addEventListener('pointerdown', (e) => {
-    const cell = e.target.closest('.tv-table-player');
-    const row = cell && cell.closest('.tv-table-row[data-player-idx]');
+    const row = e.target.closest('.tv-table-row[data-player-idx]');
     if (!row || row.classList.contains('out') || e.button > 0 || tvGesture) return;
     const pIdx = Number(row.dataset.playerIdx);
-    const g = { pIdx, row, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, mode: 'pending', overlay: null, value: null, timer: null };
-    g.timer = setTimeout(() => {
-      if (tvGesture !== g || g.mode !== 'pending') return;
-      g.mode = 'menu';
-      openTvEventMenu(pIdx, g.startX, g.startY);
-    }, TV_LONG_PRESS_MS);
+    const g = { pIdx, row, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, mode: 'pending', fromName: !!e.target.closest('.tv-table-player'), overlay: null, value: null };
     tvGesture = g;
-    try { cell.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    try { row.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
 
   tvTable.addEventListener('pointermove', (e) => {
     const g = tvGesture;
-    if (!g || e.pointerId !== g.pointerId || g.mode === 'menu') return;
+    if (!g || e.pointerId !== g.pointerId) return;
     if (g.mode === 'pending') {
       const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
       if (Math.hypot(dx, dy) < TV_DRAG_START_PX) return;
-      clearTimeout(g.timer);
-      if (Math.abs(dx) < Math.abs(dy)) { cancelTvGesture(); return; } // a vertical swipe isn't a score
+      // Only a sideways drag that began on the name sets points; anything else is not a tap.
+      if (!g.fromName || Math.abs(dx) < Math.abs(dy)) { cancelTvGesture(); return; }
       g.mode = 'drag';
       startTvDrag(g);
     }
@@ -5050,18 +5045,19 @@
   tvTable.addEventListener('pointerup', (e) => {
     const g = tvGesture;
     if (!g || e.pointerId !== g.pointerId) return;
-    clearTimeout(g.timer);
     const wasDrag = g.mode === 'drag';
+    const wasTap = g.mode === 'pending';
     const { pIdx, value } = g;
     if (g.overlay) g.overlay.remove();
     tvGesture = null;
     if (wasDrag && value !== null) stageTvPoints(pIdx, value, null);
+    else if (wasTap) openTvEventMenu(pIdx, e.clientX, e.clientY);
   });
 
   tvTable.addEventListener('pointercancel', cancelTvGesture);
-  tvTable.addEventListener('contextmenu', (e) => { if (e.target.closest('.tv-table-player')) e.preventDefault(); });
+  tvTable.addEventListener('contextmenu', (e) => { if (e.target.closest('.tv-table-row[data-player-idx]')) e.preventDefault(); });
 
-  // --- long-press menu ---
+  // --- tap menu ---
   function closeTvEventMenu() {
     tvEventMenuBackdrop.hidden = true;
     tvEventMenu.innerHTML = '';
