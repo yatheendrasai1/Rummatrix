@@ -2191,7 +2191,7 @@
     <div class="board-section">
       <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
         <span>Player Summary</span>
-        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button></span>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button><button type="button" class="edit-max-btn" id="toggleOutBtn" hidden></button></span>
       </h2>
       <div id="summaryList" class="summary-list-compact"></div>
     </div>
@@ -2591,6 +2591,7 @@
   const matchNumDisplay = document.getElementById('matchNumDisplay');
   const setNumDisplay = document.getElementById('setNumDisplay');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
+  const toggleOutBtn = document.getElementById('toggleOutBtn');
   const limitLabel = document.getElementById('limitLabel');
   const tvLimitLabel = document.getElementById('tvLimitLabel');
   const gameModeDisplay = document.getElementById('gameModeDisplay');
@@ -4188,6 +4189,7 @@
     const outFlags = getOutFlags(totals);
 
     players.forEach((name, i) => {
+      if (hideOutPlayers && outFlags[i]) return;     // no score to enter for them anyway
       const row = document.createElement('div');
       row.className = 'entry-row' + (outFlags[i] ? ' out' : '');
       row.dataset.playerIdx = i;
@@ -4803,8 +4805,9 @@
     if (opts.animate) {
       tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(r => oldTops.set(r.dataset.playerIdx, r.getBoundingClientRect().top));
     }
-    // Players who are out (eliminated or forfeited) aren't listed — only those still in play.
-    const rows = order.filter(pIdx => !outFlags[pIdx]).map(pIdx => {
+    // Players who are out (eliminated or forfeited) are only listed when the ＋ button
+    // has brought them back; by default just those still in play.
+    const rows = order.filter(pIdx => tvShowOutPlayers || !outFlags[pIdx]).map(pIdx => {
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const delta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined ? totals[pIdx] - opts.fromTotals[pIdx] : 0;
@@ -5204,7 +5207,6 @@
     tvTableBtn.title = tableLabel;
     tvTableBtn.setAttribute('aria-label', tableLabel);
     // Tile-only toggles don't apply to the table.
-    tvShowOutBtn.hidden = tableOn;
     tvShowNamesBtn.hidden = tableOn;
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
@@ -6167,6 +6169,18 @@
     renderBoards();
   }
 
+  // Hide / show players who are out in the Player Summary and the round-entry rows
+  // (the match log keeps every column). Remembered on this device.
+  const HIDE_OUT_KEY = 'rummatrix.hideOutPlayers';
+  let hideOutPlayers = false;
+  try { hideOutPlayers = localStorage.getItem(HIDE_OUT_KEY) === 'true'; } catch (err) { /* ignore */ }
+  toggleOutBtn.addEventListener('click', () => {
+    hideOutPlayers = !hideOutPlayers;
+    try { localStorage.setItem(HIDE_OUT_KEY, String(hideOutPlayers)); } catch (err) { /* ignore */ }
+    buildEntryGrid();
+    renderBoards();
+  });
+
   function renderBoards() {
     const totals = getTotals(matches);
     const outFlags = getOutFlags(totals);
@@ -6204,7 +6218,14 @@
       gameOverCelebrated = false;
     }
 
+    // The "out players" toggle only matters once someone is out.
+    const anyOut = outFlags.some(Boolean);
+    toggleOutBtn.hidden = !anyOut;
+    toggleOutBtn.textContent = hideOutPlayers ? '👁 Show out' : '🙈 Hide out';
+    toggleOutBtn.title = hideOutPlayers ? 'Show players who are out' : 'Hide players who are out';
+
     let summaryHtml = players.map((name, pIdx) => {
+      if (hideOutPlayers && outFlags[pIdx]) return '';
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const pctRaw = maxPoints ? (totals[pIdx] / maxPoints) * 100 : 0;
