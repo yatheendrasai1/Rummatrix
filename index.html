@@ -3058,6 +3058,8 @@
   // sequenced so the two never talk over each other.
   function celebrateRoundWinner(name) {
     if (!name) return;
+    // A win video brings its own sound — keep the Rummy clip and Announce quiet for it.
+    if (winVideoWillPlay(name)) return;
     if (!hasPlayerClip(name)) { announceRoundWinner(name); return; }
     setTimeout(() => {
       playPlayerClip(name).then(() => announceRoundWinner(name));
@@ -3705,12 +3707,21 @@
   // renderBoards) — confetti plus, if Announce is on, a spoken call-out.
   // winnerName is null for the rare all-busted/no-winner case, where only the
   // confetti plays.
+  // True if the round-won celebration is about to play this player's win video (so
+  // their video isn't talked over). Plain-card (reduced motion) celebrations never play video.
+  function winVideoWillPlay(name) {
+    const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    return !winOverlay && !reduced && hasPlayerVideo(name || '');
+  }
+
   function celebrateGameOver(winnerName, plural = false) {
     spawnConfetti();
     if (!tvScreen.hidden) {
       showTvGameWinnerBanner(winnerName ? `🏆 ${winnerName} ${plural ? 'WIN' : 'WINS'}!` : 'GAME OVER');
     }
-    if (winnerName && announceEnabled) {
+    // Stay quiet if the winning round's video is still playing.
+    const videoPlaying = !!(winOverlay && winOverlay.querySelector('video.win-video'));
+    if (winnerName && announceEnabled && !videoPlaying) {
       speak(`${winnerName} ${plural ? 'win' : 'wins'} the game!`, { voice: activeVoice(), ...emotionForAnnounce() });
     }
   }
