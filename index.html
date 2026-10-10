@@ -391,6 +391,17 @@
   }
   .saved-player-chip .chip-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+  /* Manage Players (setup screen): a standalone roster, independent of any game. */
+  #managePlayersSection { margin: 0 0 22px; }
+  .mp-add-row, .mp-row { display: flex; align-items: center; gap: 12px; }
+  .mp-add-row { margin-bottom: 6px; }
+  .mp-add-row input, .mp-row .mp-name { flex: 1; min-width: 0; }
+  .mp-row { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .mp-row:last-child { border-bottom: none; }
+  .mp-row .mp-delete { flex: none; }
+  .mp-empty { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  #managePlayersCount { color: var(--muted); font-weight: 400; margin-left: 6px; }
+
   .event-points-grid { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 12px; }
   .event-points-sublabel {
     display: block;
@@ -1967,6 +1978,21 @@
     <h1>Initialize New Game</h1>
     <p class="sub">Set the player count and register call-signs to build the score matrix.</p>
 
+    <details class="collapsible-section" id="managePlayersSection">
+      <summary>Manage Players <span id="managePlayersCount"></span></summary>
+      <p class="sub" style="margin:0 0 12px; font-size:13px;">Create players ahead of time, and rename them or change their pictures any time. They show up as quick-fill chips when you start a game. Changes here don't affect games already in progress.</p>
+      <div class="mp-add-row">
+        <div class="player-avatar-wrap">
+          <button type="button" class="avatar-btn" id="mpNewAvatarBtn" title="Add a picture (optional)" aria-label="Add a picture for the new player"><span class="avatar-circle" id="mpNewAvatar"></span></button>
+          <button type="button" class="avatar-clear-btn" id="mpNewAvatarClear" title="Remove picture" hidden>×</button>
+        </div>
+        <input type="text" id="mpNewName" maxlength="20" placeholder="New player name" autocomplete="off">
+        <button type="button" class="btn-primary" id="mpAddBtn" style="padding:10px 18px; font-size:12px;">Add</button>
+      </div>
+      <div class="error-text" id="mpError"></div>
+      <div id="managePlayersList"></div>
+    </details>
+
     <div class="field-group">
       <label>Player Count (2–7)</label>
       <div class="count-selector" id="countSelector"></div>
@@ -2242,7 +2268,7 @@
   // the setup screen can offer them as tap-to-fill chips instead of retyping/re-
   // uploading each time. Independent of any specific game/session.
   const RECENT_PLAYERS_KEY = 'rummatrix.recentPlayers';
-  const MAX_RECENT_PLAYERS = 20;
+  const MAX_RECENT_PLAYERS = 40;
   let recentPlayers = [];
   try {
     const savedRecentPlayers = JSON.parse(localStorage.getItem(RECENT_PLAYERS_KEY));
@@ -2260,6 +2286,7 @@
     });
     if (recentPlayers.length > MAX_RECENT_PLAYERS) recentPlayers.length = MAX_RECENT_PLAYERS;
     try { localStorage.setItem(RECENT_PLAYERS_KEY, JSON.stringify(recentPlayers)); } catch (err) { /* ignore */ }
+    if (typeof renderManagePlayers === 'function') renderManagePlayers();
   }
 
   function renderSavedPlayersRow() {
@@ -2293,6 +2320,141 @@
     playerAvatars[i] = saved.avatar || null;
     updateAvatarPreview(i);
   });
+
+  // ---------- MANAGE PLAYERS: the saved roster, edited outside any game ----------
+  // Uses the same saved-players list as the quick-fill chips (recentPlayers), so
+  // a player created here appears there, and players from past games can be
+  // renamed/re-photographed/removed here. Editing the roster never touches a game
+  // that's already in progress — a game keeps its own copy of names and pictures.
+  const managePlayersList = document.getElementById('managePlayersList');
+  const managePlayersCount = document.getElementById('managePlayersCount');
+  const mpNewName = document.getElementById('mpNewName');
+  const mpNewAvatar = document.getElementById('mpNewAvatar');
+  const mpNewAvatarBtn = document.getElementById('mpNewAvatarBtn');
+  const mpNewAvatarClear = document.getElementById('mpNewAvatarClear');
+  const mpAddBtn = document.getElementById('mpAddBtn');
+  const mpError = document.getElementById('mpError');
+  let mpNewAvatarData = null;
+
+  function persistRoster() {
+    try { localStorage.setItem(RECENT_PLAYERS_KEY, JSON.stringify(recentPlayers)); return true; }
+    catch (err) { return false; }
+  }
+
+  function mpMessage(text) { mpError.style.color = ''; mpError.textContent = text || ''; }
+
+  function mpAvatarInner(avatar, name) {
+    return avatar ? `<img src="${avatar}" alt="">` : `<span class="avatar-placeholder">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
+  }
+
+  function renderManagePlayers() {
+    managePlayersCount.textContent = recentPlayers.length ? `(${recentPlayers.length})` : '';
+    mpNewAvatar.innerHTML = mpNewAvatarData ? `<img src="${mpNewAvatarData}" alt="">` : `<span class="avatar-placeholder">＋</span>`;
+    mpNewAvatarClear.hidden = !mpNewAvatarData;
+    managePlayersList.innerHTML = recentPlayers.length === 0
+      ? '<p class="mp-empty">No saved players yet — add one above, or start a game and its players are saved automatically.</p>'
+      : recentPlayers.map((pl, i) => `<div class="mp-row" data-idx="${i}">
+          <div class="player-avatar-wrap">
+            <button type="button" class="avatar-btn mp-avatar" title="Change picture" aria-label="Change ${escapeAttr(pl.name)}'s picture"><span class="avatar-circle">${mpAvatarInner(pl.avatar, pl.name)}</span></button>
+            <button type="button" class="avatar-clear-btn mp-avatar-clear" title="Remove picture" aria-label="Remove ${escapeAttr(pl.name)}'s picture" ${pl.avatar ? '' : 'hidden'}>×</button>
+          </div>
+          <input type="text" class="mp-name" maxlength="20" value="${escapeAttr(pl.name)}" aria-label="Player name" autocomplete="off">
+          <button type="button" class="btn-ghost danger mp-delete" title="Delete this player" aria-label="Delete ${escapeAttr(pl.name)}" style="padding:8px 12px; font-size:12px;">🗑</button>
+        </div>`).join('');
+  }
+
+  function refreshRosterViews() {
+    renderManagePlayers();
+    renderSavedPlayersRow();
+  }
+
+  // Validates a roster name; returns an error message or '' if fine.
+  function rosterNameError(name, ignoreIdx) {
+    if (!name) return 'Every player needs a name.';
+    const lower = name.toLowerCase();
+    if (recentPlayers.some((pl, i) => i !== ignoreIdx && pl.name.toLowerCase() === lower)) return `"${name}" is already saved — names must be unique.`;
+    return '';
+  }
+
+  function pickRosterImage(onPicked) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      readAvatarFile(file).then(onPicked).catch(err => mpMessage(err.message || 'Could not load that image.'));
+    });
+    input.click();
+  }
+
+  mpNewAvatarBtn.addEventListener('click', () => pickRosterImage(dataUrl => { mpNewAvatarData = dataUrl; mpMessage(''); renderManagePlayers(); }));
+  mpNewAvatarClear.addEventListener('click', () => { mpNewAvatarData = null; renderManagePlayers(); });
+
+  function addRosterPlayer() {
+    const name = mpNewName.value.trim();
+    const err = rosterNameError(name, -1);
+    if (err) { mpMessage(err); return; }
+    recentPlayers.unshift({ name, avatar: mpNewAvatarData || null });
+    if (recentPlayers.length > MAX_RECENT_PLAYERS) recentPlayers.length = MAX_RECENT_PLAYERS;
+    if (!persistRoster()) { recentPlayers.shift(); mpMessage('Could not save — this device\'s storage is full. Try a smaller picture or delete players you no longer need.'); return; }
+    mpNewName.value = '';
+    mpNewAvatarData = null;
+    mpMessage('');
+    refreshRosterViews();
+    mpNewName.focus();
+  }
+  mpAddBtn.addEventListener('click', addRosterPlayer);
+  mpNewName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addRosterPlayer(); } });
+
+  managePlayersList.addEventListener('click', (e) => {
+    const row = e.target.closest('.mp-row');
+    if (!row) return;
+    const idx = Number(row.dataset.idx);
+    const pl = recentPlayers[idx];
+    if (!pl) return;
+    if (e.target.closest('.mp-avatar')) {
+      pickRosterImage(dataUrl => {
+        const before = pl.avatar;
+        pl.avatar = dataUrl;
+        if (!persistRoster()) { pl.avatar = before; mpMessage('Could not save that picture — this device\'s storage is full.'); return; }
+        mpMessage('');
+        refreshRosterViews();
+      });
+    } else if (e.target.closest('.mp-avatar-clear')) {
+      pl.avatar = null;
+      persistRoster();
+      refreshRosterViews();
+    } else if (e.target.closest('.mp-delete')) {
+      if (!confirm(`Delete ${pl.name} from your saved players? Games already in progress are not affected.`)) return;
+      recentPlayers.splice(idx, 1);
+      persistRoster();
+      mpMessage('');
+      refreshRosterViews();
+    }
+  });
+
+  // Renaming saves when the field loses focus or Enter is pressed.
+  managePlayersList.addEventListener('change', (e) => {
+    const input = e.target.closest('.mp-name');
+    if (!input) return;
+    const idx = Number(input.closest('.mp-row').dataset.idx);
+    const pl = recentPlayers[idx];
+    const name = input.value.trim();
+    const err = rosterNameError(name, idx);
+    if (err) { mpMessage(err); input.value = pl.name; return; }
+    if (name === pl.name) return;
+    const old = pl.name;
+    pl.name = name;
+    persistRoster();
+    // Their Rummy voice clip is keyed by name, so it follows the rename.
+    if (old.toLowerCase() !== name.toLowerCase()) renamePlayerClip(old, name);
+    mpMessage('');
+    refreshRosterViews();
+  });
+  managePlayersList.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('mp-name')) e.target.blur(); });
+
+  renderManagePlayers();
 
   const setupError = document.getElementById('setupError');
   const startBtn = document.getElementById('startBtn');
