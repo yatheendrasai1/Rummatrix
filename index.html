@@ -1250,26 +1250,44 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  .win-confetti, .win-sparkle { position: absolute; pointer-events: none; z-index: 4; }
-  .win-confetti {
-    left: 50%; top: 44%;
-    width: 0.55em; height: 0.9em;
-    font-size: clamp(10px, 2.2vmin, 16px);
-    opacity: 0;
-    animation: winBurst var(--d, 2.8s) cubic-bezier(0.15, 0.7, 0.3, 1) var(--delay, 0s) forwards;
-  }
-  @keyframes winBurst {
-    0%   { transform: translate(0, 0) rotate(0) scale(0.3); opacity: 1; }
-    30%  { transform: translate(var(--dx), var(--dy)) rotate(180deg) scale(1); opacity: 1; }
-    100% { transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) + 62vh)) rotate(var(--rot, 720deg)) scale(1); opacity: 0.9; }
-  }
+  .win-sparkle { position: absolute; pointer-events: none; z-index: 4; }
   .win-sparkle { color: #fff9b0; text-shadow: 0 0 10px #ffd23f; opacity: 0; animation: winTwinkle 1.1s ease-in-out var(--delay, 0s) infinite; }
   @keyframes winTwinkle {
     0%, 100% { transform: scale(0.2) rotate(0); opacity: 0; }
     50%      { transform: scale(1.1) rotate(90deg); opacity: 1; }
   }
 
-  /* Reduced motion: a plain static card — no sliding, shaking, spinning or confetti. */
+  /* Landscape: not enough height for a tall column, so put the avatar on the left and
+     the banner, name and score stacked on the right. */
+  @media (orientation: landscape) {
+    .win-overlay {
+      --win-pad: clamp(16px, 4vw, 56px);
+      --win-av-l: min(76vh, 40vw);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-rows: 1fr auto auto auto 1fr;
+      column-gap: clamp(16px, 4vw, 56px);
+      row-gap: clamp(4px, 1.6vh, 14px);
+      align-items: center;
+      justify-content: center;
+      padding: 12px var(--win-pad);
+    }
+    .win-rays { left: 30%; top: 50%; }
+    .win-stage { --win-av: var(--win-av-l); grid-column: 1; grid-row: 1 / -1; align-self: center; }
+    .win-rings span { animation-name: winRingLandscape; }
+    /* sized from the width left beside the avatar so "ROUND WON!" always fits */
+    .win-banner { grid-column: 2; grid-row: 2; font-size: min(16vh, calc((100vw - var(--win-av-l) - 3 * var(--win-pad)) / 7.6)); justify-self: start; margin: 0; }
+    .win-name { grid-column: 2; grid-row: 3; justify-self: start; max-width: 100%; text-align: left; font-size: min(12vh, 5vw); }
+    .win-score { grid-column: 2; grid-row: 4; justify-self: start; text-align: left; font-size: min(5.4vh, 2.4vw); }
+    .win-hint { bottom: max(8px, env(safe-area-inset-bottom)); }
+  }
+
+  @keyframes winRingLandscape {
+    0%   { transform: scale(0.55); opacity: 0.9; }
+    100% { transform: scale(1.4);  opacity: 0; }
+  }
+
+  /* Reduced motion: a plain static card — no sliding, shaking, spinning or sparkles. */
   .win-overlay.win-static, .win-overlay.win-static * { animation: none !important; }
   .win-overlay.win-static { opacity: 1; }
   .win-overlay.win-static.leaving { opacity: 0; }
@@ -3484,12 +3502,7 @@
       <div class="win-hint">Tap to skip</div>`;
 
     if (!reduced) {
-      const colors = ['#ff6a1f', '#33e18a', '#ffd23f', '#4fc3ff', '#ff5d8f', '#ffffff'];
       let extra = '';
-      for (let i = 0; i < 70; i++) {
-        const ang = Math.random() * Math.PI * 2, dist = 18 + Math.random() * 38;
-        extra += `<i class="win-confetti" style="background:${colors[i % colors.length]};--dx:${(Math.cos(ang) * dist * 1.1).toFixed(1)}vmin;--dy:${(Math.sin(ang) * dist - 10).toFixed(1)}vmin;--d:${(2.4 + Math.random() * 1.8).toFixed(2)}s;--delay:${(0.3 + Math.random() * 1.2).toFixed(2)}s;--rot:${Math.round(360 + Math.random() * 720)}deg"></i>`;
-      }
       for (let i = 0; i < 14; i++) {
         extra += `<span class="win-sparkle" style="left:${(8 + Math.random() * 84).toFixed(1)}%;top:${(12 + Math.random() * 70).toFixed(1)}%;font-size:${Math.round(14 + Math.random() * 20)}px;--delay:${(Math.random() * 1.6).toFixed(2)}s">✦</span>`;
       }
