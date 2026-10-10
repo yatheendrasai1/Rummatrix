@@ -2214,7 +2214,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -2581,6 +2581,7 @@
   const tvShowNamesBtn = document.getElementById('tvShowNamesBtn');
   const tvTableBtn = document.getElementById('tvTableBtn');
   const tvReplayBtn = document.getElementById('tvReplayBtn');
+  const tvWinReplayBtn = document.getElementById('tvWinReplayBtn');
   const tvCommitBtn = document.getElementById('tvCommitBtn');
   const tvClearStageBtn = document.getElementById('tvClearStageBtn');
   const tvEventMenuBackdrop = document.getElementById('tvEventMenuBackdrop');
@@ -4483,6 +4484,17 @@
 
   tvReplayBtn.addEventListener('click', playLatestRound);
 
+  // The latest round's Rummy winner (the player who scored 0), or -1 if there isn't one.
+  function latestRoundWinnerIdx() {
+    return matches.length ? matches[matches.length - 1].findIndex(sc => sc === 0) : -1;
+  }
+
+  // 🏆 Win: replay the round-won celebration for the latest round, from TV Mode.
+  tvWinReplayBtn.addEventListener('click', () => {
+    const w = latestRoundWinnerIdx();
+    if (w !== -1) playRoundWon(w, { round: matches.length, score: 0 });
+  });
+
   // ---------- TV QUICK SCORING ----------
   // Drag sideways on a player's name in the points table to set their points for
   // the round (0 → full count across 20%–90% of the row); hold to pick D / MD / FC /
@@ -4794,6 +4806,7 @@
     tvGrid.hidden = tableOn;
     tvTable.hidden = !tableOn;
     tvReplayBtn.hidden = !tableOn || matches.length === 0;
+    tvWinReplayBtn.hidden = latestRoundWinnerIdx() === -1;
     tvCommitBtn.hidden = !tableOn;
     tvClearStageBtn.hidden = !tableOn;
     if (tableOn) {
