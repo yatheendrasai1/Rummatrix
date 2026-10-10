@@ -2279,7 +2279,7 @@
 <div class="tv-screen" id="tvScreen" hidden>
   <div class="tv-header">
     <span class="tv-brand">⬡ RUMMY<span>.SYS</span><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · SET <b id="tvSetNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -2664,7 +2664,6 @@
   const tvGameWinnerBanner = document.getElementById('tvGameWinnerBanner');
   const tvExitBtn = document.getElementById('tvExitBtn');
   const tvMatchNum = document.getElementById('tvMatchNum');
-  const tvSetNum = document.getElementById('tvSetNum');
   const tvMaxPoints = document.getElementById('tvMaxPoints');
   const tvAddScoreBtn = document.getElementById('tvAddScoreBtn');
   const tvShowOutBtn = document.getElementById('tvShowOutBtn');
@@ -5215,7 +5214,6 @@
     }).join('') + `<div class="tv-dim-overlay ${winnerIdx !== null ? 'tv-dim-active' : ''}"></div>`;
 
     tvMatchNum.textContent = matches.length + 1;
-    tvSetNum.textContent = Math.floor(matches.length / setSize) + 1;
     const tableOn = tvTableView;
     tvTableBtn.classList.toggle('active', tableOn);
     tvTableBtn.textContent = tableOn ? '▦ Tiles' : '☰ Table';
