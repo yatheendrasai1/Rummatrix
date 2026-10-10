@@ -1287,6 +1287,21 @@
     100% { transform: scale(1.4);  opacity: 0; }
   }
 
+  /* A chosen win video replaces the avatar (a rounded frame, natural aspect ratio). */
+  .win-has-video .win-stage { width: auto; height: auto; }
+  .win-has-video .win-av, .win-has-video .win-av-shake, .win-has-video .win-av-body { width: auto; height: auto; }
+  .win-video {
+    display: block;
+    max-width: min(90vw, 560px); max-height: 44vh;
+    border-radius: 16px;
+    border: 4px solid #fff44f;
+    box-shadow: 0 0 40px rgba(255, 170, 0, 0.8);
+    background: #000;
+  }
+  @media (orientation: landscape) {
+    .win-has-video .win-video { max-width: var(--win-av-l); max-height: var(--win-av-l); }
+  }
+
   /* Reduced motion: a plain static card — no sliding, shaking, spinning or sparkles. */
   .win-overlay.win-static, .win-overlay.win-static * { animation: none !important; }
   .win-overlay.win-static { opacity: 1; }
@@ -1983,6 +1998,9 @@
   .clip-row-status.recording { color: var(--orange); }
   .clip-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .clip-row-actions button { font-size: 11px; padding: 7px 11px; }
+  .clip-row-video { flex: 1 1 100%; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding-left: 4px; }
+  .clip-row-video .clip-row-status { flex: 1 1 160px; }
+  .clip-row-video button { font-size: 11px; padding: 7px 11px; }
 
   .tv-add-modal {
     position: absolute;
@@ -2245,10 +2263,11 @@
 
     <details class="collapsible-section" id="voiceSettingsSection">
       <summary>Voice Settings</summary>
-      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy. Record up to 10 seconds, or upload an audio file — you can trim either (or a saved clip, with ✂ Trim). Saved clips stay under 3 MB.</p>
+      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy — and, if you like, a win video from this device that plays in their round-won celebration. Record up to 10 seconds, or upload an audio file — you can trim either (or a saved clip, with ✂ Trim). Saved clips stay under 3 MB.</p>
       <div id="playerClipList"></div>
       <div class="error-text" id="playerClipError"></div>
       <input type="file" id="clipFileInput" accept="audio/*" hidden>
+      <input type="file" id="clipVideoInput" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
     </details>
 
   </section>
@@ -2577,7 +2596,7 @@
     pl.name = name;
     persistRoster();
     // Their Rummy voice clip is keyed by name, so it follows the rename.
-    if (old.toLowerCase() !== name.toLowerCase()) renamePlayerClip(old, name);
+    if (old.toLowerCase() !== name.toLowerCase()) renamePlayerMedia(old, name);
     mpMessage('');
     refreshRosterViews();
   });
@@ -2922,6 +2941,26 @@
   const playerClipUrls = new Map(); // lower-cased name -> object URL
   const playerClipFileNames = new Map(); // lower-cased name -> file name shown in Voice Settings
 
+  // Win videos: chosen from the device, stored alongside the clips (keyed by player name).
+  const PLAYER_VIDEO_PREFIX = 'playerVideo:';
+  const PLAYER_VIDEO_MAX_BYTES = 40 * 1024 * 1024;
+  const playerVideoUrls = new Map();      // lower-cased name -> object URL
+  const playerVideoNames = new Map();     // lower-cased name -> file name shown in Voice Settings
+  function videoKey(name) { return PLAYER_VIDEO_PREFIX + name.trim().toLowerCase(); }
+  function hasPlayerVideo(name) { return playerVideoUrls.has(name.trim().toLowerCase()); }
+
+  function setVideoUrl(name, blob) {
+    const k = name.trim().toLowerCase();
+    if (playerVideoUrls.has(k)) URL.revokeObjectURL(playerVideoUrls.get(k));
+    if (blob) {
+      playerVideoUrls.set(k, URL.createObjectURL(blob));
+      playerVideoNames.set(k, blob.name || 'Win video');
+    } else {
+      playerVideoUrls.delete(k);
+      playerVideoNames.delete(k);
+    }
+  }
+
   function clipKey(name) { return PLAYER_CLIP_PREFIX + name.trim().toLowerCase(); }
   function hasPlayerClip(name) { return playerClipUrls.has(name.trim().toLowerCase()); }
 
@@ -2954,6 +2993,24 @@
     return clipStoreOp('readwrite', store => store.delete(clipKey(name))).then(() => setClipUrl(name, null));
   }
 
+  function savePlayerVideo(name, file) {
+    return clipStoreOp('readwrite', store => store.put(file, videoKey(name))).then(() => setVideoUrl(name, file));
+  }
+
+  function removePlayerVideo(name) {
+    return clipStoreOp('readwrite', store => store.delete(videoKey(name))).then(() => setVideoUrl(name, null));
+  }
+
+  // A player's clip and win video are keyed by name, so both follow a rename.
+  function renamePlayerMedia(oldName, newName) {
+    renamePlayerClip(oldName, newName);
+    if (!hasPlayerVideo(oldName)) return;
+    clipStoreOp('readonly', store => store.get(videoKey(oldName)))
+      .then(file => file ? savePlayerVideo(newName, file).then(() => removePlayerVideo(oldName)) : null)
+      .then(() => renderPlayerClipList())
+      .catch(() => { /* best-effort */ });
+  }
+
   function renamePlayerClip(oldName, newName) {
     if (!hasPlayerClip(oldName)) return;
     clipStoreOp('readonly', store => store.get(clipKey(oldName)))
@@ -2974,6 +3031,10 @@
           const k = cur.key.slice(PLAYER_CLIP_PREFIX.length);
           playerClipUrls.set(k, URL.createObjectURL(cur.value));
           playerClipFileNames.set(k, cur.value.name || 'Recorded clip');
+        } else if (typeof cur.key === 'string' && cur.key.startsWith(PLAYER_VIDEO_PREFIX) && cur.value) {
+          const k = cur.key.slice(PLAYER_VIDEO_PREFIX.length);
+          playerVideoUrls.set(k, URL.createObjectURL(cur.value));
+          playerVideoNames.set(k, cur.value.name || 'Win video');
         }
         cur.continue();
       };
@@ -3007,6 +3068,7 @@
   const playerClipList = document.getElementById('playerClipList');
   const playerClipError = document.getElementById('playerClipError');
   const clipFileInput = document.getElementById('clipFileInput');
+  const clipVideoInput = document.getElementById('clipVideoInput');
   let clipRecorder = null;       // active MediaRecorder, if any
   let clipRecordingIdx = null;   // player index being recorded
   let clipRecordTimer = null;
@@ -3033,6 +3095,12 @@
           <button type="button" class="btn-ghost" data-clip-action="play" ${has ? '' : 'disabled'}>▶ Play</button>
           <button type="button" class="btn-ghost" data-clip-action="trim" ${has && clipRecordingIdx === null ? '' : 'disabled'}>✂ Trim</button>
           <button type="button" class="btn-ghost danger" data-clip-action="remove" ${has ? '' : 'disabled'}>🗑 Remove</button>
+        </span>
+        <span class="clip-row-video">
+          <span class="clip-row-status${hasPlayerVideo(name) ? ' has-clip' : ''}">🎬 ${hasPlayerVideo(name) ? `✓ ${escapeHtml(playerVideoNames.get(name.trim().toLowerCase()) || 'Win video')}` : 'No win video'}</span>
+          <button type="button" class="btn-ghost" data-clip-action="video-choose" ${clipRecordingIdx !== null ? 'disabled' : ''}>${hasPlayerVideo(name) ? '🎬 Change video' : '🎬 Choose video'}</button>
+          <button type="button" class="btn-ghost" data-clip-action="video-preview" ${hasPlayerVideo(name) ? '' : 'disabled'}>▶ Preview celebration</button>
+          <button type="button" class="btn-ghost danger" data-clip-action="video-remove" ${hasPlayerVideo(name) ? '' : 'disabled'}>🗑 Remove video</button>
         </span>
       </div>`;
     }).join('');
@@ -3100,6 +3168,18 @@
           .catch(() => setClipMessage('Could not open that clip for trimming.'));
         break;
       }
+      case 'video-choose':
+        clipUploadIdx = i;
+        clipVideoInput.value = '';
+        clipVideoInput.click();
+        break;
+      case 'video-preview':
+        playRoundWon(i, { round: Math.max(1, matches.length), score: 0 });
+        break;
+      case 'video-remove':
+        if (!confirm(`Remove ${name}'s win video?`)) return;
+        removePlayerVideo(name).then(() => renderPlayerClipList()).catch(() => {});
+        break;
       case 'remove':
         if (!confirm(`Remove ${name}'s Rummy voice clip?`)) return;
         removePlayerClip(name).then(() => { renderPlayerClipList(); renderPlayerNames(); }).catch(() => {});
@@ -3115,6 +3195,18 @@
     if (!file.type.startsWith('audio/')) { setClipMessage('Please choose an audio file.'); return; }
     if (file.size > CLIP_SOURCE_MAX_BYTES) { setClipMessage('That file is too big to open — choose one under 25 MB.'); return; }
     trimThenStore(name, file);
+  });
+
+  clipVideoInput.addEventListener('change', () => {
+    const file = clipVideoInput.files && clipVideoInput.files[0];
+    const name = players[clipUploadIdx];
+    clipUploadIdx = null;
+    if (!file || !name) return;
+    if (!(file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogv)$/i.test(file.name))) { setClipMessage('Please choose a video file.'); return; }
+    if (file.size > PLAYER_VIDEO_MAX_BYTES) { setClipMessage('That video is too large — choose one under 40 MB.'); return; }
+    savePlayerVideo(name, file)
+      .then(() => { setClipMessage(''); renderPlayerClipList(); })
+      .catch(() => { setClipMessage('Could not save the video on this device.'); renderPlayerClipList(); });
   });
 
   // ---------- AUDIO TRIM ----------
@@ -3473,6 +3565,8 @@
     winTimers.forEach(clearTimeout);
     winTimers = [];
     stopWinClip(early ? 150 : 0);
+    const v = el.querySelector('video.win-video');
+    if (v) { try { v.pause(); } catch (err) { /* ignore */ } }
     if (!early) { el.remove(); return; }       // natural end: it already faded out over the last 0.5 s
     el.style.setProperty('--win-out', '0.15s');
     el.classList.add('leaving');
@@ -3488,15 +3582,17 @@
     const avatarMarkup = av.kind === 'image' ? `<img class="win-av-img" src="${escapeAttr(av.src)}" alt="">`
       : av.kind === 'emoji' ? `<span class="win-av-emoji">${escapeHtml(av.glyph)}</span>`
       : `<span class="win-av-initial">${escapeHtml(av.glyph)}</span>`;
-    const rings = (motion === 'roar' || motion === 'stomp') ? '<div class="win-rings"><span></span><span></span><span></span></div>' : '';
+    const videoUrl = !reduced ? playerVideoUrls.get((players[pIdx] || '').trim().toLowerCase()) : null;   // the static card never plays video
+    const bodyMarkup = videoUrl ? `<video class="win-video" src="${escapeAttr(videoUrl)}" playsinline loop preload="auto"></video>` : avatarMarkup;
+    const rings = !videoUrl && (motion === 'roar' || motion === 'stomp') ? '<div class="win-rings"><span></span><span></span><span></span></div>' : '';
     const el = document.createElement('div');
-    el.className = `win-overlay win-motion-${motion}${reduced ? ' win-static' : ''}`;
+    el.className = `win-overlay win-motion-${videoUrl ? 'video' : motion}${videoUrl ? ' win-has-video' : ''}${reduced ? ' win-static' : ''}`;
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', `Round won by ${players[pIdx]}`);
     el.innerHTML = `<div class="win-rays"></div>
       <button type="button" class="win-mute" aria-label="Mute or unmute the win sound">${winMuted ? '🔇' : '🔊'}</button>
       <div class="win-banner">ROUND WON!</div>
-      <div class="win-stage">${rings}<div class="win-av"><div class="win-av-shake"><div class="win-av-body">${avatarMarkup}</div></div></div></div>
+      <div class="win-stage">${rings}<div class="win-av"><div class="win-av-shake"><div class="win-av-body">${bodyMarkup}</div></div></div></div>
       <div class="win-name">${escapeHtml(players[pIdx])}</div>
       <div class="win-score">${info && info.round ? `Round ${info.round} · ` : ''}Round score <b>${info && info.score !== undefined ? info.score : 0}</b></div>
       <div class="win-hint">Tap to skip</div>`;
@@ -3514,6 +3610,8 @@
         winMuted = !winMuted;
         try { localStorage.setItem(WIN_MUTE_KEY, String(winMuted)); } catch (err) { /* ignore */ }
         e.target.closest('.win-mute').textContent = winMuted ? '🔇' : '🔊';
+        const vv = el.querySelector('video.win-video');
+        if (vv) vv.muted = winMuted;
         if (winMuted) stopWinClip(0);
         renderWinSoundToggle();
         return;
@@ -3522,9 +3620,32 @@
     });
     document.body.appendChild(el);
     winOverlay = el;
-    startWinClip(pIdx);
-    // Fade the clip out so it never outlasts the 5 s, then close exactly at 5 s.
-    winTimers.push(setTimeout(() => { if (winOverlay === el) { el.classList.add('leaving'); stopWinClip(WIN_FADE_OUT_MS); } }, WIN_CELEBRATION_MS - WIN_FADE_OUT_MS));
+    const vid = el.querySelector('video.win-video');
+    if (vid) {
+      // The video brings its own sound (muted along with the win sound), so the
+      // configured clip is skipped. If it can't play (unsupported codec), fall
+      // back to the avatar and the usual clip.
+      const fallback = () => {
+        if (winOverlay !== el || !el.querySelector('video.win-video')) return;
+        el.classList.remove('win-has-video');
+        el.querySelector('.win-av-body').innerHTML = avatarMarkup;
+        startWinClip(pIdx);
+      };
+      vid.addEventListener('error', fallback, { once: true });
+      vid.muted = winMuted;
+      const pr = vid.play();
+      if (pr && pr.catch) pr.catch(() => { if (!winMuted) { vid.muted = true; vid.play().catch(fallback); } else { fallback(); } });
+    } else {
+      startWinClip(pIdx);
+    }
+    // Fade the sound out so it never outlasts the 5 s, then close exactly at 5 s.
+    winTimers.push(setTimeout(() => {
+      if (winOverlay !== el) return;
+      el.classList.add('leaving');
+      stopWinClip(WIN_FADE_OUT_MS);
+      const v = el.querySelector('video.win-video');
+      if (v) { const from = v.volume, t0 = performance.now(); const iv = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / WIN_FADE_OUT_MS); try { v.volume = Math.max(0, from * (1 - k)); } catch (err) { /* ignore */ } if (k >= 1 || !v.isConnected) clearInterval(iv); }, 40); }
+    }, WIN_CELEBRATION_MS - WIN_FADE_OUT_MS));
     winTimers.push(setTimeout(() => { if (winOverlay === el) endRoundWon(false); }, WIN_CELEBRATION_MS));
   }
 
@@ -3542,6 +3663,7 @@
     try { localStorage.setItem(WIN_MUTE_KEY, String(winMuted)); } catch (err) { /* ignore */ }
     if (winMuted) stopWinClip(0);
     renderWinSoundToggle();
+    if (winOverlay) { const v = winOverlay.querySelector('video.win-video'); if (v) v.muted = winMuted; }
     if (winOverlay) { const m = winOverlay.querySelector('.win-mute'); if (m) m.textContent = winMuted ? '🔇' : '🔊'; }
   });
 
@@ -5405,7 +5527,7 @@
     }
 
     // Clips are keyed by name, so carry each one over to its new name.
-    players.forEach((oldName, i) => { if (oldName.toLowerCase() !== lower[i]) renamePlayerClip(oldName, names[i]); });
+    players.forEach((oldName, i) => { if (oldName.toLowerCase() !== lower[i]) renamePlayerMedia(oldName, names[i]); });
     players = names;
     renamingPlayers = false;
     renameError = '';
