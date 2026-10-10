@@ -4803,7 +4803,8 @@
     if (opts.animate) {
       tvTable.querySelectorAll('.tv-table-row[data-player-idx]').forEach(r => oldTops.set(r.dataset.playerIdx, r.getBoundingClientRect().top));
     }
-    const rows = order.map(pIdx => {
+    // Players who are out (eliminated or forfeited) aren't listed — only those still in play.
+    const rows = order.filter(pIdx => !outFlags[pIdx]).map(pIdx => {
       const isOut = outFlags[pIdx];
       const isLeader = !isOut && minActiveTotal !== null && totals[pIdx] === minActiveTotal;
       const delta = opts.fromTotals && opts.fromTotals[pIdx] !== undefined ? totals[pIdx] - opts.fromTotals[pIdx] : 0;
