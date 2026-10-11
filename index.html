@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="slate">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#050b08">
+<meta name="theme-color" content="#0e1116">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
   // Applied before the stylesheet paints anything, so a saved Rummy theme choice
-  // doesn't flash the default Terminal look for a frame on load.
+  // doesn't flash the default Slate look for a frame on load.
   try {
     if (localStorage.getItem('rummatrix.theme') === 'rummy') {
       document.documentElement.setAttribute('data-theme', 'rummy');
@@ -21,27 +21,30 @@
 <title>Rummy Score Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Bangers&family=Playfair+Display:wght@600;700;900&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Titillium+Web:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Bangers&family=Playfair+Display:wght@600;700;900&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #050b08;
-    --bg-highlight: #0a1a12;
-    --panel: #0b1912;
-    --panel-2: #0f2119;
-    --border: #1d3f2d;
-    --orange: #ff6a1f;
-    --orange-dim: #c1531c;
-    --orange-hover: #ff7d3d;
-    --orange-rgb: 255,106,31;
-    --green: #33e18a;
-    --green-dim: #1c8054;
-    --green-rgb: 51,225,138;
-    --white: #eefaf3;
-    --muted: #7fa895;
-    --ink-on-orange: #140900;
-    --ink-on-green: #04150c;
-    --font-display: 'Titillium Web', sans-serif;
-    --font-body: 'Rajdhani', sans-serif;
+    /* SLATE & INDIGO (default) — flat charcoal surfaces, 1px borders, one indigo accent.
+       The names keep their history (--orange is the primary accent, --green the
+       "good" accent) so every rule keeps working; the Rummy theme remaps them too. */
+    --bg: #0e1116;
+    --bg-highlight: #161b25;
+    --panel: #161b24;
+    --panel-2: #1b2230;
+    --border: #2a3345;
+    --orange: #7c9cff;
+    --orange-dim: #5a76d6;
+    --orange-hover: #9ab2ff;
+    --orange-rgb: 124,156,255;
+    --green: #5fe3b0;
+    --green-dim: #34b88a;
+    --green-rgb: 95,227,176;
+    --white: #e8ecf4;
+    --muted: #8a94a8;
+    --ink-on-orange: #0b1020;
+    --ink-on-green: #04150e;
+    --font-display: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* Score Worm categorical palette — fixed hue order, one slot per player
@@ -105,6 +108,52 @@
   :root[data-theme="rummy"] .event-btn {
     clip-path: none;
     border-radius: 8px;
+  }
+
+
+  /* ---------- SLATE & INDIGO: shape + surface language ----------
+     Flat, quiet and focused. Everything that used the old terminal's notched
+     clip-paths, grids and glows becomes plain rounded surfaces. */
+  :root[data-theme="slate"] * { clip-path: none !important; }
+  :root[data-theme="slate"] .hex-btn { border-radius: 50%; }
+  :root[data-theme="slate"] body { background: linear-gradient(180deg, #131822, #0e1116 60%); }
+  :root[data-theme="slate"] .tv-screen { background: linear-gradient(180deg, #131822, #0e1116 70%); }
+  :root[data-theme="slate"] .panel,
+  :root[data-theme="slate"] .hud-bar { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset; }
+  :root[data-theme="slate"] .summary-card,
+  :root[data-theme="slate"] .entry-row,
+  :root[data-theme="slate"] .history-item,
+  :root[data-theme="slate"] .collapsible-section { border-radius: 12px; }
+  :root[data-theme="slate"] .btn-primary,
+  :root[data-theme="slate"] .btn-ghost,
+  :root[data-theme="slate"] .event-btn,
+  :root[data-theme="slate"] input,
+  :root[data-theme="slate"] select,
+  :root[data-theme="slate"] .announce-toggle,
+  :root[data-theme="slate"] .voice-entry-btn { border-radius: 10px; }
+  :root[data-theme="slate"] .btn-primary { box-shadow: none; font-weight: 700; }
+  :root[data-theme="slate"] .btn-primary:hover { box-shadow: 0 0 0 3px rgba(var(--orange-rgb),0.25); }
+  :root[data-theme="slate"] h1,
+  :root[data-theme="slate"] h2 { letter-spacing: -0.01em; font-weight: 700; }
+  /* the big score numbers: calm off-white instead of the old yellow */
+  :root[data-theme="slate"] .tv-table-total,
+  :root[data-theme="slate"] .tv-score { color: var(--white); }
+  :root[data-theme="slate"] .tv-table-row { border-radius: 14px; background: var(--panel); }
+  :root[data-theme="slate"] .tv-table-row.lead { background: #14262a; border-color: var(--green); }
+  /* round-won celebration: charcoal + indigo glow */
+  :root[data-theme="slate"] .win-overlay { background: radial-gradient(ellipse at center, rgba(30,40,70,0.96), rgba(10,13,20,0.98) 75%); }
+  :root[data-theme="slate"] .win-overlay.win-fullvideo { background: #000; }
+  :root[data-theme="slate"] .win-banner { color: var(--white); text-shadow: 0 0 0.4em rgba(var(--orange-rgb),0.8); animation-name: winBannerIn, winBannerGlowSlate; }
+  :root[data-theme="slate"] .win-caption b { color: var(--white); text-shadow: 0 0 12px rgba(var(--orange-rgb),0.9); }
+  :root[data-theme="slate"] .win-rays { background: repeating-conic-gradient(from 0deg, rgba(var(--orange-rgb),0.16) 0 9deg, transparent 9deg 18deg); }
+  :root[data-theme="slate"] .win-av-img,
+  :root[data-theme="slate"] .win-av-initial { border-color: var(--orange); box-shadow: 0 0 40px rgba(var(--orange-rgb),0.55); }
+  :root[data-theme="slate"] .win-rings span:nth-child(2) { border-color: var(--green); }
+  :root[data-theme="slate"] .win-sparkle { color: #cfdcff; text-shadow: 0 0 10px var(--orange); }
+  :root[data-theme="slate"] .win-av-emoji { filter: drop-shadow(0 0 22px rgba(var(--orange-rgb),0.8)); }
+  @keyframes winBannerGlowSlate {
+    from { filter: brightness(1) drop-shadow(0 0 4px rgba(var(--orange-rgb),0.5)); }
+    to   { filter: brightness(1.15) drop-shadow(0 0 22px rgba(var(--orange-rgb),0.9)); }
   }
 
   * { box-sizing: border-box; }
@@ -2039,7 +2088,7 @@
     <div class="brand">⬡ RUMMY<span>.SYS</span></div>
     <div class="status"><span class="pulse-dot"></span><span id="statusText">STANDBY</span></div>
     <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
-      <option value="terminal">Terminal</option>
+      <option value="slate">Slate</option>
       <option value="rummy">Rummy</option>
     </select>
   </div>
@@ -2352,28 +2401,24 @@
 
   // ---------- THEME ----------
   const THEME_KEY = 'rummatrix.theme';
-  const THEME_META_COLORS = { terminal: '#050b08', rummy: '#0a2e1e' }; // matches each theme's --bg
+  const THEME_META_COLORS = { slate: '#0e1116', rummy: '#0a2e1e' }; // matches each theme's --bg
 
   function applyTheme(theme) {
-    if (theme === 'rummy') {
-      document.documentElement.setAttribute('data-theme', 'rummy');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    document.documentElement.setAttribute('data-theme', theme === 'rummy' ? 'rummy' : 'slate');
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) metaThemeColor.content = THEME_META_COLORS[theme] || THEME_META_COLORS.terminal;
+    if (metaThemeColor) metaThemeColor.content = THEME_META_COLORS[theme] || THEME_META_COLORS.slate;
     themeSelect.value = theme;
   }
 
-  let currentTheme = 'terminal';
+  let currentTheme = 'slate';
   try {
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    if (savedTheme === 'rummy' || savedTheme === 'terminal') currentTheme = savedTheme;
-  } catch (err) { /* ignore — default to the terminal theme */ }
+    // A saved "terminal" choice (the old default) now maps to Slate & Indigo.
+    if (localStorage.getItem(THEME_KEY) === 'rummy') currentTheme = 'rummy';
+  } catch (err) { /* ignore — default to the Slate theme */ }
   applyTheme(currentTheme);
 
   themeSelect.addEventListener('change', () => {
-    currentTheme = themeSelect.value === 'rummy' ? 'rummy' : 'terminal';
+    currentTheme = themeSelect.value === 'rummy' ? 'rummy' : 'slate';
     applyTheme(currentTheme);
     try { localStorage.setItem(THEME_KEY, currentTheme); } catch (err) { /* ignore */ }
   });
