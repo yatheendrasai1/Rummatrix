@@ -1539,6 +1539,13 @@
     background: rgba(var(--green-rgb),0.12);
   }
   .tv-table-row.has-staged { border-color: var(--green); }
+  .tv-staged-x {
+    margin-left: 0.5em; padding: 0 0.35em;
+    background: transparent; border: 0; border-radius: 50%;
+    color: inherit; font: inherit; font-size: 1.1em; line-height: 1.2;
+    cursor: pointer; opacity: 0.75;
+  }
+  .tv-staged-x:hover { opacity: 1; background: rgba(var(--green-rgb),0.25); }
   .tv-drag-track {
     position: absolute;
     left: 20%; right: 10%; top: 0; bottom: 0;
@@ -5015,6 +5022,14 @@
         chip.className = 'tv-staged';
         chip.title = 'Set — not recorded until Commit';
         chip.textContent = stagedChipText(v);
+        // ✕ cancels just this player's score.
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'tv-staged-x';
+        x.textContent = '✕';
+        x.title = `Cancel ${players[Number(row.dataset.playerIdx)]}'s score`;
+        x.setAttribute('aria-label', x.title);
+        chip.appendChild(x);
         total.insertBefore(chip, total.firstChild);
       }
     });
@@ -5088,6 +5103,7 @@
   // A press on a player's row: a tap anywhere on the row opens the D / MD / FC / R
   // menu; a sideways drag starting on the name sets points with the slider.
   tvTable.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.tv-staged-x')) return;    // the ✕ has its own click handler
     const row = e.target.closest('.tv-table-row[data-player-idx]');
     if (!row || row.classList.contains('out') || e.button > 0 || tvGesture) return;
     const pIdx = Number(row.dataset.playerIdx);
@@ -5123,6 +5139,16 @@
   });
 
   tvTable.addEventListener('pointercancel', cancelTvGesture);
+
+  // Cancel one player's staged score (the ✕ on their chip), leaving the others as they are.
+  tvTable.addEventListener('click', (e) => {
+    const x = e.target.closest('.tv-staged-x');
+    if (!x) return;
+    const row = x.closest('.tv-table-row[data-player-idx]');
+    if (!row) return;
+    delete tvStaged.values[row.dataset.playerIdx];
+    syncTvStaged();
+  });
   tvTable.addEventListener('contextmenu', (e) => { if (e.target.closest('.tv-table-row[data-player-idx]')) e.preventDefault(); });
 
   // --- tap menu ---
