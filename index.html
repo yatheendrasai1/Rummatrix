@@ -1522,6 +1522,95 @@
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
   .tv-table.animating { overflow: hidden; }
 
+  /* ---- TV view: Hero leader + rows ---- */
+  .tv-hero { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 2vw; }
+  .tv-hero[hidden] { display: none; }
+  .tv-hero-lead {
+    position: relative; min-height: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh;
+    padding: 2.4vh 2vw;
+    border-radius: 2.4vh;
+    border: 1px solid var(--ac, var(--green));
+    background: linear-gradient(160deg, color-mix(in srgb, var(--ac, var(--green)) 24%, var(--panel)), var(--panel) 72%);
+    box-shadow: 0 0 6vh color-mix(in srgb, var(--ac, var(--green)) 32%, transparent);
+    animation: tvHeroIn 0.5s ease-out;
+  }
+  @keyframes tvHeroIn { from { transform: scale(0.96); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  .tv-hero-badge {
+    position: absolute; left: 1.6vw; top: 1.8vh;
+    background: var(--green); color: var(--ink-on-green);
+    font-weight: 800; font-size: clamp(10px, 1.7vh, 16px); letter-spacing: 0.2em;
+    padding: 0.7vh 1.1vw; border-radius: 99px;
+  }
+  .tv-logo {
+    display: block; object-fit: cover; background: var(--panel-2);
+    border-radius: 1.6vh; aspect-ratio: 1 / 1;
+  }
+  .tv-logo-initial {
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 800; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+  }
+  .tv-hero-lead .tv-logo { height: 50%; width: auto; max-width: 100%; border-radius: 2.2vh; box-shadow: 0 1.8vh 5vh rgba(0,0,0,0.55), 0 0 0 0.35vh var(--ac, var(--green)); }
+  .tv-hero-lead .tv-logo-initial { font-size: 9vh; }
+  .tv-logo-wrap { position: relative; height: 50%; display: flex; }
+  .tv-logo-wrap .tv-logo { height: 100%; }
+  .tv-dealer { position: absolute; right: -0.8vh; bottom: -0.8vh; font-size: clamp(14px, 3.4vh, 34px); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)); }
+  .tv-hero-score { font-family: var(--font-mono); font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-size: clamp(40px, 16vh, 170px); }
+  .tv-hero-name { font-weight: 800; font-size: clamp(16px, 3.6vh, 38px); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tv-hero-chips { display: flex; flex-wrap: wrap; gap: 1vh 0.8vw; justify-content: center; }
+  .tv-chip { background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 0.6vh 1.1vw; font-size: clamp(11px, 2vh, 20px); color: var(--muted); }
+  .tv-hero-list { display: grid; grid-auto-rows: 1fr; gap: 1.4vh; min-height: 0; }
+  .tv-hero-row {
+    position: relative; overflow: hidden; min-height: 0;
+    display: flex; align-items: center; gap: 1.6vw; padding: 0 1.8vw 0 1vw;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 2vh;
+    font-size: clamp(14px, 4.2vh, 40px);
+  }
+  .tv-hero-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0.7vh; background: var(--ac, var(--green)); }
+  .tv-hero-row.out { opacity: 0.5; }
+  .tv-hero-rank { width: 1.3em; text-align: center; font-weight: 800; color: var(--muted); }
+  .tv-hero-row .tv-logo, .tv-hero-row .tv-logo-wrap { height: 76%; flex: none; }
+  .tv-hero-row .tv-logo { height: 100%; width: auto; }
+  .tv-hero-row .tv-logo-initial { font-size: 0.9em; }
+  .tv-hero-row .tv-dealer { font-size: 0.7em; right: -0.5vh; bottom: -0.5vh; }
+  .tv-hero-rname { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tv-hero-rname small { font-weight: 600; font-size: 0.4em; letter-spacing: 0.1em; color: var(--orange); margin-left: 0.6em; text-transform: uppercase; }
+  .tv-hero-gap { font-size: 0.5em; color: var(--muted); font-family: var(--font-mono); min-width: 3.5em; text-align: right; }
+  .tv-hero-rscore { font-family: var(--font-mono); font-weight: 800; font-size: 1.15em; min-width: 2.2em; text-align: right; }
+  @media (orientation: portrait) and (max-width: 700px) {
+    .tv-hero { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40fr) minmax(0, 60fr); gap: 1.4vh; }
+    .tv-hero-lead { padding: 1.4vh 3vw; gap: 0.6vh; }
+    .tv-hero-lead .tv-logo-wrap { height: 42%; }
+    .tv-hero-lead .tv-logo { height: 100%; }
+    .tv-hero-score { font-size: clamp(36px, 8vh, 90px); }
+    .tv-hero-row { gap: 3vw; padding: 0 3vw 0 2vw; font-size: clamp(13px, 2.6vh, 30px); }
+  }
+
+  /* ---- TV view: Race track ---- */
+  .tv-race { --pad: 7vh; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1vh; }
+  .tv-race[hidden] { display: none; }
+  .tv-race-head { display: flex; justify-content: space-between; padding: 0 1vw 0 4.4vw; font-family: var(--font-mono); font-size: clamp(10px, 1.7vh, 16px); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; min-height: 2.2vh; }
+  .tv-race-head .cut { color: #ff8a8a; }
+  .tv-race-lanes { flex: 1 1 auto; min-height: 0; display: grid; grid-auto-rows: 1fr; gap: 1.2vh; }
+  .tv-race-lane { position: relative; min-height: 0; display: flex; align-items: stretch; gap: 1.2vw; }
+  .tv-race-lane.out { opacity: 0.5; }
+  .tv-race-rank { width: 3.2vw; min-width: 24px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: clamp(16px, 3.6vh, 36px); color: var(--muted); }
+  .tv-race-bar { flex: 1; min-width: 0; position: relative; padding: 0 var(--pad); border-radius: 2vh; background: var(--panel); border: 1px solid var(--border); }
+  .tv-race-inner { position: relative; height: 100%; }
+  .tv-race-fill { position: absolute; left: calc(var(--pad) * -1); top: 18%; bottom: 18%; border-radius: 99px; background: linear-gradient(90deg, transparent, var(--ac, var(--green))); opacity: 0.85; width: calc(var(--pad) + var(--pct) * 1%); }
+  .tv-race-pin { position: absolute; top: 0; bottom: 0; left: calc(var(--pct) * 1%); display: flex; align-items: center; transform: translateX(-50%); }
+  .tv-race-pin .tv-logo { height: 88%; width: auto; border-radius: 50%; border: 0.5vh solid var(--ac, var(--green)); box-shadow: 0 0.8vh 2.4vh rgba(0,0,0,0.6), 0 0 2.4vh var(--ac, var(--green)); }
+  .tv-race-pin .tv-logo-initial { font-size: 3.4vh; }
+  .tv-race-crown { position: absolute; left: 50%; top: -1.6vh; transform: translateX(-50%); font-size: clamp(14px, 3vh, 30px); z-index: 2; }
+  .tv-race-val { position: absolute; top: 50%; left: calc(100% + 1vw); transform: translateY(-50%); font-family: var(--font-mono); font-weight: 800; font-size: clamp(20px, 6vh, 56px); line-height: 1; }
+  .tv-race-pin.flip .tv-race-val { left: auto; right: calc(100% + 1vw); }
+  .tv-race-cut { position: absolute; right: 0; top: 0; bottom: 0; border-right: 0.5vh dashed rgba(255,107,107,0.55); }
+  @media (orientation: portrait) and (max-width: 700px) {
+    .tv-race { --pad: 5vh; }
+    .tv-race-rank { width: 6vw; }
+  }
+
   /* ---- Quick scoring: drag a name to set the round's points ---- */
   .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
   .tv-table-row[data-player-idx]:not(.out) .tv-table-player { touch-action: none; cursor: ew-resize; }
@@ -2337,6 +2426,8 @@
   </div>
   <div class="tv-grid" id="tvGrid"></div>
   <div class="tv-table" id="tvTable" hidden></div>
+  <div class="tv-hero" id="tvHero" hidden></div>
+  <div class="tv-race" id="tvRace" hidden></div>
   <div class="tv-game-winner-banner" id="tvGameWinnerBanner" hidden></div>
   <div class="tv-event-menu-backdrop" id="tvEventMenuBackdrop" hidden><div class="tv-event-menu" id="tvEventMenu"></div></div>
   <div class="tv-toast" id="tvToast" hidden></div>
@@ -2729,6 +2820,8 @@
   const tvEventMenu = document.getElementById('tvEventMenu');
   const tvToast = document.getElementById('tvToast');
   const tvTable = document.getElementById('tvTable');
+  const tvHero = document.getElementById('tvHero');
+  const tvRace = document.getElementById('tvRace');
   const tvAddModal = document.getElementById('tvAddModal');
   const tvAddModalCard = document.getElementById('tvAddModalCard');
   const tvAddDoneBtn = document.getElementById('tvAddDoneBtn');
@@ -4837,15 +4930,187 @@
   // Points-table view instead of photo tiles, in either game mode (in
   // Elimination, players out on points drop to the bottom). Remembered per
   // device like the names toggle.
-  const TV_TABLE_VIEW_KEY = 'rummatrix.tvTableView';
-  let tvTableView = false;
-  try { tvTableView = localStorage.getItem(TV_TABLE_VIEW_KEY) === 'true'; } catch (err) { /* ignore */ }
+  // TV Mode has four views, cycled by the ribbon button: photo tiles, points
+  // table (with quick scoring), a hero leader card with rows, and a race track.
+  const TV_VIEW_KEY = 'rummatrix.tvView';
+  const TV_TABLE_VIEW_KEY = 'rummatrix.tvTableView';   // the old two-view setting
+  const TV_VIEWS = ['tiles', 'table', 'hero', 'race'];
+  const TV_VIEW_LABELS = { tiles: '▦ Tiles', table: '☰ Table', hero: '★ Hero', race: '🏁 Race' };
+  let tvView = 'tiles';
+  try {
+    const savedView = localStorage.getItem(TV_VIEW_KEY);
+    if (TV_VIEWS.includes(savedView)) tvView = savedView;
+    else if (localStorage.getItem(TV_TABLE_VIEW_KEY) === 'true') tvView = 'table';
+  } catch (err) { /* ignore */ }
 
   tvTableBtn.addEventListener('click', () => {
-    tvTableView = !tvTableView;
-    try { localStorage.setItem(TV_TABLE_VIEW_KEY, String(tvTableView)); } catch (err) { /* ignore */ }
+    tvView = TV_VIEWS[(TV_VIEWS.indexOf(tvView) + 1) % TV_VIEWS.length];
+    try { localStorage.setItem(TV_VIEW_KEY, tvView); } catch (err) { /* ignore */ }
     renderTvScreen();
   });
+
+  // ---------- TV VIEWS: Hero leader + rows, and Race track ----------
+  // Both read the same standings as the points table (tvTableData), show only the
+  // players still in unless ＋ has brought the out players back, and animate rows
+  // and bars to their new places after a round.
+
+  // Each player's accent colour comes from their picture (the average of its edge
+  // pixels, lifted to a readable brightness) — a team's logo colour becomes their
+  // glow, row edge and bar. Players without a picture get a fixed hue by seat.
+  const tvAccentCache = new Map();
+  function tvFallbackAccent(pIdx) { return `hsl(${Math.round((360 / MAX_PLAYERS) * pIdx)}, 70%, 58%)`; }
+  function sampleAccent(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const n = 24, c = document.createElement('canvas');
+          c.width = n; c.height = n;
+          const g = c.getContext('2d');
+          g.drawImage(img, 0, 0, n, n);
+          const d = g.getImageData(0, 0, n, n).data;
+          let r = 0, gr = 0, b = 0, w = 0;
+          for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+            if (x > 2 && x < n - 3 && y > 2 && y < n - 3) continue;      // outer ring only
+            const i = (y * n + x) * 4, mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
+            const wt = 0.15 + (mx - mn) / 255;                               // favour saturated pixels
+            r += d[i] * wt; gr += d[i + 1] * wt; b += d[i + 2] * wt; w += wt;
+          }
+          r /= w; gr /= w; b /= w;
+          const mx = Math.max(r, gr, b) / 255, mn = Math.min(r, gr, b) / 255, l = (mx + mn) / 2;
+          let h = 0, sat = 0;
+          if (mx !== mn) {
+            const dd = mx - mn; sat = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+            if (mx === r / 255) h = ((gr - b) / 255 / dd + (gr < b ? 6 : 0)); else if (mx === gr / 255) h = ((b - r) / 255 / dd + 2); else h = ((r - gr) / 255 / dd + 4);
+            h *= 60;
+          }
+          resolve(`hsl(${Math.round(h)}, ${Math.round(Math.max(55, Math.min(90, sat * 100 + 15)))}%, ${Math.round(Math.max(48, Math.min(62, l * 100 + 22)))}%)`);
+        } catch (err) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+  function tvAccent(pIdx) {
+    const url = playerAvatars[pIdx];
+    if (!url) return tvFallbackAccent(pIdx);
+    if (!tvAccentCache.has(url)) {
+      tvAccentCache.set(url, tvFallbackAccent(pIdx));
+      sampleAccent(url).then(col => {
+        if (!col) return;
+        tvAccentCache.set(url, col);
+        document.querySelectorAll('#tvHero [data-player-idx], #tvRace [data-player-idx]').forEach(el => {
+          if (playerAvatars[Number(el.dataset.playerIdx)] === url) el.style.setProperty('--ac', col);
+        });
+      });
+    }
+    return tvAccentCache.get(url);
+  }
+
+  function tvLogoHtml(pIdx) {
+    const url = playerAvatars[pIdx];
+    return url
+      ? `<img class="tv-logo" src="${url}" alt=""${photoPosStyle(url)}>`
+      : `<span class="tv-logo tv-logo-initial" aria-hidden="true">${escapeHtml(players[pIdx] ? players[pIdx][0].toUpperCase() : '?')}</span>`;
+  }
+  function tvLogoWithDealer(pIdx) {
+    return `<span class="tv-logo-wrap">${tvLogoHtml(pIdx)}${pIdx === dealerIdx ? '<span class="tv-dealer" title="Dealing this round">🃏</span>' : ''}</span>`;
+  }
+
+  // Players shown in the new views: in rank order, those still in (plus the out
+  // players, greyed, when ＋ has been pressed).
+  function tvViewPlayers(data) {
+    return data.order.filter(p => tvShowOutPlayers || !data.outFlags[p]);
+  }
+
+  // Slides elements that moved (by data-player-idx) from where they were to where they are now.
+  function tvTopsOf(container, sel) {
+    const m = new Map();
+    container.querySelectorAll(sel).forEach(el => m.set(el.dataset.playerIdx, el.getBoundingClientRect().top));
+    return m;
+  }
+  function tvFlipFrom(container, sel, oldTops) {
+    if (!oldTops.size) return;
+    container.querySelectorAll(sel).forEach(el => {
+      const old = oldTops.get(el.dataset.playerIdx);
+      if (old === undefined || typeof el.animate !== 'function') return;
+      const dy = old - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) return;
+      el.style.zIndex = '2';
+      el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], { duration: 1200, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' })
+        .finished.catch(() => {}).then(() => { el.style.zIndex = ''; });
+    });
+  }
+
+  let tvHeroLeader = null;
+  function renderTvHero(data) {
+    const vis = tvViewPlayers(data);
+    const leader = vis.find(p => !data.outFlags[p]);
+    if (leader === undefined) { tvHero.innerHTML = ''; return; }
+    const oldTops = tvTopsOf(tvHero, '.tv-hero-row');
+    const lastRow = matches.length ? matches[matches.length - 1] : null;
+    const tied = vis.filter(p => !data.outFlags[p] && data.totals[p] === data.totals[leader]).length > 1;
+    const lastScore = lastRow && lastRow[leader] !== null && lastRow[leader] !== undefined ? lastRow[leader] : null;
+    const rows = vis.filter(p => p !== leader).map(p => {
+      const out = data.outFlags[p];
+      const gap = data.totals[p] - data.totals[leader];
+      return `<div class="tv-hero-row ${out ? 'out' : ''}" data-player-idx="${p}" style="--ac:${tvAccent(p)}">
+        <span class="tv-hero-rank">${out ? '—' : data.ranks[p]}</span>
+        ${tvLogoWithDealer(p)}
+        <span class="tv-hero-rname">${escapeHtml(players[p])}${out ? `<small>${forfeited[p] != null ? 'Forfeited' : 'Out'}</small>` : ''}</span>
+        <span class="tv-hero-gap">${out ? '' : (gap === 0 ? '=' : '+' + gap)}</span>
+        <span class="tv-hero-rscore">${data.totals[p]}</span>
+      </div>`;
+    }).join('');
+    const newLeader = tvHeroLeader !== leader;
+    tvHeroLeader = leader;
+    tvHero.innerHTML = `<div class="tv-hero-lead" data-player-idx="${leader}" style="--ac:${tvAccent(leader)};${newLeader ? '' : 'animation:none'}">
+        <span class="tv-hero-badge">★ ${tied ? 'TIED LEAD' : 'LEADING'}</span>
+        ${tvLogoWithDealer(leader)}
+        <div class="tv-hero-score">${data.totals[leader]}</div>
+        <div class="tv-hero-name">${escapeHtml(players[leader])}</div>
+        <div class="tv-hero-chips"><span class="tv-chip">${data.rummies[leader]} ${data.rummies[leader] === 1 ? "Rummy" : "Rummies"}</span>${lastScore !== null ? `<span class="tv-chip">Last +${lastScore}</span>` : ''}</div>
+      </div>
+      <div class="tv-hero-list">${rows}</div>`;
+    tvFlipFrom(tvHero, '.tv-hero-row', oldTops);
+  }
+
+  function renderTvRace(data) {
+    const vis = tvViewPlayers(data);
+    const elim = gameMode !== 'rounds' && maxPoints;
+    const maxTotal = Math.max(1, ...vis.map(p => data.totals[p]));
+    // Elimination: the track ends at the limit. Fixed Matches: it stretches to fit the highest total.
+    const scale = elim ? maxPoints : Math.max(50, Math.ceil(maxTotal * 1.15 / 10) * 10);
+    const oldTops = tvTopsOf(tvRace, '.tv-race-lane');
+    const oldPct = new Map();
+    tvRace.querySelectorAll('.tv-race-lane').forEach(el => oldPct.set(el.dataset.playerIdx, Number(el.dataset.pct)));
+    const lanes = vis.map((p, i) => {
+      const out = data.outFlags[p];
+      const pct = Math.max(0, Math.min(100, data.totals[p] / scale * 100));
+      return `<div class="tv-race-lane ${out ? 'out' : ''}" data-player-idx="${p}" data-pct="${pct.toFixed(2)}" style="--ac:${tvAccent(p)};--pct:${pct.toFixed(2)}">
+        <div class="tv-race-rank">${out ? '—' : data.ranks[p]}</div>
+        <div class="tv-race-bar"><div class="tv-race-inner">
+          <div class="tv-race-fill"></div>
+          ${elim ? '<div class="tv-race-cut"></div>' : ''}
+          <div class="tv-race-pin ${pct > 80 ? 'flip' : ''}">
+            ${!out && i === 0 && matches.length > 0 ? '<span class="tv-race-crown">👑</span>' : ''}
+            ${tvLogoHtml(p)}
+            <span class="tv-race-val">${data.totals[p]}</span>
+          </div>
+        </div></div>
+      </div>`;
+    }).join('');
+    tvRace.innerHTML = `<div class="tv-race-head"><span>0</span><span class="cut">${elim ? `Out @ ${maxPoints}` : 'Lowest total wins'}</span></div><div class="tv-race-lanes">${lanes}</div>`;
+    tvFlipFrom(tvRace, '.tv-race-lane', oldTops);
+    // bars and riders glide from their previous position to the new one
+    tvRace.querySelectorAll('.tv-race-lane').forEach(el => {
+      const was = oldPct.get(el.dataset.playerIdx), now = Number(el.dataset.pct);
+      if (was === undefined || Math.abs(was - now) < 0.05 || typeof el.animate !== 'function') return;
+      const opts = { duration: 1200, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' };
+      el.querySelector('.tv-race-fill').animate([{ width: `calc(var(--pad) + ${was}%)` }, { width: `calc(var(--pad) + ${now}%)` }], opts);
+      el.querySelector('.tv-race-pin').animate([{ left: `${was}%` }, { left: `${now}%` }], opts);
+    });
+  }
 
   // Standings after the first `matchCount` matches — what the points table
   // shows. Built for any prefix of the game so Replay can show the table as
@@ -5045,7 +5310,7 @@
     tvCommitBtn.disabled = !(active.length >= 2 && n === active.length && !addMatchBtn.disabled);
     tvCommitBtn.textContent = active.length ? `✓ Commit ${n}/${active.length}` : '✓ Commit';
     // Commit and Clear only appear once at least one score has been set (in the table view).
-    const showStageBtns = tvTableView && n > 0;
+    const showStageBtns = tvView === 'table' && n > 0;
     tvCommitBtn.hidden = !showStageBtns;
     tvClearStageBtn.hidden = !showStageBtns;
     tvClearStageBtn.disabled = n === 0;
@@ -5304,16 +5569,19 @@
     }).join('') + `<div class="tv-dim-overlay ${winnerIdx !== null ? 'tv-dim-active' : ''}"></div>`;
 
     tvMatchNum.textContent = matches.length + 1;
-    const tableOn = tvTableView;
-    tvTableBtn.classList.toggle('active', tableOn);
-    tvTableBtn.textContent = tableOn ? '▦ Tiles' : '☰ Table';
-    const tableLabel = tableOn ? 'Show player tiles' : 'Show points table';
-    tvTableBtn.title = tableLabel;
-    tvTableBtn.setAttribute('aria-label', tableLabel);
-    // Tile-only toggles don't apply to the table.
-    tvShowNamesBtn.hidden = tableOn;
-    tvGrid.hidden = tableOn;
+    const tableOn = tvView === 'table';
+    tvTableBtn.classList.toggle('active', tvView !== 'tiles');
+    tvTableBtn.textContent = TV_VIEW_LABELS[tvView];
+    const nextView = TV_VIEWS[(TV_VIEWS.indexOf(tvView) + 1) % TV_VIEWS.length];
+    const viewLabel = `View: ${TV_VIEW_LABELS[tvView].replace(/^\S+\s/, '')} — tap for ${TV_VIEW_LABELS[nextView].replace(/^\S+\s/, '')}`;
+    tvTableBtn.title = viewLabel;
+    tvTableBtn.setAttribute('aria-label', viewLabel);
+    // The names toggle only applies to the photo tiles.
+    tvShowNamesBtn.hidden = tvView !== 'tiles';
+    tvGrid.hidden = tvView !== 'tiles';
     tvTable.hidden = !tableOn;
+    tvHero.hidden = tvView !== 'hero';
+    tvRace.hidden = tvView !== 'race';
     tvReplayBtn.hidden = !tableOn || matches.length === 0;
     tvWinReplayBtn.hidden = latestRoundWinnerIdx() === -1;
     if (tableOn) {
@@ -5329,6 +5597,8 @@
     } else {
       cancelTvPlayback();
     }
+    if (tvView === 'hero') renderTvHero(tvTableData(matches.length));
+    if (tvView === 'race') renderTvRace(tvTableData(matches.length));
     syncTvStaged();
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
