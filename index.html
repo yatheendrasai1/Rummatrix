@@ -1590,12 +1590,13 @@
   /* ---- TV view: Race track ---- */
   .tv-race { --pad: 7vh; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1vh; }
   .tv-race[hidden] { display: none; }
-  .tv-race-head { display: flex; justify-content: space-between; padding: 0 1vw 0 4.4vw; font-family: var(--font-mono); font-size: clamp(10px, 1.7vh, 16px); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; min-height: 2.2vh; }
+  .tv-race-head { display: flex; justify-content: space-between; padding: 0 1vw 0 calc(3.2vw + 13vw + 3.6vw); font-family: var(--font-mono); font-size: clamp(10px, 1.7vh, 16px); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; min-height: 2.2vh; }
   .tv-race-head .cut { color: #ff8a8a; }
   .tv-race-lanes { flex: 1 1 auto; min-height: 0; display: grid; grid-auto-rows: 1fr; gap: 1.2vh; }
   .tv-race-lane { position: relative; min-height: 0; display: flex; align-items: stretch; gap: 1.2vw; }
   .tv-race-lane.out { opacity: 0.5; }
   .tv-race-rank { width: 3.2vw; min-width: 24px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: clamp(16px, 3.6vh, 36px); color: var(--muted); }
+  .tv-race-name { flex: none; width: 13vw; align-self: center; font-weight: 700; font-size: clamp(14px, 3.2vh, 34px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tv-race-bar { flex: 1; min-width: 0; position: relative; padding: 0 var(--pad); border-radius: 2vh; background: var(--panel); border: 1px solid var(--border); }
   .tv-race-inner { position: relative; height: 100%; }
   .tv-race-fill { position: absolute; left: calc(var(--pad) * -1); top: 18%; bottom: 18%; border-radius: 99px; background: linear-gradient(90deg, transparent, var(--ac, var(--green))); opacity: 0.85; width: calc(var(--pad) + var(--pct) * 1%); }
@@ -1608,7 +1609,9 @@
   .tv-race-cut { position: absolute; right: 0; top: 0; bottom: 0; border-right: 0.5vh dashed rgba(255,107,107,0.55); }
   @media (orientation: portrait) and (max-width: 700px) {
     .tv-race { --pad: 5vh; }
-    .tv-race-rank { width: 6vw; }
+    .tv-race-rank { width: 6vw; min-width: 18px; font-size: clamp(13px, 2.4vh, 24px); }
+    .tv-race-name { width: 21vw; font-size: clamp(12px, 2.2vh, 24px); }
+    .tv-race-head { padding-left: calc(6vw + 21vw + 3.6vw); }
   }
 
   /* ---- Quick scoring: drag a name to set the round's points ---- */
@@ -5081,6 +5084,7 @@
     const maxTotal = Math.max(1, ...vis.map(p => data.totals[p]));
     // Elimination: the track ends at the limit. Fixed Matches: it stretches to fit the highest total.
     const scale = elim ? maxPoints : Math.max(50, Math.ceil(maxTotal * 1.15 / 10) * 10);
+    const flipAt = window.matchMedia('(orientation: portrait) and (max-width: 700px)').matches ? 45 : 80;
     const oldTops = tvTopsOf(tvRace, '.tv-race-lane');
     const oldPct = new Map();
     tvRace.querySelectorAll('.tv-race-lane').forEach(el => oldPct.set(el.dataset.playerIdx, Number(el.dataset.pct)));
@@ -5089,10 +5093,11 @@
       const pct = Math.max(0, Math.min(100, data.totals[p] / scale * 100));
       return `<div class="tv-race-lane ${out ? 'out' : ''}" data-player-idx="${p}" data-pct="${pct.toFixed(2)}" style="--ac:${tvAccent(p)};--pct:${pct.toFixed(2)}">
         <div class="tv-race-rank">${out ? '—' : data.ranks[p]}</div>
+        <div class="tv-race-name">${escapeHtml(players[p])}</div>
         <div class="tv-race-bar"><div class="tv-race-inner">
           <div class="tv-race-fill"></div>
           ${elim ? '<div class="tv-race-cut"></div>' : ''}
-          <div class="tv-race-pin ${pct > 80 ? 'flip' : ''}">
+          <div class="tv-race-pin ${pct > flipAt ? 'flip' : ''}">
             ${!out && i === 0 && matches.length > 0 ? '<span class="tv-race-crown">👑</span>' : ''}
             ${tvLogoHtml(p)}
             <span class="tv-race-val">${data.totals[p]}</span>
