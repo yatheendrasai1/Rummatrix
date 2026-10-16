@@ -287,6 +287,8 @@
   /* The page scrolls inside the app box (the box itself is what gets turned). */
   html.vp-fixed .app { max-width: none; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 20px max(20px, calc((100% - 880px) / 2)); }
   html.vp-fixed.vp-w600 .app { padding: 12px max(12px, calc((100% - 880px) / 2)); }
+  /* Browsers don't map a touch swipe through a turned scroller, so a turned app scrolls itself (see below). */
+  html.vp-rot .app { touch-action: none; overscroll-behavior: contain; }
   .layout-btn { cursor: pointer; white-space: nowrap; }
 
 
@@ -2328,6 +2330,7 @@
     <div class="brand">⬡ RUMMY<span>.SYS</span></div>
     <div class="status"><span class="pulse-dot"></span><span id="statusText">STANDBY</span></div>
     <button type="button" class="theme-select layout-btn" id="layoutBtn"></button>
+    <button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button>
     <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
       <option value="slate">Slate</option>
       <option value="terminal">Terminal</option>
@@ -4479,6 +4482,7 @@
     gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
     renderAll();
+    openGameFullscreen();
   });
 
   // ---------- GAME SCREEN ----------
@@ -5965,17 +5969,115 @@
     }
   });
 
+  let tvEnteredFullscreen = false;
   function exitTvMode() {
     cancelTvGesture();
     closeTvEventMenu();
     tvScreen.hidden = true;
     document.documentElement.style.overflow = '';
     document.body.style.overflow = '';
-    if (document.fullscreenElement) {
+    // Leave fullscreen only if TV Mode is what entered it (a full-screen game stays full screen).
+    if (document.fullscreenElement && tvEnteredFullscreen) {
       document.exitFullscreen().catch(() => { /* already exited or unsupported */ });
     }
+    tvEnteredFullscreen = false;
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (err) { /* ignore */ }
   }
+
+  // ---------- FULL SCREEN ----------
+  // In the landscape layout, opening a game takes the whole screen (browser bars gone);
+  // the button in the top bar toggles it any time. Not every browser allows it (iPhone
+  // Safari doesn't) — there the button is simply hidden.
+  const fsBtn = document.getElementById('fsBtn');
+  const canFullscreen = !!document.documentElement.requestFullscreen;
+  function enterAppFullscreen() {
+    if (!canFullscreen || document.fullscreenElement) return;
+    document.documentElement.requestFullscreen().then(lockScreenOrientation).catch(() => { /* needs a tap, or not permitted here */ });
+  }
+  function syncFsBtn() {
+    fsBtn.hidden = !canFullscreen;
+    const on = !!document.fullscreenElement;
+    fsBtn.textContent = on ? '⤢ Exit full screen' : '⛶ Full screen';
+    fsBtn.title = on ? 'Leave full screen' : 'Use the whole screen';
+    fsBtn.setAttribute('aria-label', fsBtn.title);
+  }
+  fsBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else enterAppFullscreen();
+  });
+  document.addEventListener('fullscreenchange', syncFsBtn);
+  syncFsBtn();
+  // Called as a game opens (a tap, so the browser allows it).
+  function openGameFullscreen() { if (rmViewport.pref === 'landscape') enterAppFullscreen(); }
+
+  // ---------- TURNED-APP TOUCH SCROLLING ----------
+  // When the app is turned 90 degrees (landscape layout on an upright phone) the browser
+  // doesn't translate swipes into the turned scroller's own directions, so the page
+  // wouldn't scroll. This does it by hand: a swipe scrolls the nearest scrollable
+  // element along the swipe's axis, with a little momentum on release.
+  (function turnedAppScroll() {
+    const app = document.querySelector('.app');
+    const SLOP = 8;
+    let g = null, flingId = null;
+
+    function scrollableAlong(el, axis) {
+      for (; el && el !== app.parentElement; el = el.parentElement) {
+        const cs = getComputedStyle(el);
+        if (axis === 'y') {
+          if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
+        } else if (/(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) return el;
+        if (el === app) break;
+      }
+      return null;
+    }
+    function stopFling() { if (flingId) { cancelAnimationFrame(flingId); flingId = null; } }
+    function scrollBy(el, axis, d) { if (axis === 'y') el.scrollTop += d; else el.scrollLeft += d; }
+
+    app.addEventListener('pointerdown', (e) => {
+      stopFling();
+      if (rmViewport.mode !== 'rot' || e.pointerType !== 'touch' || !e.isPrimary) return;
+      if (e.target.closest('input[type="range"]')) return;
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), axis: null, el: null, v: 0, target: e.target, moved: false };
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;      // window coordinates
+      // app axes: its y runs against the window's x, its x runs along the window's y
+      const dLocalY = -dx, dLocalX = dy;
+      if (!g.axis) {
+        if (Math.hypot(dx, dy) < SLOP) return;
+        g.axis = Math.abs(dLocalY) >= Math.abs(dLocalX) ? 'y' : 'x';
+        g.el = scrollableAlong(g.target, g.axis);
+        if (!g.el) { g = null; return; }
+        g.moved = true;
+      }
+      const d = g.axis === 'y' ? dLocalY : dLocalX;
+      const now = performance.now();
+      scrollBy(g.el, g.axis, -d);
+      g.v = (-d) / Math.max(1, now - g.t) * 0.8 + g.v * 0.2;   // px per ms, smoothed
+      g.x = e.clientX; g.y = e.clientY; g.t = now;
+    });
+    function endGesture(e) {
+      if (!g || e.pointerId !== g.id) return;
+      const { el, axis, v, moved } = g;
+      g = null;
+      if (!moved || Math.abs(v) < 0.1) return;
+      let vel = v, last = performance.now();
+      const step = (now) => {
+        const dt = Math.min(48, now - last); last = now;
+        scrollBy(el, axis, vel * dt);
+        vel *= Math.pow(0.94, dt / 16);
+        flingId = Math.abs(vel) > 0.02 ? requestAnimationFrame(step) : null;
+      };
+      flingId = requestAnimationFrame(step);
+    }
+    document.addEventListener('pointerup', endGesture);
+    document.addEventListener('pointercancel', endGesture);
+    // a swipe that scrolled must not also count as a tap on whatever was under the finger
+    app.addEventListener('click', (e) => { if (app.__swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
+    document.addEventListener('pointermove', () => { if (g && g.moved) app.__swiped = true; });
+    document.addEventListener('pointerdown', () => { app.__swiped = false; }, true);
+  })();
 
   // ---------- SCREEN LAYOUT: landscape (default) or portrait ----------
   // rmViewport (in <head>) does the actual laying out; these buttons just flip the
@@ -6025,6 +6127,7 @@
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     if (document.documentElement.requestFullscreen) {
+      tvEnteredFullscreen = !document.fullscreenElement;
       document.documentElement.requestFullscreen().then(lockScreenOrientation).catch(() => { /* fullscreen not permitted here — overlay still works windowed */ });
     }
   });
@@ -6524,6 +6627,7 @@
         gameScreen.hidden = false;
         statusText.textContent = 'GAME ACTIVE';
         renderAll();
+        openGameFullscreen();
       } catch (err) {
         setupError.textContent = err.message || 'Could not parse that CSV file.';
       }
@@ -7581,6 +7685,7 @@
     gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
     renderAll();
+    openGameFullscreen();
   }
 
   // ---------- INIT: restore from localStorage ----------
