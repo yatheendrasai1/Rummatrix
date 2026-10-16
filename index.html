@@ -790,6 +790,18 @@
     padding: 12px 14px;
     margin-bottom: 10px;
   }
+  .history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .history-head h2 { margin-bottom: 0; }
+  .history-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 12px 0; padding: 10px 14px; background: var(--panel); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 13px; }
+  .history-toolbar[hidden] { display: none; }
+  .history-select-all { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--white); }
+  .history-count { color: var(--muted); margin-right: auto; }
+  .history-delete-btn:not(:disabled) { color: #ff6b6b; border-color: #ff6b6b; }
+  .history-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .history-item.selectable { cursor: pointer; display: flex; align-items: flex-start; gap: 12px; }
+  .history-item.selectable.selected { border-color: var(--green); background: rgba(var(--green-rgb), 0.08); }
+  .history-item .history-pick { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--green); cursor: pointer; }
+  .history-item-body { flex: 1; min-width: 0; }
   .history-row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .history-date { font-family: var(--font-mono); color: var(--muted); font-size: 12px; letter-spacing: 0.5px; }
   .history-meta { font-family: var(--font-mono); font-size: 13px; color: var(--white); margin-top: 4px; }
@@ -2320,7 +2332,16 @@
     </div>
 
     <div class="board-section" id="gameHistorySection" hidden style="margin-top:26px;">
-      <h2>Played Games</h2>
+      <div class="history-head">
+        <h2>Played Games</h2>
+        <button type="button" class="btn-ghost" id="historyManageBtn" title="Select ended games to delete from this device" style="font-size:10px; padding:5px 10px;">🗑 Clear…</button>
+      </div>
+      <div class="history-toolbar" id="historyToolbar" hidden>
+        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> Select all</label>
+        <span class="history-count" id="historyCount">0 selected</span>
+        <button type="button" class="btn-ghost history-delete-btn" id="historyDeleteBtn" disabled style="font-size:10px; padding:5px 10px;">Delete selected</button>
+        <button type="button" class="btn-ghost" id="historyCancelBtn" style="font-size:10px; padding:5px 10px;">Cancel</button>
+      </div>
       <div id="gameHistoryList"></div>
     </div>
   </section>
@@ -6470,26 +6491,90 @@
 
   // ---------- GAME HISTORY ----------
 
+  // "Clear…" turns the list into a picker: tick games individually (or Select all),
+  // then Delete selected removes them from this device's saved history.
+  let historySelecting = false;
+  const historySelected = new Set();   // indices into gameHistory
+  const historyManageBtn = document.getElementById('historyManageBtn');
+  const historyToolbar = document.getElementById('historyToolbar');
+  const historySelectAll = document.getElementById('historySelectAll');
+  const historyCount = document.getElementById('historyCount');
+  const historyDeleteBtn = document.getElementById('historyDeleteBtn');
+  const historyCancelBtn = document.getElementById('historyCancelBtn');
+
+  function setHistorySelecting(on) {
+    historySelecting = on;
+    historySelected.clear();
+    renderGameHistory();
+  }
+
+  function syncHistoryToolbar() {
+    const n = historySelected.size, total = gameHistory.length;
+    historyCount.textContent = `${n} selected`;
+    historyDeleteBtn.disabled = n === 0;
+    historySelectAll.checked = total > 0 && n === total;
+    historySelectAll.indeterminate = n > 0 && n < total;
+    gameHistoryList.querySelectorAll('.history-item').forEach(el => {
+      const on = historySelected.has(Number(el.dataset.historyIndex));
+      el.classList.toggle('selected', on);
+      const box = el.querySelector('.history-pick');
+      if (box) box.checked = on;
+    });
+  }
+
   function renderGameHistory() {
     if (gameHistory.length === 0) {
+      historySelecting = false;
+      historySelected.clear();
       gameHistorySection.hidden = true;
       return;
     }
     gameHistorySection.hidden = false;
+    historyManageBtn.hidden = historySelecting;
+    historyToolbar.hidden = !historySelecting;
     gameHistoryList.innerHTML = gameHistory.map((g, idx) => {
       const winnerText = g.winner ? `🏆 ${escapeHtml(g.winner)}` : '—';
-      return `<div class="history-item">
-        <div class="history-row-top">
+      const body = `<div class="history-row-top">
           <span class="history-date">${g.gameName ? `<span class="history-game-name">${escapeHtml(g.gameName)}</span> · ` : ''}${escapeHtml(g.endedAt)}</span>
-          <button type="button" class="btn-ghost history-export-btn" data-history-index="${idx}" style="font-size:10px; padding:5px 10px;">⬇ Export</button>
+          ${historySelecting ? '' : `<button type="button" class="btn-ghost history-export-btn" data-history-index="${idx}" style="font-size:10px; padding:5px 10px;">⬇ Export</button>`}
         </div>
         <div class="history-meta">Players: ${g.players.map(escapeHtml).join(', ')}</div>
-        <div class="history-meta">Rounds: ${g.matches.length} · ${g.gameMode === 'rounds' ? `Fixed Matches: ${g.totalRounds}` : `Max Points: ${g.maxPoints}`} · Winner: ${winnerText}</div>
-      </div>`;
+        <div class="history-meta">Rounds: ${g.matches.length} · ${g.gameMode === 'rounds' ? `Fixed Matches: ${g.totalRounds}` : `Max Points: ${g.maxPoints}`} · Winner: ${winnerText}</div>`;
+      return historySelecting
+        ? `<div class="history-item selectable" data-history-index="${idx}"><input type="checkbox" class="history-pick" aria-label="Select this game"><div class="history-item-body">${body}</div></div>`
+        : `<div class="history-item" data-history-index="${idx}">${body}</div>`;
     }).reverse().join('');
+    if (historySelecting) syncHistoryToolbar();
   }
 
+  historyManageBtn.addEventListener('click', () => setHistorySelecting(true));
+  historyCancelBtn.addEventListener('click', () => setHistorySelecting(false));
+  historySelectAll.addEventListener('change', () => {
+    historySelected.clear();
+    if (historySelectAll.checked) gameHistory.forEach((_, i) => historySelected.add(i));
+    syncHistoryToolbar();
+  });
+  historyDeleteBtn.addEventListener('click', () => {
+    const n = historySelected.size;
+    if (n === 0) return;
+    if (!confirm(`Delete ${n} ended game${n === 1 ? '' : 's'} from this device?\nThis can't be undone — export first if you want to keep a copy.`)) return;
+    gameHistory = gameHistory.filter((_, i) => !historySelected.has(i));
+    saveGameHistory();
+    historySelecting = false;
+    historySelected.clear();
+    renderGameHistory();
+  });
+
   gameHistoryList.addEventListener('click', (e) => {
+    if (historySelecting) {
+      const item = e.target.closest('.history-item.selectable');
+      if (!item) return;
+      const idx = Number(item.dataset.historyIndex);
+      // a click on the checkbox itself has already flipped it; a click elsewhere on the card flips the set
+      if (historySelected.has(idx)) historySelected.delete(idx); else historySelected.add(idx);
+      syncHistoryToolbar();
+      return;
+    }
     const btn = e.target.closest('.history-export-btn');
     if (!btn) return;
     const idx = Number(btn.dataset.historyIndex);
