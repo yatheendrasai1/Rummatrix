@@ -676,26 +676,8 @@
   .board-section { margin-bottom: 26px; }
   .empty-note { color: var(--muted); font-size: 14px; padding: 4px 0; font-family: var(--font-mono); }
 
-  .set-block { margin-bottom: 18px; border-left: 2px solid var(--green); padding-left: 14px; }
-  .set-block summary {
-    cursor: pointer;
-    list-style: none;
-    font-family: var(--font-display); font-size: 13px; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--green); margin: 0 0 10px;
-    user-select: none;
-  }
-  .set-block summary::-webkit-details-marker { display: none; }
-  .set-block summary::before {
-    content: '▸';
-    display: inline-block;
-    margin-right: 8px;
-    transition: transform 0.15s ease;
-  }
-  .set-block[open] summary::before { transform: rotate(90deg); }
-  .set-block[open] summary { margin-bottom: 10px; }
-
-  /* Shared collapsible-section look — used for Voice Settings and Set Breakdown,
-     both closed by default (no "open" attribute) to keep the page compact. */
+  /* Shared collapsible-section look — used for Voice Settings,
+     closed by default (no "open" attribute) to keep the page compact. */
   .collapsible-section { margin-bottom: 26px; }
   .collapsible-section[hidden] { display: none; }
   .collapsible-section summary {
@@ -733,7 +715,6 @@
     letter-spacing: 1px;
   }
   .match-log-row { background: var(--panel); font-size: 17px; font-weight: 600; color: var(--white); }
-  .match-log-row.set-boundary { border-top: 2px solid var(--green); margin-top: 6px; }
   .ml-cell { text-align: center; white-space: nowrap; }
   .ml-avg { font-size: 11px; color: var(--muted); opacity: 0.75; font-weight: 400; }
   .ml-label { text-align: left; color: var(--muted); }
@@ -2334,7 +2315,6 @@
       <div class="game-mode-display">
         <b id="gameModeDisplay">Elimination</b>
         <button type="button" class="edit-max-btn" id="switchModeBtn" title="Switch game mode" aria-label="Switch game mode">⇄</button>
-        <span>· SET <b id="setNumDisplay">1</b></span>
       </div>
     </div>
 
@@ -2378,11 +2358,6 @@
       </h2>
       <div id="matchLogList"></div>
     </div>
-
-    <details class="collapsible-section" id="setBreakdownSection">
-      <summary>Set Breakdown</summary>
-      <div id="setBreakdownList"></div>
-    </details>
 
     <div class="actions-row">
       <button class="btn-ghost" id="tvModeBtn">📺 TV Mode</button>
@@ -2502,7 +2477,6 @@
   let playerAvatars = []; // data URLs (or null) indexed the same as players — set on the setup screen
   let matches = [];      // array of arrays: matches[i][playerIdx] = score
   let matchEvents = [];  // array of arrays: matchEvents[i][playerIdx] = event key ('drop'/'mdrop'/'full'/'rummy') actually pressed, or null for a manually-typed value
-  let setSize = 0;
   let editingMatchIndex = null;  // index of the match currently open for inline editing
   let editErrorMsg = '';         // validation message shown while editing a match
   let maxPoints = null;          // elimination limit for the game (null in 'rounds' mode)
@@ -2764,7 +2738,6 @@
   const activeGamesCount = document.getElementById('activeGamesCount');
 
   const matchNumDisplay = document.getElementById('matchNumDisplay');
-  const setNumDisplay = document.getElementById('setNumDisplay');
   const maxPointsDisplay = document.getElementById('maxPointsDisplay');
   const toggleOutBtn = document.getElementById('toggleOutBtn');
   const limitLabel = document.getElementById('limitLabel');
@@ -2786,7 +2759,6 @@
   const playerNamesDisplay = document.getElementById('playerNamesDisplay');
   const summaryList = document.getElementById('summaryList');
   const gameOverBanner = document.getElementById('gameOverBanner');
-  const setBreakdownList = document.getElementById('setBreakdownList');
   const matchLogList = document.getElementById('matchLogList');
   const wormChartEmpty = document.getElementById('wormChartEmpty');
   const wormChartControls = document.getElementById('wormChartControls');
@@ -2851,7 +2823,7 @@
     return {
       id: currentGameId,
       gameName,
-      players, playerAvatars, photoPositions, matches, matchEvents, setSize, maxPoints, gameMode, totalRounds, playerCount, dealerIdx, forfeited, adjustments,
+      players, playerAvatars, photoPositions, matches, matchEvents, maxPoints, gameMode, totalRounds, playerCount, dealerIdx, forfeited, adjustments,
       eventPoints: {
         dropPts: EVENTS.find(e => e.key === 'drop').points,
         mdropPts: EVENTS.find(e => e.key === 'mdrop').points,
@@ -4333,7 +4305,6 @@
 
     rememberPlayers(names, playerAvatars);
     players = names;
-    setSize = players.length;
     matches = [];
     matchEvents = [];
     dealerIdx = Math.max(0, Math.min(initialDealerIdx, players.length - 1));
@@ -4819,7 +4790,6 @@
     players = [];
     playerAvatars = [];
     playerCount = null;
-    setSize = 0;
     maxPoints = null;
     photoPositions = {};
     gameMode = 'elimination';
@@ -6212,7 +6182,6 @@
         const { playerNames, matches: importedMatches } = parseGameCsv(String(reader.result), eventPts.fullPts);
         players = playerNames;
         playerAvatars = players.map(() => null); // CSV imports don't carry profile pictures
-        setSize = players.length;
         matches = importedMatches;
         dealerIdx = 0; // CSV rows carry no dealer info
         forfeited = players.map(() => null);
@@ -6532,10 +6501,8 @@
 
   function renderAll() {
     const nextMatchNum = matches.length + 1;
-    const currentSet = Math.floor(matches.length / setSize) + 1;
 
     matchNumDisplay.textContent = nextMatchNum;
-    setNumDisplay.textContent = currentSet;
     entryMatchNum.textContent = nextMatchNum;
     eventLegendText.textContent = EVENTS.map(ev => `${ev.code} = ${ev.label} (${ev.points})`).join(' · ');
     renderGameName();
@@ -6642,39 +6609,21 @@
     if (!tvScreen.hidden) renderTvScreen();
 
     if (matches.length === 0 && adjustments.length === 0) {
-      setBreakdownList.innerHTML = '<p class="empty-note">No matches yet.</p>';
       matchLogList.innerHTML = '<p class="empty-note">No matches recorded yet — add the first match below.</p>';
       return;
     }
 
-    // --- Set breakdown, grouped by set, collapsed by default ---
-    const numSets = Math.ceil(matches.length / setSize);
-    let setBreakdownHtml = matches.length === 0 ? '<p class="empty-note">No matches yet.</p>' : '';
-
-    for (let s = 0; s < numSets; s++) {
-      const start = s * setSize, end = Math.min(start + setSize, matches.length);
-      const chunk = matches.slice(start, end);
-      const setScores = players.map((_, pIdx) => chunk.reduce((sum, m) => sum + (m[pIdx] ?? 0), 0));
-
-      setBreakdownHtml += `<details class="set-block"><summary>Set ${s + 1}</summary><div class="match-log-scroll"><div class="match-log-table">`;
-      setBreakdownHtml += `<div class="match-log-header" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Set ${s + 1}</span>${players.map(name => `<span class="ml-cell">${escapeHtml(name)}</span>`).join('')}</div>`;
-      setBreakdownHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Score</span>${setScores.map(sc => `<span class="ml-cell">${sc}</span>`).join('')}</div>`;
-      setBreakdownHtml += `<div class="match-log-row" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Avg</span>${setScores.map(sc => `<span class="ml-cell">${(chunk.length ? sc / chunk.length : 0).toFixed(1)}</span>`).join('')}</div>`;
-      setBreakdownHtml += `</div></div></details>`;
-    }
-
-    // --- Match log: one continuous list, with a divider line marking each new set ---
+    // --- Match log: one continuous list ---
     let matchLogHtml = '';
     matchLogHtml += `<div class="match-log-scroll"><div class="match-log-table">`;
     matchLogHtml += `<div class="match-log-header" style="grid-template-columns:${cols}"><span class="ml-cell ml-label">Match</span>${players.map(name => `<span class="ml-cell">${escapeHtml(name)}</span>`).join('')}</div>`;
     matches.forEach((m, i) => {
-      const isNewSet = i > 0 && i % setSize === 0;
       if (i === editingMatchIndex) {
         const editCells = players.map((_, pIdx) => {
           if (m[pIdx] === null) return `<span class="ml-cell ml-out">OUT</span>`;
           return `<span class="ml-cell"><input type="number" class="ml-edit-input" min="0" max="${maxRoundPoints}" step="1" inputmode="numeric" value="${m[pIdx]}" data-pidx="${pIdx}"></span>`;
         }).join('');
-        matchLogHtml += `<div class="match-log-row editing ${isNewSet ? 'set-boundary' : ''}" style="grid-template-columns:${cols}" data-match-index="${i}">
+        matchLogHtml += `<div class="match-log-row editing" style="grid-template-columns:${cols}" data-match-index="${i}">
           <span class="ml-cell ml-label match-label-cell">
             <span>${i + 1}</span>
             <span class="row-actions">
@@ -6693,7 +6642,7 @@
           const isRummy = m[pIdx] === 0;
           return `<span class="ml-cell ${isRummy ? 'rummy-score' : ''}">${matchLogLabel(m[pIdx])}${isRummy ? `<button type="button" class="win-replay-btn" data-replay-match="${i}" data-replay-player="${pIdx}" title="Replay the round-won celebration" aria-label="Replay the round-won celebration for ${escapeAttr(players[pIdx])}">▶</button>` : ''}</span>`;
         }).join('');
-        matchLogHtml += `<div class="match-log-row mlr-deletable ${isNewSet ? 'set-boundary' : ''}" style="grid-template-columns:${cols}" data-match-index="${i}">
+        matchLogHtml += `<div class="match-log-row mlr-deletable" style="grid-template-columns:${cols}" data-match-index="${i}">
           <span class="ml-cell ml-label match-label-cell">
             <span>${i + 1}</span>
             <button type="button" class="icon-btn edit-btn" title="Edit this round">✎</button>
@@ -6733,7 +6682,6 @@
     }).join('')}</div>`;
     matchLogHtml += `</div></div>`;
 
-    setBreakdownList.innerHTML = setBreakdownHtml;
     matchLogList.innerHTML = matchLogHtml;
     if (!speechSupported) {
       matchLogList.querySelectorAll('.readout-btn').forEach(btn => { btn.hidden = true; });
@@ -7229,7 +7177,6 @@
     photoPositions = (saved.photoPositions && typeof saved.photoPositions === 'object') ? saved.photoPositions : {};
     matches = saved.matches;
     matchEvents = Array.isArray(saved.matchEvents) ? saved.matchEvents : matches.map(m => m.map(() => null));
-    setSize = saved.setSize || players.length;
     maxPoints = typeof saved.maxPoints === 'number' ? saved.maxPoints : null;
     gameMode = saved.gameMode === 'rounds' ? 'rounds' : 'elimination';
     totalRounds = typeof saved.totalRounds === 'number' ? saved.totalRounds : null;
