@@ -62,7 +62,7 @@
       c.toggle('vp-col', mode === 'col');
       c.toggle('vp-landscape', vpw >= vph);
       c.toggle('vp-portrait', vpw < vph);
-      [380, 480, 600, 700, 760].forEach(function (n) { c.toggle('vp-w' + n, vpw <= n); });
+      [380, 480, 600, 700, 760, 900].forEach(function (n) { c.toggle('vp-w' + n, vpw <= n); });
       c.toggle('vp-short', vph <= 520);
       if (mode === 'none') {
         ['--vh', '--vw', '--vpw', '--vph', '--vpx'].forEach(function (p) { de.style.removeProperty(p); });
@@ -1876,6 +1876,46 @@
   .tv-screen.tv-embedded { position: absolute; inset: 0; z-index: 1; width: auto; height: auto; border-radius: inherit; background: none; }
   .tv-screen.tv-embedded .tv-exit-btn { display: none; }
 
+  /* ---- Calm mode: less on screen at once ----
+     The top bar only appears under Settings, the right rail only on roomy screens,
+     the menu starts collapsed on small ones, and the entry cards become plain rows. */
+  .hud-extras { display: none; }
+  html.hud .hud-extras { display: block; }
+  .hud-extras-body { display: flex; flex-wrap: wrap; gap: 8px; }
+  html.hud:not([data-hud-view="settings"]) .hud-bar { display: none; }
+  html.hud #testDumpBtn { display: none; }
+  html.hud #gameScreen[data-view="record"] #eventLegendText { display: none; }
+  html.hud .hud-nav-text small { display: none; }
+  html.hud .hud-title-name { font-size: clamp(16px, calc(3.6 * var(--vh)), 28px); font-weight: 700; letter-spacing: 0.06em; text-shadow: none; }
+  html.hud .hud-orn { display: none; }
+  html.hud .hud-title { padding-right: 34px; }
+  html.hud.hud-collapsed .hud-title { padding-right: 0; }
+  html.hud .hud-nav-item { padding: calc(0.9 * var(--vh)) calc(0.8 * var(--vw)); }
+  html.hud .hud-nav-item .hud-ico { background: none; border-color: transparent; }
+  html.hud .hud-nav-item.active { background: rgba(var(--orange-rgb), 0.14); border-color: transparent; box-shadow: none; }
+  html.hud .hud-nav-item.active .hud-ico { background: none; border-color: transparent; }
+  html.hud .hud-stage { box-shadow: none; background: transparent; }
+  html.hud .hud-slot { display: none; }
+  html.hud .hud-card { background: none; }
+  html.hud #hudPreview { margin-top: 0; padding: 0; border: 0; }
+  html.hud #hudPreview .hud-card-head, html.hud #hudPreview .hud-open-btn { display: none; }
+  html.hud #hudStatus { padding: 0 0 calc(1.4 * var(--vh)); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  html.hud #hudStatus .hud-status-foot { display: none; }
+  html.hud .hud-pslot { cursor: pointer; }
+  /* entry cards -> plain rows: name, points, quick buttons */
+  html.hud .entry-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 0 calc(2 * var(--vw)); margin-bottom: calc(1.6 * var(--vh)); }
+  html.hud .entry-row { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(64px, 96px) auto; align-items: center; gap: 10px; padding: calc(0.9 * var(--vh)) 2px; background: none; border: 0; border-bottom: 1px solid var(--border); }
+  html.hud .entry-row-top { display: contents; }
+  html.hud .entry-row input[type="number"] { padding: 6px 8px; }
+  html.hud .event-btns { flex-wrap: nowrap; }
+  html.hud .event-btn { clip-path: none; border-radius: 6px; border-color: transparent; background: rgba(255,255,255,0.05); }
+  html.hud .event-btn.selected { border-color: transparent; }
+  html.hud #recordMatchPanel h2 { font-size: 15px; }
+  html.hud .tv-screen.tv-embedded #tvLayoutBtn { display: none; }
+  /* the right rail needs room: out of the way on small screens */
+  html.hud.vp-w900 .hud-right, html.hud.vp-short .hud-right { display: none; }
+  html.hud.vp-w900 #gameScreen, html.hud.vp-short #gameScreen { grid-template-columns: var(--hud-left) minmax(0, 1fr); }
+
   /* smaller screens: drop the right rail, then the small print */
   html.hud.vp-w760 #gameScreen { grid-template-columns: var(--hud-rail) minmax(0, 1fr); }
   html.hud.vp-w760 .hud-right { display: none; }
@@ -2632,10 +2672,10 @@
     </aside>
     <aside class="hud-right hud-only">
       <div class="hud-card hud-status" id="hudStatus"></div>
-      <div class="hud-card hud-quest" id="hudQuest"></div>
       <div class="hud-card hud-preview" id="hudPreview"></div>
     </aside>
     <div class="hud-stage" id="hudStage">
+    <div class="hud-extras" id="hudExtras" data-hud="settings"><h2>Round options</h2><div class="hud-extras-body" id="hudExtrasBody"></div></div>
     <div class="game-meta" data-hud="none">
       <div class="game-name-display">
         <span id="gameNameDisplay"></span>
@@ -6175,10 +6215,12 @@
   // existing buttons.
   let tvEmbedded = false;   // TV Mode's display is showing inside the game screen (the TV Display view)
   const HUD_COLLAPSED_KEY = 'rummatrix.hudCollapsed';
-  let hudCollapsed = false;
-  try { hudCollapsed = localStorage.getItem(HUD_COLLAPSED_KEY) === 'true'; } catch (err) { /* ignore */ }
+  let hudCollapsedPref = null;   // null = automatic: collapsed on small screens
+  try { const v = localStorage.getItem(HUD_COLLAPSED_KEY); hudCollapsedPref = v === 'true' ? true : v === 'false' ? false : null; } catch (err) { /* ignore */ }
+  const hudCollapsedNow = () => hudCollapsedPref !== null ? hudCollapsedPref : (rmViewport.height <= 520 || rmViewport.width <= 900);
   const hudCollapseBtn = document.getElementById('hudCollapseBtn');
   function syncHudCollapsed() {
+    const hudCollapsed = hudCollapsedNow();
     document.documentElement.classList.toggle('hud-collapsed', hudCollapsed);
     hudCollapseBtn.textContent = hudCollapsed ? '»' : '«';
     const label = hudCollapsed ? 'Expand the menu' : 'Collapse the menu';
@@ -6187,8 +6229,8 @@
     hudCollapseBtn.setAttribute('aria-expanded', String(!hudCollapsed));
   }
   hudCollapseBtn.addEventListener('click', () => {
-    hudCollapsed = !hudCollapsed;
-    try { localStorage.setItem(HUD_COLLAPSED_KEY, String(hudCollapsed)); } catch (err) { /* ignore */ }
+    hudCollapsedPref = !hudCollapsedNow();
+    try { localStorage.setItem(HUD_COLLAPSED_KEY, String(hudCollapsedPref)); } catch (err) { /* ignore */ }
     syncHudCollapsed();
   });
   syncHudCollapsed();
@@ -6235,6 +6277,7 @@
     if (hudView === 'tv' && view !== 'tv') closeEmbeddedTv();
     hudView = view;
     gameScreen.dataset.view = view;
+    document.documentElement.dataset.hudView = view;
     hudNav.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (view === 'worm') { document.getElementById('wormChartSection').open = true; renderWormChart(); }
     if (view === 'settings') document.getElementById('voiceSettingsSection').open = true;
@@ -6249,7 +6292,7 @@
   });
   document.getElementById('hudRenameBtn').addEventListener('click', () => editGameNameBtn.click());
   document.getElementById('hudModeBtn').addEventListener('click', () => switchModeBtn.click());
-  document.getElementById('hudPreview').addEventListener('click', (e) => { if (e.target.closest('.hud-open-btn')) setHudView('standings'); });
+  document.getElementById('hudPreview').addEventListener('click', (e) => { if (e.target.closest('.hud-open-btn, .hud-pslot')) setHudView('standings'); });
 
   function renderHud() {
     if (!document.documentElement.classList.contains('hud')) return;
@@ -6279,25 +6322,11 @@
       ? `<div class="hud-lead-av" style="--ac:${tvAccent(lead)}">${tvLogoHtml(lead)}</div>
          <div style="min-width:0"><div class="hud-lead-name">${escapeHtml(players[lead])}</div>
          <div class="hud-lead-sub">${result.over ? 'Winner' : 'Leading'} · <b>${data.totals[lead]}</b> pts</div>
-         <div class="hud-meter"><i style="width:${Math.max(2, Math.min(100, progress * 100))}%"></i></div></div>
-         <div class="hud-status-foot"><span>${progressText}</span><span style="margin-left:auto">🃏 ${escapeHtml(players[dealerIdx] ?? '—')}</span></div>`
+         <div class="hud-meter"><i style="width:${Math.max(2, Math.min(100, progress * 100))}%"></i></div></div>`
       : `<div class="hud-lead-av">${tvLogoHtml(dealerIdx)}</div>
          <div style="min-width:0"><div class="hud-lead-name">No leader yet</div>
          <div class="hud-lead-sub">Play the first round</div>
-         <div class="hud-meter"><i style="width:2%"></i></div></div>
-         <div class="hud-status-foot"><span>${progressText}</span><span style="margin-left:auto">🃏 ${escapeHtml(players[dealerIdx] ?? '—')}</span></div>`;
-
-    // current round
-    let title, desc;
-    if (result.over) {
-      title = 'Game over';
-      desc = result.winners.length ? `${result.winners.map(i => escapeHtml(players[i])).join(' & ')} ${result.winners.length > 1 ? 'tie for the win' : 'wins the game'}.` : 'Everyone busted — no winner.';
-    } else {
-      title = rounds ? `Match ${Math.min(matches.length + 1, totalRounds)} of ${totalRounds}` : `Match #${matches.length + 1}`;
-      desc = (rounds ? `${totalRounds - matches.length} to go — lowest total wins. ` : `${inCount} of ${total} still in — out at ${maxPoints}. `) + 'Enter each player’s points, then Add Match.';
-    }
-    document.getElementById('hudQuest').innerHTML = `<div class="hud-card-head">Current round</div>
-      <div class="hud-quest-item"><span class="hud-quest-ico">${result.over ? '★' : '!'}</span><div><div class="hud-quest-title">${title}</div><div class="hud-quest-desc">${desc}</div></div></div>`;
+         <div class="hud-meter"><i style="width:2%"></i></div></div>`;
 
     // standings preview
     const slots = data.order.slice(0, 8).map(p => `<div class="hud-pslot ${data.outFlags[p] ? 'out' : ''} ${started && p === lead ? 'lead' : ''}" style="--ac:${tvAccent(p)}" title="${escapeAttr(players[p])}">${tvLogoHtml(p)}<b>${data.totals[p]}</b></div>`).join('');
@@ -6310,6 +6339,11 @@
     const on = !gameScreen.hidden && rmViewport.width >= rmViewport.height;
     const was = root.classList.contains('hud');
     root.classList.toggle('hud', on);
+    syncHudCollapsed();
+    // Announce / win-sound toggles live under Settings in this layout
+    const extras = document.getElementById('hudExtrasBody');
+    if (on && !was) { extras.append(announceToggle, winSoundToggle); }
+    if (!on && was) { voiceEntryBtn.after(announceToggle, winSoundToggle); }
     if (!on && tvEmbedded) { closeEmbeddedTv(); hudView = 'record'; gameScreen.dataset.view = 'record'; }
     if (on && !was) { setHudView(hudView); renderHud(); }
   }
