@@ -1855,6 +1855,27 @@
   .hud-open-btn { width: 100%; margin-top: calc(1.2 * var(--vh)); padding: calc(0.9 * var(--vh)) 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--white); font-family: var(--font-mono); font-size: clamp(10px, calc(1.7 * var(--vh)), 12px); letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
   .hud-open-btn:hover { border-color: var(--green); color: var(--green); }
 
+  /* collapsible menu */
+  html.hud #gameScreen { --hud-left: var(--hud-rail); grid-template-columns: var(--hud-left) minmax(0, 1fr) var(--hud-rail); }
+  html.hud.hud-collapsed #gameScreen { --hud-left: 64px; }
+  .hud-title { position: relative; }
+  .hud-collapse { position: absolute; right: 0; top: 0; z-index: 1; }
+  html.hud.hud-collapsed .hud-title { display: flex; justify-content: center; }
+  html.hud.hud-collapsed .hud-collapse { position: static; }
+  html.hud.hud-collapsed .hud-title-name, html.hud.hud-collapsed .hud-orn, html.hud.hud-collapsed .hud-tagline,
+  html.hud.hud-collapsed .hud-nav-text, html.hud.hud-collapsed .hud-slot { display: none; }
+  html.hud.hud-collapsed .hud-nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+  html.hud.hud-collapsed .hud-nav-item .hud-ico { font-size: 1em; }
+
+  /* TV display inside the game screen: the whole middle area, right rail out of the way */
+  html.hud #gameScreen[data-view="tv"] { grid-template-columns: var(--hud-left) minmax(0, 1fr); }
+  html.hud #gameScreen[data-view="tv"] .hud-right { display: none; }
+  html.hud #gameScreen[data-view="tv"] .hud-stage > [data-hud],
+  html.hud #gameScreen[data-view="tv"] #gameOverBanner { display: none; }
+  html.hud .hud-stage.tv-mode { position: relative; padding: 0; overflow: hidden; }
+  .tv-screen.tv-embedded { position: absolute; inset: 0; z-index: 1; width: auto; height: auto; border-radius: inherit; background: none; }
+  .tv-screen.tv-embedded .tv-exit-btn { display: none; }
+
   /* smaller screens: drop the right rail, then the small print */
   html.hud.vp-w760 #gameScreen { grid-template-columns: var(--hud-rail) minmax(0, 1fr); }
   html.hud.vp-w760 .hud-right { display: none; }
@@ -2590,6 +2611,7 @@
     <!-- Landscape "game interface" rails (hidden in the portrait layout) -->
     <aside class="hud-left hud-only">
       <div class="hud-title">
+        <button type="button" class="hud-mini hud-collapse" id="hudCollapseBtn" title="Collapse the menu" aria-label="Collapse the menu" aria-expanded="true">«</button>
         <div class="hud-title-name" id="hudGameName"></div>
         <div class="hud-orn"></div>
         <div class="hud-tagline"><span id="hudModeTag"></span>
@@ -2598,13 +2620,13 @@
         </div>
       </div>
       <nav class="hud-nav" id="hudNav" aria-label="Game menu">
-        <button type="button" class="hud-nav-item active" data-view="record"><span class="hud-ico">✚</span><span class="hud-nav-text"><b>Record Match</b><small id="hudSubRecord"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="standings"><span class="hud-ico">🏆</span><span class="hud-nav-text"><b>Standings</b><small id="hudSubStandings"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="log"><span class="hud-ico">☰</span><span class="hud-nav-text"><b>Match Log</b><small id="hudSubLog"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="worm"><span class="hud-ico">〰</span><span class="hud-nav-text"><b>Score Worm</b><small>Totals by round</small></span></button>
-        <button type="button" class="hud-nav-item" data-action="tv"><span class="hud-ico">📺</span><span class="hud-nav-text"><b>TV Mode</b><small>Cast the scores</small></span></button>
-        <button type="button" class="hud-nav-item" data-view="settings"><span class="hud-ico">⚙</span><span class="hud-nav-text"><b>Settings</b><small>Players · voices · more</small></span></button>
-        <button type="button" class="hud-nav-item" data-action="switch"><span class="hud-ico">🔀</span><span class="hud-nav-text"><b>Switch Game</b><small>Saved automatically</small></span></button>
+        <button type="button" class="hud-nav-item active" data-view="record" title="Record Match"><span class="hud-ico">✚</span><span class="hud-nav-text"><b>Record Match</b><small id="hudSubRecord"></small></span></button>
+        <button type="button" class="hud-nav-item" data-view="standings" title="Standings"><span class="hud-ico">🏆</span><span class="hud-nav-text"><b>Standings</b><small id="hudSubStandings"></small></span></button>
+        <button type="button" class="hud-nav-item" data-view="log" title="Match Log"><span class="hud-ico">☰</span><span class="hud-nav-text"><b>Match Log</b><small id="hudSubLog"></small></span></button>
+        <button type="button" class="hud-nav-item" data-view="worm" title="Score Worm"><span class="hud-ico">〰</span><span class="hud-nav-text"><b>Score Worm</b><small>Totals by round</small></span></button>
+        <button type="button" class="hud-nav-item" data-view="tv" title="TV Display"><span class="hud-ico">📺</span><span class="hud-nav-text"><b>TV Display</b><small>Live scoreboard</small></span></button>
+        <button type="button" class="hud-nav-item" data-view="settings" title="Settings"><span class="hud-ico">⚙</span><span class="hud-nav-text"><b>Settings</b><small>Players · voices · more</small></span></button>
+        <button type="button" class="hud-nav-item" data-action="switch" title="Switch Game"><span class="hud-ico">🔀</span><span class="hud-nav-text"><b>Switch Game</b><small>Saved automatically</small></span></button>
       </nav>
       <div class="hud-card hud-slot" id="hudSlot"></div>
     </aside>
@@ -6151,23 +6173,78 @@
   // round and a standings preview. It reuses the page's own sections and buttons, so
   // nothing about scoring changes — the menu items just show/hide sections or click the
   // existing buttons.
+  let tvEmbedded = false;   // TV Mode's display is showing inside the game screen (the TV Display view)
+  const HUD_COLLAPSED_KEY = 'rummatrix.hudCollapsed';
+  let hudCollapsed = false;
+  try { hudCollapsed = localStorage.getItem(HUD_COLLAPSED_KEY) === 'true'; } catch (err) { /* ignore */ }
+  const hudCollapseBtn = document.getElementById('hudCollapseBtn');
+  function syncHudCollapsed() {
+    document.documentElement.classList.toggle('hud-collapsed', hudCollapsed);
+    hudCollapseBtn.textContent = hudCollapsed ? '»' : '«';
+    const label = hudCollapsed ? 'Expand the menu' : 'Collapse the menu';
+    hudCollapseBtn.title = label;
+    hudCollapseBtn.setAttribute('aria-label', label);
+    hudCollapseBtn.setAttribute('aria-expanded', String(!hudCollapsed));
+  }
+  hudCollapseBtn.addEventListener('click', () => {
+    hudCollapsed = !hudCollapsed;
+    try { localStorage.setItem(HUD_COLLAPSED_KEY, String(hudCollapsed)); } catch (err) { /* ignore */ }
+    syncHudCollapsed();
+  });
+  syncHudCollapsed();
+
   const hudNav = document.getElementById('hudNav');
   const hudStage = document.getElementById('hudStage');
   let hudView = 'record';
 
+  // The TV Display view reuses the TV Mode screen itself, placed inside the middle area
+  // and sized to it (the TV views measure in --vw/--vh, so giving the element its own
+  // values makes them fit the space they're given).
+  function sizeEmbeddedTv() {
+    if (!tvEmbedded) return;
+    tvScreen.style.setProperty('--vw', `${hudStage.clientWidth / 100}px`);
+    tvScreen.style.setProperty('--vh', `${hudStage.clientHeight / 100}px`);
+  }
+  function openEmbeddedTv() {
+    if (tvEmbedded) return;
+    tvEmbedded = true;
+    hudStage.classList.add('tv-mode');
+    hudStage.appendChild(tvScreen);
+    tvScreen.classList.add('tv-embedded');
+    tvPrevTotals = null; lastRoundWinnerIdx = null; tvStatsShown.clear(); tvShowOutPlayers = false;
+    updateTvShowOutBtn();
+    tvScreen.hidden = false;
+    sizeEmbeddedTv();
+    renderTvScreen();
+  }
+  function closeEmbeddedTv() {
+    if (!tvEmbedded) return;
+    tvEmbedded = false;
+    cancelTvGesture();
+    closeTvEventMenu();
+    tvScreen.hidden = true;
+    tvScreen.classList.remove('tv-embedded');
+    tvScreen.style.removeProperty('--vw');
+    tvScreen.style.removeProperty('--vh');
+    hudStage.classList.remove('tv-mode');
+    document.querySelector('.app').after(tvScreen);
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(sizeEmbeddedTv).observe(hudStage);
+
   function setHudView(view) {
+    if (hudView === 'tv' && view !== 'tv') closeEmbeddedTv();
     hudView = view;
     gameScreen.dataset.view = view;
     hudNav.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (view === 'worm') { document.getElementById('wormChartSection').open = true; renderWormChart(); }
     if (view === 'settings') document.getElementById('voiceSettingsSection').open = true;
+    if (view === 'tv') openEmbeddedTv();
     hudStage.scrollTop = 0;
   }
   hudNav.addEventListener('click', (e) => {
     const item = e.target.closest('.hud-nav-item');
     if (!item) return;
     if (item.dataset.view) setHudView(item.dataset.view);
-    else if (item.dataset.action === 'tv') tvModeBtn.click();
     else if (item.dataset.action === 'switch') switchGameBtn.click();
   });
   document.getElementById('hudRenameBtn').addEventListener('click', () => editGameNameBtn.click());
@@ -6233,6 +6310,7 @@
     const on = !gameScreen.hidden && rmViewport.width >= rmViewport.height;
     const was = root.classList.contains('hud');
     root.classList.toggle('hud', on);
+    if (!on && tvEmbedded) { closeEmbeddedTv(); hudView = 'record'; gameScreen.dataset.view = 'record'; }
     if (on && !was) { setHudView(hudView); renderHud(); }
   }
   new MutationObserver(syncHud).observe(gameScreen, { attributes: true, attributeFilter: ['hidden'] });
@@ -6392,7 +6470,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!tvAddModal.hidden) { closeTvAddModal(); return; }
-    if (!tvScreen.hidden) exitTvMode();
+    if (!tvScreen.hidden && !tvEmbedded) exitTvMode();
   });
 
   // If the browser exits fullscreen on its own — its own Escape handling, the
@@ -6402,7 +6480,7 @@
   // this, a screen-off exit left scrolling and other page controls dead until
   // TV Mode was reopened and closed properly.
   document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && !tvScreen.hidden) exitTvMode();
+    if (!document.fullscreenElement && !tvScreen.hidden && !tvEmbedded) exitTvMode();
   });
 
   // ---------- TV MODE: add a match without leaving the screen ----------
