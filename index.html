@@ -1639,13 +1639,12 @@
   /* ---- TV view: Race track ---- */
   .tv-race { --pad: calc(7 * var(--vh)); flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: calc(1 * var(--vh)); }
   .tv-race[hidden] { display: none; }
-  .tv-race-head { display: flex; justify-content: space-between; padding: 0 calc(1 * var(--vw)) 0 calc(calc(3.2 * var(--vw)) + calc(13 * var(--vw)) + calc(3.6 * var(--vw))); font-family: var(--font-mono); font-size: clamp(10px, calc(1.7 * var(--vh)), 16px); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; min-height: calc(2.2 * var(--vh)); }
+  .tv-race-head { display: flex; justify-content: space-between; padding: 0 calc(1 * var(--vw)) 0 calc(calc(3.2 * var(--vw)) + calc(1.2 * var(--vw)) + var(--pad)); font-family: var(--font-mono); font-size: clamp(10px, calc(1.7 * var(--vh)), 16px); letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; min-height: calc(2.2 * var(--vh)); }
   .tv-race-head .cut { color: #ff8a8a; }
   .tv-race-lanes { flex: 1 1 auto; min-height: 0; display: grid; grid-auto-rows: 1fr; gap: calc(1.2 * var(--vh)); }
   .tv-race-lane { position: relative; min-height: 0; display: flex; align-items: stretch; gap: calc(1.2 * var(--vw)); }
   .tv-race-lane.out { opacity: 0.5; }
   .tv-race-rank { width: calc(3.2 * var(--vw)); min-width: 24px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: clamp(16px, calc(3.6 * var(--vh)), 36px); color: var(--muted); }
-  .tv-race-name { flex: none; width: calc(13 * var(--vw)); align-self: center; font-weight: 700; font-size: clamp(14px, calc(3.2 * var(--vh)), 34px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tv-race-bar { flex: 1; min-width: 0; position: relative; padding: 0 var(--pad); border-radius: calc(2 * var(--vh)); background: var(--panel); border: 1px solid var(--border); }
   .tv-race-inner { position: relative; height: 100%; }
   .tv-race-fill { position: absolute; left: calc(var(--pad) * -1); top: 18%; bottom: 18%; border-radius: 99px; background: linear-gradient(90deg, transparent, var(--ac, var(--green))); opacity: 0.85; width: calc(var(--pad) + var(--pct) * 1%); }
@@ -1653,35 +1652,34 @@
   .tv-race-pin .tv-logo { height: 88%; width: auto; border-radius: 50%; border: calc(0.5 * var(--vh)) solid var(--ac, var(--green)); box-shadow: 0 calc(0.8 * var(--vh)) calc(2.4 * var(--vh)) rgba(0,0,0,0.6), 0 0 calc(2.4 * var(--vh)) var(--ac, var(--green)); }
   .tv-race-pin .tv-logo-initial { font-size: calc(3.4 * var(--vh)); }
   .tv-race-crown { position: absolute; left: 50%; top: calc(-1.6 * var(--vh)); transform: translateX(-50%); font-size: clamp(14px, calc(3 * var(--vh)), 30px); z-index: 2; }
-  .tv-race-val { position: absolute; top: 50%; left: calc(100% + calc(1 * var(--vw))); transform: translateY(-50%); font-family: var(--font-mono); font-weight: 800; font-size: clamp(20px, calc(6 * var(--vh)), 56px); line-height: 1; }
-  .tv-race-pin.flip .tv-race-val { left: auto; right: calc(100% + calc(1 * var(--vw))); }
+  /* name above the score, riding along with the logo (to its left once the rider is near the end) */
+  .tv-race-label { position: absolute; top: 50%; left: calc(100% + calc(1 * var(--vw))); transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; gap: calc(0.4 * var(--vh)); white-space: nowrap; line-height: 1; }
+  .tv-race-pin.flip .tv-race-label { left: auto; right: calc(100% + calc(1 * var(--vw))); align-items: flex-end; }
+  .tv-race-nm { font-weight: 700; font-size: clamp(12px, calc(3 * var(--vh)), 30px); max-width: calc(26 * var(--vw)); overflow: hidden; text-overflow: ellipsis; }
+  .tv-race-nm small { font-weight: 600; font-size: 0.7em; color: var(--orange); letter-spacing: 0.08em; text-transform: uppercase; }
+  .tv-race-val { font-family: var(--font-mono); font-weight: 800; font-size: clamp(18px, calc(5.4 * var(--vh)), 52px); }
+  .tv-race-lane.ghost, .tv-table-row.ghost { visibility: hidden; border: 0; }
   .tv-race-cut { position: absolute; right: 0; top: 0; bottom: 0; border-right: calc(0.5 * var(--vh)) dashed rgba(255,107,107,0.55); }
   /* was: @media (orientation: portrait) and (max-width: 700px) */
   :where(html.vp-portrait.vp-w700) .tv-race { --pad: calc(5 * var(--vh)); }
   :where(html.vp-portrait.vp-w700) .tv-race-rank { width: calc(6 * var(--vw)); min-width: 18px; font-size: clamp(13px, calc(2.4 * var(--vh)), 24px); }
-  :where(html.vp-portrait.vp-w700) .tv-race-name { width: calc(21 * var(--vw)); font-size: clamp(12px, calc(2.2 * var(--vh)), 24px); }
-  :where(html.vp-portrait.vp-w700) .tv-race-head { padding-left: calc(calc(6 * var(--vw)) + calc(21 * var(--vw)) + calc(3.6 * var(--vw))); }
+  :where(html.vp-portrait.vp-w700) .tv-race-head { padding-left: calc(6 * var(--vw) + 1.2 * var(--vw) + var(--pad)); }
 
 
-  /* ---- TV view: Score worm ---- */
-  .tv-worm { position: relative; flex: 1 1 auto; min-height: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  /* ---- TV view: Score worm (the same chart that used to sit under Points) ---- */
+  .tv-worm { flex: 1 1 auto; min-height: 0; display: flex; padding: calc(1.2 * var(--vh)) calc(1.2 * var(--vw)); background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
   .tv-worm[hidden] { display: none; }
-  .tv-worm-svg { position: absolute; inset: 0; display: block; }
-  .tv-worm-grid { stroke: var(--border); stroke-width: 1; }
-  .tv-worm-axis { fill: var(--muted); font-family: var(--font-mono); }
-  .tv-worm-cut { stroke: rgba(255,107,107,0.6); stroke-width: 2; stroke-dasharray: 8 6; }
-  .tv-worm-cut-label { fill: #ff8a8a; font-family: var(--font-mono); letter-spacing: 0.14em; }
-  .tv-worm-cut-label.muted { fill: var(--muted); }
-  .tv-worm-line { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; filter: drop-shadow(0 0 6px currentColor); }
-  .tv-worm-line.out { opacity: 0.55; }
-  .tv-worm-link { fill: none; stroke-width: 1.5; stroke-dasharray: 3 5; opacity: 0.35; }
-  .tv-worm-label { position: absolute; display: flex; align-items: center; gap: 0.5em; min-width: 0; }
-  .tv-worm-label.out { opacity: 0.55; }
-  .tv-worm-label .tv-logo { height: 100%; width: auto; flex: none; border-radius: 50%; border: 2px solid var(--ac, var(--green)); box-shadow: 0 0 10px var(--ac, var(--green)); }
-  .tv-worm-label .tv-logo-initial { font-size: 0.9em; }
-  .tv-worm-label-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tv-worm-label-val { font-family: var(--font-mono); font-weight: 800; }
-  .tv-worm-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: var(--font-mono); }
+  .tv-worm .worm-chart-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tv-worm .worm-chart-svg { flex: none; width: 100%; height: auto; }
+  .tv-worm .worm-chart-line { stroke-width: 3.5; }
+  .tv-worm .worm-chart-end-dot { stroke-width: 2; }
+  .tv-worm .worm-chart-axis-label, .tv-worm .worm-chart-out-label { font-size: 14px; }
+  .tv-worm .worm-chart-end-label { font-size: 17px; }
+  .tv-worm .worm-chart-legend { margin-top: auto; gap: 8px 22px; }
+  .tv-worm .worm-chart-legend-item { font-size: clamp(12px, calc(2 * var(--vh)), 17px); }
+  .tv-worm .worm-chart-legend-swatch { width: 14px; height: 14px; }
+  .tv-worm .worm-chart-empty { font-size: clamp(13px, calc(2.4 * var(--vh)), 20px); }
+  .tv-worm .worm-chart-play-btn { font-size: clamp(12px, calc(2 * var(--vh)), 16px); }
 
   /* ---- Landscape game interface ----
      In the landscape layout an open game is a full-screen "HUD": a menu rail on the left,
@@ -1716,7 +1714,6 @@
   }
   html.hud .hud-stage > [data-hud] { margin-bottom: calc(1.8 * var(--vh)); }
 
-  html.hud #wormChartSection > summary { display: none; }
   html.hud .actions-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
   html.hud #recordMatchPanel { clip-path: none; background: none; border: 0; padding: 0 !important; margin: 0 0 calc(1.8 * var(--vh)) !important; }
   html.hud .entry-grid { grid-template-columns: repeat(auto-fit, minmax(clamp(180px, calc(19 * var(--vw)), 300px), 1fr)); }
@@ -1996,15 +1993,19 @@
   #gameScreen[data-view="tv"]      .hud-stage > [data-hud],
   #gameScreen[data-view="tv"] #gameOverBanner { display: none; }
   #gameScreen[data-view="points"][data-pt="record"] .hud-stage > [data-pt]:not([data-pt~="record"]),
-  #gameScreen[data-view="points"][data-pt="log"]    .hud-stage > [data-pt]:not([data-pt~="log"]),
-  #gameScreen[data-view="points"][data-pt="worm"]   .hud-stage > [data-pt]:not([data-pt~="worm"]) { display: none; }
-  #wormChartSection > summary { display: none; }
+  #gameScreen[data-view="points"][data-pt="log"]    .hud-stage > [data-pt]:not([data-pt~="log"]) { display: none; }
   .game-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .game-topbar-title { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
   html.hud .game-topbar { display: none; }
   .hub-summary { margin: 6px 0 20px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
   .hub-summary b { color: var(--white); }
-  .hub-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .hub-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .hub-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  html.hud .hub-actions { display: none; }
+  .edit-only { display: none; }
+  #gameScreen[data-renaming] .edit-only { display: block; }
+  .hud-nav-item.danger:hover { color: #ff6b6b; border-color: #ff6b6b; }
+  .hud-nav-item.danger .hud-ico { color: #ff8a8a; }
   .hub-option {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 190px; padding: 24px 12px;
     background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--border); border-radius: 16px;
@@ -2806,10 +2807,11 @@
         </div>
       </div>
       <nav class="hud-nav" id="hudNav" aria-label="Game menu">
-        <button type="button" class="hud-nav-item" data-view="players" title="Players list"><span class="hud-ico">👥</span><span class="hud-nav-text"><b>Players list</b></span></button>
         <button type="button" class="hud-nav-item" data-view="points" title="Points list"><span class="hud-ico">🔢</span><span class="hud-nav-text"><b>Points list</b></span></button>
         <button type="button" class="hud-nav-item" data-view="tv" title="TV Mode"><span class="hud-ico">📺</span><span class="hud-nav-text"><b>TV Mode</b></span></button>
         <span class="hud-nav-gap"></span>
+        <button type="button" class="hud-nav-item" data-action="clone" title="Clone this game — full history included"><span class="hud-ico">⧉</span><span class="hud-nav-text"><b>Clone game</b></span></button>
+        <button type="button" class="hud-nav-item danger" data-action="end" title="End this game"><span class="hud-ico">⏻</span><span class="hud-nav-text"><b>End game</b></span></button>
         <button type="button" class="hud-nav-item" data-action="settings" title="Settings"><span class="hud-ico">⚙</span><span class="hud-nav-text"><b>Settings</b></span></button>
         <button type="button" class="hud-nav-item" data-action="home" title="All games"><span class="hud-ico">⌂</span><span class="hud-nav-text"><b>All games</b></span></button>
       </nav>
@@ -2837,14 +2839,17 @@
       </div>
       <p class="hub-summary" id="hubSummary"></p>
       <div class="hub-options">
-        <button type="button" class="hub-option" data-view="players"><span class="hub-option-ico">👥</span><span class="hub-option-title">Players list</span><span class="hub-option-sub" id="hubSubPlayers"></span></button>
         <button type="button" class="hub-option" data-view="points"><span class="hub-option-ico">🔢</span><span class="hub-option-title">Points list</span><span class="hub-option-sub" id="hubSubPoints"></span></button>
         <button type="button" class="hub-option" data-view="tv"><span class="hub-option-ico">📺</span><span class="hub-option-title">TV Mode</span><span class="hub-option-sub">Live scoreboard</span></button>
       </div>
+      <div class="hub-actions">
+        <button type="button" class="btn-ghost" id="hubCloneBtn">⧉ Clone game</button>
+        <button type="button" class="btn-ghost danger" id="hubEndBtn">⏻ End game</button>
+      </div>
     </div>
 
-    <!-- players list -->
-    <div class="board-section" data-hud="players">
+    <!-- players list: gone as a page. The name editor opens only while renaming; the rest stays for the code that fills it -->
+    <div class="board-section edit-only" data-hud="points" data-pt="record">
       <h2 style="display:flex; align-items:center; justify-content:space-between;">
         Players
         <button class="btn-ghost" id="renamePlayersBtn" type="button" style="font-size:10px; padding:5px 10px;">✎ Edit Players</button>
@@ -2852,15 +2857,11 @@
       <div id="playerNamesDisplay"></div>
     </div>
 
-    <div class="board-section" data-hud="players">
-      <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
-        <span>Player Summary</span>
-        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button><button type="button" class="edit-max-btn" id="toggleOutBtn" hidden></button></span>
-      </h2>
+    <div class="board-section" data-hud="none">
       <div id="summaryList" class="summary-list-compact"></div>
     </div>
 
-    <div class="actions-row" data-hud="players">
+    <div class="actions-row" data-hud="none">
       <button class="btn-ghost" id="tvModeBtn">📺 Full-screen TV</button>
       <button class="btn-ghost" id="switchGameBtn" title="Save progress and go back to all games">🔀 All games</button>
       <button class="btn-ghost" id="cloneGameBtn" title="Duplicate this game — full history included — as a new active game">⧉ Clone Game</button>
@@ -2871,12 +2872,13 @@
     <div class="points-tabs" id="pointsTabs" data-hud="points" role="tablist">
       <button type="button" class="points-tab selected" data-pt="record" role="tab">Record match</button>
       <button type="button" class="points-tab" data-pt="log" role="tab">Match log</button>
-      <button type="button" class="points-tab" data-pt="worm" role="tab">Score worm</button>
     </div>
 
     <div class="panel" id="recordMatchPanel" data-hud="points" data-pt="record" style="margin:0 0 18px; padding:14px 16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
         <h2 style="margin-bottom:0;">Record Match #<span id="entryMatchNum"></span></h2>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button><button type="button" class="edit-max-btn" id="toggleOutBtn" hidden></button></span>
+        <button class="btn-ghost" id="recordEditPlayersBtn" type="button" style="font-size:10px; padding:5px 10px;" title="Rename players or change their pictures">✎ Players</button>
         <button class="btn-ghost" id="testDumpBtn" type="button" style="font-size:10px; padding:6px 12px; border-style:dashed;" title="Dev/testing only — appends 10 random valid rounds">🧪 Test Dump ×10</button>
       </div>
       <div class="entry-grid" id="entryGrid"></div>
@@ -2897,18 +2899,6 @@
 
     <p class="sub" id="eventLegendText" data-hud="points" data-pt="record" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
 
-    <details class="collapsible-section" id="wormChartSection" data-hud="points" data-pt="worm" open>
-      <summary>Score Worm</summary>
-      <div class="worm-chart-wrap">
-        <p class="worm-chart-empty" id="wormChartEmpty">No matches recorded yet — the worm graph will trace each player's running total as you add rounds.</p>
-        <div class="worm-chart-controls" id="wormChartControls" hidden>
-          <button type="button" class="worm-chart-play-btn" id="wormPlayBtn" title="Play the score worm from the beginning, one round per second">▶ Play</button>
-        </div>
-        <svg class="worm-chart-svg" id="wormChartSvg" hidden></svg>
-        <div class="worm-chart-tooltip" id="wormChartTooltip" hidden></div>
-        <div class="worm-chart-legend" id="wormChartLegend"></div>
-      </div>
-    </details>
 
     </div><!-- /hud-stage -->
   </section>
@@ -2933,7 +2923,17 @@
   <div class="tv-grid" id="tvGrid"></div>
   <div class="tv-table" id="tvTable" hidden></div>
   <div class="tv-race" id="tvRace" hidden></div>
-  <div class="tv-worm" id="tvWorm" hidden></div>
+  <div class="tv-worm" id="tvWorm" hidden>
+    <div class="worm-chart-wrap">
+        <p class="worm-chart-empty" id="wormChartEmpty">No matches recorded yet — the worm graph will trace each player's running total as you add rounds.</p>
+        <div class="worm-chart-controls" id="wormChartControls" hidden>
+          <button type="button" class="worm-chart-play-btn" id="wormPlayBtn" title="Play the score worm from the beginning, one round per second">▶ Play</button>
+        </div>
+        <svg class="worm-chart-svg" id="wormChartSvg" hidden></svg>
+        <div class="worm-chart-tooltip" id="wormChartTooltip" hidden></div>
+        <div class="worm-chart-legend" id="wormChartLegend"></div>
+      </div>
+  </div>
   <div class="tv-game-winner-banner" id="tvGameWinnerBanner" hidden></div>
   <div class="tv-event-menu-backdrop" id="tvEventMenuBackdrop" hidden><div class="tv-event-menu" id="tvEventMenu"></div></div>
   <div class="tv-toast" id="tvToast" hidden></div>
@@ -5491,7 +5491,6 @@
     if (!TV_VIEWS.includes(view)) return;
     tvView = view;
     try { localStorage.setItem(TV_VIEW_KEY, tvView); } catch (err) { /* ignore */ }
-    if (tvView === 'worm') tvWorm.dataset.drawn = ''; // draw the lines afresh each time the view is opened
     renderTvScreen();
     const shown = { tiles: tvGrid, table: tvTable, race: tvRace, worm: tvWorm }[tvView];
     if (dir && shown && typeof shown.animate === 'function') {
@@ -5593,6 +5592,12 @@
     });
   }
 
+  // Rows keep the same height all game: players who are out (and hidden) leave an empty slot
+  // at the bottom instead of the remaining rows growing to fill the space.
+  function ghostRows(visibleCount, html) {
+    return html.repeat(Math.max(0, players.length - visibleCount));
+  }
+
   function renderTvRace(data) {
     const vis = tvViewPlayers(data);
     const elim = gameMode !== 'rounds' && maxPoints;
@@ -5600,152 +5605,35 @@
     // Elimination: the track ends at the limit. Fixed Matches: it stretches to fit the highest total.
     const scale = elim ? maxPoints : Math.max(50, Math.ceil(maxTotal * 1.15 / 10) * 10);
     const flipAt = rmViewport.isPortrait() && rmViewport.width <= 700 ? 45 : 80;
-    const oldTops = tvTopsOf(tvRace, '.tv-race-lane');
+    const oldTops = tvTopsOf(tvRace, '.tv-race-lane[data-player-idx]');
     const oldPct = new Map();
-    tvRace.querySelectorAll('.tv-race-lane').forEach(el => oldPct.set(el.dataset.playerIdx, Number(el.dataset.pct)));
+    tvRace.querySelectorAll('.tv-race-lane[data-player-idx]').forEach(el => oldPct.set(el.dataset.playerIdx, Number(el.dataset.pct)));
     const lanes = vis.map((p, i) => {
       const out = data.outFlags[p];
       const pct = Math.max(0, Math.min(100, data.totals[p] / scale * 100));
       return `<div class="tv-race-lane ${out ? 'out' : ''}" data-player-idx="${p}" data-pct="${pct.toFixed(2)}" style="--ac:${tvAccent(p)};--pct:${pct.toFixed(2)}">
         <div class="tv-race-rank">${out ? '—' : data.ranks[p]}</div>
-        <div class="tv-race-name">${escapeHtml(players[p])}</div>
         <div class="tv-race-bar"><div class="tv-race-inner">
           <div class="tv-race-fill"></div>
           ${elim ? '<div class="tv-race-cut"></div>' : ''}
           <div class="tv-race-pin ${pct > flipAt ? 'flip' : ''}">
             ${!out && i === 0 && matches.length > 0 ? '<span class="tv-race-crown">👑</span>' : ''}
             ${tvLogoHtml(p)}
-            <span class="tv-race-val">${data.totals[p]}</span>
+            <span class="tv-race-label"><span class="tv-race-nm">${escapeHtml(players[p])}${out ? `<small>${forfeited[p] != null ? ' · forfeited' : ' · out'}</small>` : ''}</span><b class="tv-race-val">${data.totals[p]}</b></span>
           </div>
         </div></div>
       </div>`;
-    }).join('');
+    }).join('') + ghostRows(vis.length, '<div class="tv-race-lane ghost" aria-hidden="true"></div>');
     tvRace.innerHTML = `<div class="tv-race-head"><span>0</span><span class="cut">${elim ? `Out @ ${maxPoints}` : 'Lowest total wins'}</span></div><div class="tv-race-lanes">${lanes}</div>`;
-    tvFlipFrom(tvRace, '.tv-race-lane', oldTops);
+    tvFlipFrom(tvRace, '.tv-race-lane[data-player-idx]', oldTops);
     // bars and riders glide from their previous position to the new one
-    tvRace.querySelectorAll('.tv-race-lane').forEach(el => {
+    tvRace.querySelectorAll('.tv-race-lane[data-player-idx]').forEach(el => {
       const was = oldPct.get(el.dataset.playerIdx), now = Number(el.dataset.pct);
       if (was === undefined || Math.abs(was - now) < 0.05 || typeof el.animate !== 'function') return;
       const opts = { duration: 1200, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' };
       el.querySelector('.tv-race-fill').animate([{ width: `calc(var(--pad) + ${was}%)` }, { width: `calc(var(--pad) + ${now}%)` }], opts);
       el.querySelector('.tv-race-pin').animate([{ left: `${was}%` }, { left: `${now}%` }], opts);
     });
-  }
-
-  // Score worm: one line per player tracing the running total after every round,
-  // with the elimination limit as a dashed line in Elimination mode. The lines draw
-  // themselves in when the view opens or a round is added.
-  function renderTvWorm(data) {
-    const W = tvWorm.clientWidth, H = tvWorm.clientHeight;
-    if (!W || !H) return;
-    if (matches.length === 0) {
-      tvWorm.innerHTML = '<div class="tv-worm-empty">The worm starts after the first round.</div>';
-      tvWorm.dataset.drawn = '';
-      return;
-    }
-    const vis = tvViewPlayers(data);
-    const rounds = matches.length;
-    const fs = Math.max(11, Math.min(22, Math.round(Math.min(H * 0.03, W * 0.036))));
-    const labelH = Math.max(30, Math.min(64, Math.round(Math.min(H * 0.09, W * 0.115))));
-    const padL = fs * 2.6, padT = fs * 1.6, padB = fs * 2.2;
-    const padR = Math.max(110, Math.min(300, Math.round(W * (W < 600 ? 0.38 : 0.23))));
-    const plotL = padL, plotR = W - padR, plotT = padT, plotB = H - padB;
-    const plotW = plotR - plotL, plotH = plotB - plotT;
-
-    // running totals: round 0 is everyone on 0; the last point is the displayed total
-    // (which also folds in any manual adjustments)
-    const run = players.map(() => 0);
-    const series = players.map(() => [0]);
-    matches.forEach(m => players.forEach((_, p) => { run[p] += (m[p] ?? 0); series[p].push(run[p]); }));
-    players.forEach((_, p) => { series[p][rounds] = data.totals[p]; });
-    const outAt = players.map((_, p) => wormOutRound(series[p].slice(1), p)); // 0-based round index, -1 = still in
-    const capIdx = p => (outAt[p] === -1 ? rounds : outAt[p] + 1);
-
-    const elim = gameMode !== 'rounds' && maxPoints;
-    const observed = Math.max(1, ...vis.map(p => Math.max(...series[p].slice(0, capIdx(p) + 1))));
-    const rawMax = Math.max(elim ? maxPoints : 0, observed);
-    const target = rawMax / 4, mag = Math.pow(10, Math.floor(Math.log10(target || 1))), norm = target / mag;
-    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
-    const maxVal = Math.ceil(rawMax / step) * step;
-    // Fixed Matches: the track spans the whole game so the worm visibly grows toward the end
-    const xMax = gameMode === 'rounds' && totalRounds > rounds ? totalRounds : rounds;
-    const xFor = r => plotL + plotW * r / xMax;
-    const yFor = v => plotB - plotH * v / maxVal;
-
-    let svg = `<svg class="tv-worm-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">`;
-    for (let g = 0; g <= Math.round(maxVal / step); g++) {
-      const v = g * step, y = yFor(v);
-      svg += `<line class="tv-worm-grid" x1="${plotL}" y1="${y}" x2="${plotR}" y2="${y}"/>`;
-      svg += `<text class="tv-worm-axis" x="${plotL - fs * 0.6}" y="${y + fs * 0.35}" text-anchor="end" font-size="${fs}">${Math.round(v)}</text>`;
-    }
-    const maxTicks = Math.max(2, Math.floor(plotW / (fs * 3.2)));
-    const tickStep = Math.max(1, Math.ceil(xMax / maxTicks));
-    for (let r = 1; r <= xMax; r++) {
-      if (r % tickStep !== 0 && r !== xMax) continue;
-      svg += `<text class="tv-worm-axis" x="${xFor(r)}" y="${H - fs * 0.6}" text-anchor="middle" font-size="${fs}">${r}</text>`;
-    }
-    if (elim && maxPoints <= maxVal) {
-      const y = yFor(maxPoints);
-      svg += `<line class="tv-worm-cut" x1="${plotL}" y1="${y}" x2="${plotR}" y2="${y}"/>`;
-      svg += `<text class="tv-worm-cut-label" x="${plotR}" y="${y - fs * 0.4}" text-anchor="end" font-size="${fs}">OUT @ ${maxPoints}</text>`;
-    } else if (!elim) {
-      svg += `<text class="tv-worm-cut-label muted" x="${plotR}" y="${plotT - fs * 0.5}" text-anchor="end" font-size="${fs}">LOWEST TOTAL WINS</text>`;
-    }
-
-    const tips = [];
-    vis.forEach(p => {
-      const cap = capIdx(p);
-      const pts = [];
-      for (let r = 0; r <= cap; r++) pts.push(`${xFor(r).toFixed(1)},${yFor(series[p][r]).toFixed(1)}`);
-      const colour = tvAccent(p);
-      const out = outAt[p] !== -1;
-      svg += `<polyline class="tv-worm-line${out ? ' out' : ''}" pathLength="1" points="${pts.join(' ')}" style="stroke:${colour};color:${colour}"/>`;
-      const tx = xFor(cap), ty = yFor(series[p][cap]);
-      tips.push({ p, tx, ty, ly: ty, colour, out });
-    });
-    // name labels sit in the right margin, nudged apart so none overlap
-    tips.sort((a, b) => a.ty - b.ty);
-    for (let i = 1; i < tips.length; i++) if (tips[i].ly - tips[i - 1].ly < labelH) tips[i].ly = tips[i - 1].ly + labelH;
-    const overflow = tips.length ? tips[tips.length - 1].ly + labelH / 2 - H : 0;
-    if (overflow > 0) {
-      tips[tips.length - 1].ly -= overflow;
-      for (let i = tips.length - 2; i >= 0; i--) if (tips[i + 1].ly - tips[i].ly < labelH) tips[i].ly = tips[i + 1].ly - labelH;
-    }
-    tips.forEach(t => {
-      svg += `<g class="tv-worm-tip" style="color:${t.colour}">`;
-      if (Math.abs(t.ly - t.ty) > 1 || t.tx < plotR) svg += `<polyline class="tv-worm-link" points="${t.tx},${t.ty} ${plotR + fs * 0.6},${t.ly}" style="stroke:${t.colour}"/>`;
-      svg += t.out
-        ? `<circle cx="${t.tx}" cy="${t.ty}" r="${fs * 0.5}" fill="none" stroke="${t.colour}" stroke-width="2.5"/>`
-        : `<circle cx="${t.tx}" cy="${t.ty}" r="${fs * 0.5}" fill="${t.colour}"/>`;
-      svg += '</g>';
-    });
-    svg += '</svg>';
-
-    const labels = tips.map(t => `<div class="tv-worm-label${t.out ? ' out' : ''}" data-player-idx="${t.p}" style="left:${plotR + fs * 0.8}px;top:${t.ly - labelH / 2}px;height:${labelH}px;width:${padR - fs}px;--ac:${t.colour};font-size:${Math.round(labelH * 0.42)}px">
-        ${tvLogoHtml(t.p)}
-        <span class="tv-worm-label-name">${escapeHtml(players[t.p])}</span>
-        <b class="tv-worm-label-val">${data.totals[t.p]}</b>
-      </div>`).join('');
-
-    const drawKey = `${currentGameId}:${rounds}`;
-    const animate = tvWorm.dataset.drawn !== drawKey;
-    tvWorm.dataset.drawn = drawKey;
-    tvWorm.innerHTML = svg + labels;
-    if (animate && typeof tvWorm.animate === 'function') {
-      tvWorm.querySelectorAll('.tv-worm-line').forEach((el, i) => {
-        el.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 1500, easing: 'cubic-bezier(0.3, 0.7, 0.3, 1)', delay: i * 60 });
-      });
-      tvWorm.querySelectorAll('.tv-worm-tip, .tv-worm-label').forEach(el => {
-        el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.6 }, { opacity: 1 }], { duration: 1700, easing: 'ease-out' });
-      });
-    }
-  }
-  if (typeof ResizeObserver !== 'undefined') {
-    let tvWormResizeTimer = null;
-    new ResizeObserver(() => {
-      clearTimeout(tvWormResizeTimer);
-      tvWormResizeTimer = setTimeout(() => { if (tvView === 'worm' && !tvWorm.hidden && !tvScreen.hidden) renderTvWorm(tvTableData(matches.length)); }, 120);
-    }).observe(tvWorm);
   }
 
   // Standings after the first `matchCount` matches — what the points table
@@ -5809,7 +5697,7 @@
         <span class="tv-table-num tv-table-hide-sm">${drops[pIdx]}</span>
         <span class="tv-table-total">${showDelta ? `<span class="tv-delta ${delta === 0 ? 'zero' : ''}">${delta >= 0 ? '+' : ''}${delta}</span>` : ''}${totals[pIdx]}</span>
       </div>`;
-    }).join('');
+    }).join('') + ghostRows(order.filter(pIdx => tvShowOutPlayers || !outFlags[pIdx]).length, '<div class="tv-table-row ghost" aria-hidden="true"></div>');
     tvTable.innerHTML = `<div class="tv-table-row tv-table-head">
         <span>#</span><span>Player<span class="tv-table-hint tv-table-hide-sm"> · drag a name for points · tap a row for D/MD/FC/R</span></span>
         <span class="tv-table-num tv-table-hide-sm">Rummies</span>
@@ -5876,10 +5764,7 @@
     };
   }
 
-  tvReplayBtn.addEventListener('click', () => {
-    if (tvView === 'worm') { tvWorm.dataset.drawn = ''; renderTvWorm(tvTableData(matches.length)); }
-    else playLatestRound();
-  });
+  tvReplayBtn.addEventListener('click', playLatestRound);
 
   // The latest round's Rummy winner (the player who scored 0), or -1 if there isn't one.
   function latestRoundWinnerIdx() {
@@ -6227,10 +6112,7 @@
     tvTable.hidden = !tableOn;
     tvRace.hidden = tvView !== 'race';
     tvWorm.hidden = tvView !== 'worm';
-    tvReplayBtn.hidden = !(tableOn || tvView === 'worm') || matches.length === 0;
-    const replayLabel = tvView === 'worm' ? 'Redraw the score worm' : "Replay the latest round's movement";
-    tvReplayBtn.title = replayLabel;
-    tvReplayBtn.setAttribute('aria-label', replayLabel);
+    tvReplayBtn.hidden = !tableOn || matches.length === 0;
     tvWinReplayBtn.hidden = latestRoundWinnerIdx() === -1;
     if (tableOn) {
       if (tvPlayback && tvPlayback.count === matches.length) {
@@ -6246,7 +6128,7 @@
       cancelTvPlayback();
     }
     if (tvView === 'race') renderTvRace(tvTableData(matches.length));
-    if (tvView === 'worm') renderTvWorm(tvTableData(matches.length));
+    if (tvView === 'worm') renderWormChart();
     syncTvStaged();
 
     tvLimitLabel.textContent = gameMode === 'rounds' ? 'OF' : 'MAX';
@@ -6486,7 +6368,6 @@
       b.classList.toggle('selected', on);
       b.setAttribute('aria-selected', String(on));
     });
-    if (pt === 'worm') renderWormChart();
   }
   function setGameView(view, pt) {
     if (view === 'tv' && !document.documentElement.classList.contains('hud')) {
@@ -6508,6 +6389,8 @@
     const item = e.target.closest('.hud-nav-item');
     if (!item) return;
     if (item.dataset.view) setGameView(item.dataset.view);
+    else if (item.dataset.action === 'clone') cloneGameBtn.click();
+    else if (item.dataset.action === 'end') endGameBtn.click();
     else if (item.dataset.action === 'settings') showScreen('settings', { from: 'game' });
     else if (item.dataset.action === 'home') switchGameBtn.click();
   });
@@ -6520,6 +6403,9 @@
     if (tab) setPointsTab(tab.dataset.pt);
   });
   document.getElementById('hudGameName').addEventListener('click', () => setGameView('hub'));
+  document.getElementById('hubCloneBtn').addEventListener('click', () => cloneGameBtn.click());
+  document.getElementById('hubEndBtn').addEventListener('click', () => endGameBtn.click());
+  document.getElementById('recordEditPlayersBtn').addEventListener('click', () => renamePlayersBtn.click());
   document.getElementById('gameBackBtn').addEventListener('click', () => { if (gameView === 'hub') switchGameBtn.click(); else setGameView('hub'); });
   document.getElementById('gameSettingsBtn').addEventListener('click', () => showScreen('settings', { from: 'game' }));
   document.getElementById('hudRenameBtn').addEventListener('click', () => editGameNameBtn.click());
@@ -6541,7 +6427,6 @@
     document.getElementById('hubSummary').innerHTML = result.over
       ? `${players.length} players · ${roundsText} · 🏆 ${escapeHtml(result.winners.map(i => players[i]).join(' & ') || 'no winner')}`
       : `${players.length} players · ${roundsText}${matches.length && lead !== undefined ? ` · Leading: <b>${escapeHtml(players[lead])}</b> (${data.totals[lead]})` : ''}`;
-    document.getElementById('hubSubPlayers').textContent = `${players.length} players · ${inCount} in`;
     document.getElementById('hubSubPoints').textContent = rounds ? `Match ${Math.min(matches.length + 1, totalRounds)} of ${totalRounds}` : `Match #${matches.length + 1}`;
   }
 
@@ -6949,6 +6834,7 @@
   }
 
   function renderPlayerNames() {
+    gameScreen.toggleAttribute('data-renaming', renamingPlayers);
     if (renamingPlayers) {
       const n = players.length;
       const outFlags = getOutFlags(getTotals(matches));
@@ -7992,7 +7878,9 @@
     const wrapWidth = wormChartSvg.parentElement.clientWidth || 320;
     const width = Math.max(260, wrapWidth);
     // in the landscape game interface the chart takes the room the middle view has
-    const height = document.documentElement.classList.contains('hud') ? Math.max(220, Math.round(hudStage.clientHeight - 170)) : 220;
+    // in TV Mode the chart fills the screen; elsewhere it keeps a fixed height
+    const tvHost = wormChartSvg.closest('.tv-worm');
+    const height = tvHost ? Math.max(180, Math.round(tvHost.clientHeight - wormChartControls.offsetHeight - wormChartLegend.offsetHeight - 28)) : 220;
     const plotLeft = leftPad;
     const plotRight = width - rightPad - labelPad;
     const plotW = Math.max(1, plotRight - plotLeft);
@@ -8177,7 +8065,7 @@
     let wormResizeTimer = null;
     new ResizeObserver(() => {
       clearTimeout(wormResizeTimer);
-      wormResizeTimer = setTimeout(() => { if (!gameScreen.hidden) renderWormChart(); }, 150);
+      wormResizeTimer = setTimeout(() => { if (!gameScreen.hidden || !tvScreen.hidden) renderWormChart(); }, 150);
     }).observe(wormChartSvg.parentElement);
   }
 
