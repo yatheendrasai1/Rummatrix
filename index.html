@@ -1624,26 +1624,6 @@
   .tv-table-row.updated { animation: tvTileFlash 1s ease-out; }
   .tv-table.animating { overflow: hidden; }
 
-  /* ---- TV view: Hero leader + rows ---- */
-  .tv-hero { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: calc(2 * var(--vw)); }
-  .tv-hero[hidden] { display: none; }
-  .tv-hero-lead {
-    position: relative; min-height: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1.2 * var(--vh));
-    padding: calc(2.4 * var(--vh)) calc(2 * var(--vw));
-    border-radius: calc(2.4 * var(--vh));
-    border: 1px solid var(--ac, var(--green));
-    background: linear-gradient(160deg, color-mix(in srgb, var(--ac, var(--green)) 24%, var(--panel)), var(--panel) 72%);
-    box-shadow: 0 0 calc(6 * var(--vh)) color-mix(in srgb, var(--ac, var(--green)) 32%, transparent);
-    animation: tvHeroIn 0.5s ease-out;
-  }
-  @keyframes tvHeroIn { from { transform: scale(0.96); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
-  .tv-hero-badge {
-    position: absolute; left: calc(1.6 * var(--vw)); top: calc(1.8 * var(--vh));
-    background: var(--green); color: var(--ink-on-green);
-    font-weight: 800; font-size: clamp(10px, calc(1.7 * var(--vh)), 16px); letter-spacing: 0.2em;
-    padding: calc(0.7 * var(--vh)) calc(1.1 * var(--vw)); border-radius: 99px;
-  }
   .tv-logo {
     display: block; object-fit: cover; background: var(--panel-2);
     border-radius: calc(1.6 * var(--vh)); aspect-ratio: 1 / 1;
@@ -1653,41 +1633,6 @@
     font-family: var(--font-mono); font-weight: 800; color: var(--muted);
     background: var(--panel-2); border: 1px solid var(--border);
   }
-  .tv-hero-lead .tv-logo { height: 50%; width: auto; max-width: 100%; border-radius: calc(2.2 * var(--vh)); box-shadow: 0 calc(1.8 * var(--vh)) calc(5 * var(--vh)) rgba(0,0,0,0.55), 0 0 0 calc(0.35 * var(--vh)) var(--ac, var(--green)); }
-  .tv-hero-lead .tv-logo-initial { font-size: calc(9 * var(--vh)); }
-  .tv-logo-wrap { position: relative; height: 50%; display: flex; }
-  .tv-logo-wrap .tv-logo { height: 100%; }
-  .tv-dealer { position: absolute; right: calc(-0.8 * var(--vh)); bottom: calc(-0.8 * var(--vh)); font-size: clamp(14px, calc(3.4 * var(--vh)), 34px); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)); }
-  .tv-hero-score { font-family: var(--font-mono); font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-size: clamp(40px, calc(16 * var(--vh)), 170px); }
-  .tv-hero-name { font-weight: 800; font-size: clamp(16px, calc(3.6 * var(--vh)), 38px); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tv-hero-chips { display: flex; flex-wrap: wrap; gap: calc(1 * var(--vh)) calc(0.8 * var(--vw)); justify-content: center; }
-  .tv-chip { background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: calc(0.6 * var(--vh)) calc(1.1 * var(--vw)); font-size: clamp(11px, calc(2 * var(--vh)), 20px); color: var(--muted); }
-  .tv-hero-list { display: grid; grid-auto-rows: 1fr; gap: calc(1.4 * var(--vh)); min-height: 0; }
-  .tv-hero-row {
-    position: relative; overflow: hidden; min-height: 0;
-    display: flex; align-items: center; gap: calc(1.6 * var(--vw)); padding: 0 calc(1.8 * var(--vw)) 0 calc(1 * var(--vw));
-    background: var(--panel); border: 1px solid var(--border); border-radius: calc(2 * var(--vh));
-    font-size: clamp(14px, calc(4.2 * var(--vh)), 40px);
-  }
-  .tv-hero-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: calc(0.7 * var(--vh)); background: var(--ac, var(--green)); }
-  .tv-hero-row.out { opacity: 0.5; }
-  .tv-hero-rank { width: 1.3em; text-align: center; font-weight: 800; color: var(--muted); }
-  .tv-hero-row .tv-logo, .tv-hero-row .tv-logo-wrap { height: 76%; flex: none; }
-  .tv-hero-row .tv-logo { height: 100%; width: auto; }
-  .tv-hero-row .tv-logo-initial { font-size: 0.9em; }
-  .tv-hero-row .tv-dealer { font-size: 0.7em; right: calc(-0.5 * var(--vh)); bottom: calc(-0.5 * var(--vh)); }
-  .tv-hero-rname { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tv-hero-rname small { font-weight: 600; font-size: 0.4em; letter-spacing: 0.1em; color: var(--orange); margin-left: 0.6em; text-transform: uppercase; }
-  .tv-hero-gap { font-size: 0.5em; color: var(--muted); font-family: var(--font-mono); min-width: 3.5em; text-align: right; }
-  .tv-hero-rscore { font-family: var(--font-mono); font-weight: 800; font-size: 1.15em; min-width: 2.2em; text-align: right; }
-  /* was: @media (orientation: portrait) and (max-width: 700px) */
-  :where(html.vp-portrait.vp-w700) .tv-hero { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40fr) minmax(0, 60fr); gap: calc(1.4 * var(--vh)); }
-  :where(html.vp-portrait.vp-w700) .tv-hero-lead { padding: calc(1.4 * var(--vh)) calc(3 * var(--vw)); gap: calc(0.6 * var(--vh)); }
-  :where(html.vp-portrait.vp-w700) .tv-hero-lead .tv-logo-wrap { height: 42%; }
-  :where(html.vp-portrait.vp-w700) .tv-hero-lead .tv-logo { height: 100%; }
-  :where(html.vp-portrait.vp-w700) .tv-hero-score { font-size: clamp(36px, calc(8 * var(--vh)), 90px); }
-  :where(html.vp-portrait.vp-w700) .tv-hero-row { gap: calc(3 * var(--vw)); padding: 0 calc(3 * var(--vw)) 0 calc(2 * var(--vw)); font-size: clamp(13px, calc(2.6 * var(--vh)), 30px); }
-
 
   /* ---- TV view: Race track ---- */
   .tv-race { --pad: calc(7 * var(--vh)); flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: calc(1 * var(--vh)); }
@@ -2806,7 +2751,6 @@
   </div>
   <div class="tv-grid" id="tvGrid"></div>
   <div class="tv-table" id="tvTable" hidden></div>
-  <div class="tv-hero" id="tvHero" hidden></div>
   <div class="tv-race" id="tvRace" hidden></div>
   <div class="tv-worm" id="tvWorm" hidden></div>
   <div class="tv-game-winner-banner" id="tvGameWinnerBanner" hidden></div>
@@ -3200,7 +3144,6 @@
   const tvEventMenu = document.getElementById('tvEventMenu');
   const tvToast = document.getElementById('tvToast');
   const tvTable = document.getElementById('tvTable');
-  const tvHero = document.getElementById('tvHero');
   const tvRace = document.getElementById('tvRace');
   const tvWorm = document.getElementById('tvWorm');
   const tvAddModal = document.getElementById('tvAddModal');
@@ -5315,12 +5258,12 @@
   // Elimination, players out on points drop to the bottom). Remembered per
   // device like the names toggle.
   // TV Mode has five views, cycled by the ribbon button: photo tiles, points
-  // table (with quick scoring), a hero leader card with rows, a race track and
+  // table (with quick scoring), a race track and
   // the score worm (every player's running total, round by round).
   const TV_VIEW_KEY = 'rummatrix.tvView';
   const TV_TABLE_VIEW_KEY = 'rummatrix.tvTableView';   // the old two-view setting
-  const TV_VIEWS = ['tiles', 'table', 'hero', 'race', 'worm'];
-  const TV_VIEW_LABELS = { tiles: '▦ Tiles', table: '☰ Table', hero: '★ Hero', race: '🏁 Race', worm: '〰 Worm' };
+  const TV_VIEWS = ['tiles', 'table', 'race', 'worm'];
+  const TV_VIEW_LABELS = { tiles: '▦ Tiles', table: '☰ Table', race: '🏁 Race', worm: '〰 Worm' };
   let tvView = 'tiles';
   try {
     const savedView = localStorage.getItem(TV_VIEW_KEY);
@@ -5335,7 +5278,7 @@
     renderTvScreen();
   });
 
-  // ---------- TV VIEWS: Hero leader + rows, and Race track ----------
+  // ---------- TV VIEWS: Race track ----------
   // Both read the same standings as the points table (tvTableData), show only the
   // players still in unless ＋ has brought the out players back, and animate rows
   // and bars to their new places after a round.
@@ -5385,7 +5328,7 @@
       sampleAccent(url).then(col => {
         if (!col) return;
         tvAccentCache.set(url, col);
-        document.querySelectorAll('#tvHero [data-player-idx], #tvRace [data-player-idx]').forEach(el => {
+        document.querySelectorAll('#tvRace [data-player-idx]').forEach(el => {
           if (playerAvatars[Number(el.dataset.playerIdx)] === url) el.style.setProperty('--ac', col);
         });
       });
@@ -5399,10 +5342,6 @@
       ? `<img class="tv-logo" src="${url}" alt=""${photoPosStyle(url)}>`
       : `<span class="tv-logo tv-logo-initial" aria-hidden="true">${escapeHtml(players[pIdx] ? players[pIdx][0].toUpperCase() : '?')}</span>`;
   }
-  function tvLogoWithDealer(pIdx) {
-    return `<span class="tv-logo-wrap">${tvLogoHtml(pIdx)}${pIdx === dealerIdx ? '<span class="tv-dealer" title="Dealing this round">🃏</span>' : ''}</span>`;
-  }
-
   // Players shown in the new views: in rank order, those still in (plus the out
   // players, greyed, when ＋ has been pressed).
   function tvViewPlayers(data) {
@@ -5426,39 +5365,6 @@
       el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], { duration: 1200, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' })
         .finished.catch(() => {}).then(() => { el.style.zIndex = ''; });
     });
-  }
-
-  let tvHeroLeader = null;
-  function renderTvHero(data) {
-    const vis = tvViewPlayers(data);
-    const leader = vis.find(p => !data.outFlags[p]);
-    if (leader === undefined) { tvHero.innerHTML = ''; return; }
-    const oldTops = tvTopsOf(tvHero, '.tv-hero-row');
-    const lastRow = matches.length ? matches[matches.length - 1] : null;
-    const tied = vis.filter(p => !data.outFlags[p] && data.totals[p] === data.totals[leader]).length > 1;
-    const lastScore = lastRow && lastRow[leader] !== null && lastRow[leader] !== undefined ? lastRow[leader] : null;
-    const rows = vis.filter(p => p !== leader).map(p => {
-      const out = data.outFlags[p];
-      const gap = data.totals[p] - data.totals[leader];
-      return `<div class="tv-hero-row ${out ? 'out' : ''}" data-player-idx="${p}" style="--ac:${tvAccent(p)}">
-        <span class="tv-hero-rank">${out ? '—' : data.ranks[p]}</span>
-        ${tvLogoWithDealer(p)}
-        <span class="tv-hero-rname">${escapeHtml(players[p])}${out ? `<small>${forfeited[p] != null ? 'Forfeited' : 'Out'}</small>` : ''}</span>
-        <span class="tv-hero-gap">${out ? '' : (gap === 0 ? '=' : '+' + gap)}</span>
-        <span class="tv-hero-rscore">${data.totals[p]}</span>
-      </div>`;
-    }).join('');
-    const newLeader = tvHeroLeader !== leader;
-    tvHeroLeader = leader;
-    tvHero.innerHTML = `<div class="tv-hero-lead" data-player-idx="${leader}" style="--ac:${tvAccent(leader)};${newLeader ? '' : 'animation:none'}">
-        <span class="tv-hero-badge">★ ${tied ? 'TIED LEAD' : 'LEADING'}</span>
-        ${tvLogoWithDealer(leader)}
-        <div class="tv-hero-score">${data.totals[leader]}</div>
-        <div class="tv-hero-name">${escapeHtml(players[leader])}</div>
-        <div class="tv-hero-chips"><span class="tv-chip">${data.rummies[leader]} ${data.rummies[leader] === 1 ? "Rummy" : "Rummies"}</span>${lastScore !== null ? `<span class="tv-chip">Last +${lastScore}</span>` : ''}</div>
-      </div>
-      <div class="tv-hero-list">${rows}</div>`;
-    tvFlipFrom(tvHero, '.tv-hero-row', oldTops);
   }
 
   function renderTvRace(data) {
@@ -6091,7 +5997,6 @@
     tvShowNamesBtn.hidden = tvView !== 'tiles';
     tvGrid.hidden = tvView !== 'tiles';
     tvTable.hidden = !tableOn;
-    tvHero.hidden = tvView !== 'hero';
     tvRace.hidden = tvView !== 'race';
     tvWorm.hidden = tvView !== 'worm';
     tvReplayBtn.hidden = !(tableOn || tvView === 'worm') || matches.length === 0;
@@ -6112,7 +6017,6 @@
     } else {
       cancelTvPlayback();
     }
-    if (tvView === 'hero') renderTvHero(tvTableData(matches.length));
     if (tvView === 'race') renderTvRace(tvTableData(matches.length));
     if (tvView === 'worm') renderTvWorm(tvTableData(matches.length));
     syncTvStaged();
