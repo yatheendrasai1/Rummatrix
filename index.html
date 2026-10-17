@@ -24,88 +24,41 @@
   } catch (err) { /* ignore — falls back to the default theme */ }
 </script>
 <script>
-  // Screen layout: the whole app is laid out as LANDSCAPE unless the user picks PORTRAIT
-  // (the layout button in the top bar). A touch device held the other way round gets
-  // the app turned 90 degrees so it still shows the chosen layout; on a desktop a
-  // portrait choice becomes a centred phone-width column. Everything below the app
-  // sizes itself off the "virtual viewport" this publishes (--vw / --vh and the
-  // vp-* classes on <html>) instead of the real one, so a turned app lays out right.
+  // The layout follows the device: landscape or portrait as the phone / window actually is.
+  // This publishes the size classes the stylesheet keys off (vp-landscape / vp-portrait,
+  // vp-w* for width, vp-short for a low window) on <html> and keeps them current.
   (function () {
-    var KEY = 'rummatrix.layout';
     var de = document.documentElement;
-    var pref = 'landscape';
-    try { if (localStorage.getItem(KEY) === 'portrait') pref = 'portrait'; } catch (err) { /* ignore */ }
     var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    var st = { mode: 'none', realW: 0, realH: 0, vpw: 0, vph: 0, left: 0 };
-
-    // Which way the device is physically held. The window's own shape isn't used on
-    // touch devices — an on-screen keyboard shrinks it and would flip the layout mid-typing.
-    function deviceLandscape(W, H) {
-      if (!coarse) return W >= H;
-      try {
-        if (window.screen.orientation && window.screen.orientation.type) return window.screen.orientation.type.indexOf('landscape') === 0;
-      } catch (err) { /* ignore */ }
-      if (typeof window.orientation === 'number') return Math.abs(window.orientation) === 90;
-      return W >= H;
-    }
-
-    function apply() {
+    // How the device is held. On touch devices this is the physical orientation, not the
+    // window's shape, so an on-screen keyboard squashing the window doesn't flip the layout.
+    function portrait() {
       var W = window.innerWidth, H = window.innerHeight;
-      var wantLand = pref === 'landscape';
-      var haveLand = deviceLandscape(W, H);
-      var mode = 'none', vpw = W, vph = H;
-      if (wantLand !== haveLand) {
-        if (wantLand && coarse) { mode = 'rot'; vpw = H; vph = W; }
-        else if (!wantLand) { mode = 'col'; vpw = Math.min(W, Math.round(H * 0.5625)); }
+      if (coarse) {
+        try {
+          if (window.screen.orientation && window.screen.orientation.type) return window.screen.orientation.type.indexOf('portrait') === 0;
+        } catch (err) { /* ignore */ }
+        if (typeof window.orientation === 'number') return Math.abs(window.orientation) !== 90;
       }
-      var left = mode === 'col' ? Math.round((W - vpw) / 2) : 0;
-      st = { mode: mode, realW: W, realH: H, vpw: vpw, vph: vph, left: left };
-      var c = de.classList;
-      c.toggle('vp-fixed', mode !== 'none');
-      c.toggle('vp-rot', mode === 'rot');
-      c.toggle('vp-col', mode === 'col');
-      c.toggle('vp-landscape', vpw >= vph);
-      c.toggle('vp-portrait', vpw < vph);
-      [380, 480, 600, 700, 760, 900].forEach(function (n) { c.toggle('vp-w' + n, vpw <= n); });
-      c.toggle('vp-short', vph <= 520);
-      if (mode === 'none') {
-        ['--vh', '--vw', '--vpw', '--vph', '--vpx'].forEach(function (p) { de.style.removeProperty(p); });
-      } else {
-        de.style.setProperty('--vh', (vph / 100) + 'px');
-        de.style.setProperty('--vw', (vpw / 100) + 'px');
-        de.style.setProperty('--vpw', vpw + 'px');
-        de.style.setProperty('--vph', vph + 'px');
-        de.style.setProperty('--vpx', W + 'px');
-      }
-      try { window.dispatchEvent(new CustomEvent('rmviewport', { detail: st })); } catch (err) { /* ignore */ }
+      return W < H;
     }
-
+    function apply() {
+      var W = window.innerWidth, H = window.innerHeight, p = portrait();
+      var c = de.classList;
+      c.toggle('vp-landscape', !p);
+      c.toggle('vp-portrait', p);
+      [380, 480, 600, 700, 760, 900].forEach(function (n) { c.toggle('vp-w' + n, W <= n); });
+      c.toggle('vp-short', H <= 520);
+      try { window.dispatchEvent(new CustomEvent('rmviewport')); } catch (err) { /* ignore */ }
+    }
     window.rmViewport = {
-      get pref() { return pref; },
-      get mode() { return st.mode; },
-      get width() { return st.vpw; },
-      get height() { return st.vph; },
-      isPortrait: function () { return st.vpw < st.vph; },
-      setPref: function (p) {
-        pref = p === 'portrait' ? 'portrait' : 'landscape';
-        try { localStorage.setItem(KEY, pref); } catch (err) { /* ignore */ }
-        apply();
-      },
-      // window (client) coordinates -> coordinates inside the laid-out app
-      toLocal: function (x, y) {
-        if (st.mode === 'rot') return { x: y, y: st.realW - x };
-        if (st.mode === 'col') return { x: x - st.left, y: y };
-        return { x: x, y: y };
-      },
-      localRect: function (el) {
-        var r = el.getBoundingClientRect();
-        if (st.mode === 'rot') {
-          var top = st.realW - r.right;
-          return { left: r.top, top: top, right: r.bottom, bottom: top + r.width, width: r.height, height: r.width };
-        }
-        if (st.mode === 'col') return { left: r.left - st.left, top: r.top, right: r.right - st.left, bottom: r.bottom, width: r.width, height: r.height };
-        return r;
-      }
+      get mode() { return 'none'; },
+      get width() { return window.innerWidth; },
+      get height() { return window.innerHeight; },
+      isPortrait: portrait,
+      // kept so pointer / box helpers read the same everywhere (nothing is turned any more)
+      toLocal: function (x, y) { return { x: x, y: y }; },
+      localRect: function (el) { return el.getBoundingClientRect(); }
     };
     apply();
     window.addEventListener('resize', apply);
@@ -276,22 +229,8 @@
 
   * { box-sizing: border-box; }
 
-  /* ---- Screen layout (see rmViewport in <head>) ---- */
+  /* ---- Viewport units (the embedded TV view gives itself its own --vw / --vh) ---- */
   :root { --vh: 1vh; --vw: 1vw; }
-  html.vp-fixed { overflow: hidden; height: 100%; }
-  html.vp-fixed body {
-    position: fixed; left: 0; top: 0; width: var(--vpw); height: var(--vph); min-height: 0;
-    padding: 0; display: block; overflow: hidden; transform-origin: 0 0;
-  }
-  /* A turned app: its top edge is the window's right edge. */
-  html.vp-rot body { transform: translateX(var(--vpx)) rotate(90deg); }
-  /* Portrait on a wide window: a centred phone-width column. */
-  html.vp-col body { left: calc((var(--vpx) - var(--vpw)) / 2); transform: translateZ(0); box-shadow: 0 0 0 1px var(--border), 0 0 60px rgba(0,0,0,0.5); }
-  /* The page scrolls inside the app box (the box itself is what gets turned). */
-  html.vp-fixed .app { max-width: none; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 20px max(20px, calc((100% - 880px) / 2)); }
-  html.vp-fixed.vp-w600 .app { padding: 12px max(12px, calc((100% - 880px) / 2)); }
-  /* Browsers don't map a touch swipe through a turned scroller, so a turned app scrolls itself (see below). */
-  html.vp-rot .app { touch-action: none; overscroll-behavior: contain; }
   .layout-btn { cursor: pointer; white-space: nowrap; }
 
 
@@ -1851,7 +1790,6 @@
   html.hud .event-btn { clip-path: none; border-radius: 6px; border-color: transparent; background: rgba(255,255,255,0.05); }
   html.hud .event-btn.selected { border-color: transparent; }
   html.hud #recordMatchPanel h2 { font-size: 15px; }
-  html.hud .tv-screen.tv-embedded #tvLayoutBtn { display: none; }
   /* the right rail needs room: out of the way on small screens */
   html.hud.vp-w900 .hud-right, html.hud.vp-short .hud-right { display: none; }
   html.hud.vp-w900 #gameScreen, html.hud.vp-short #gameScreen { grid-template-columns: var(--hud-left) minmax(0, 1fr); }
@@ -2657,7 +2595,6 @@
             <option value="terminal">Terminal</option>
             <option value="rummy">Rummy</option>
           </select></div>
-        <div class="settings-row"><span>Screen layout</span><button type="button" class="theme-select layout-btn" id="layoutBtn"></button></div>
         <div class="settings-row" id="fsRow"><span>Full screen</span><button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button></div>
         <div class="settings-row" id="installRow" hidden><span>Install as an app</span><button type="button" class="theme-select layout-btn" id="installBtn" hidden title="Install Rummatrix as an app">⬇ Install app</button></div>
       </div>
@@ -2917,7 +2854,7 @@
   </div>
   <div class="tv-header" id="tvHeader">
     <span class="tv-brand"><span class="tv-game-name" id="tvGameName"></span></span>
-    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvLayoutBtn"></button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
+    <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
@@ -3317,8 +3254,6 @@
   const tvShowNamesBtn = document.getElementById('tvShowNamesBtn');
   const tvTableBtn = document.getElementById('tvTableBtn');
   const tvReplayBtn = document.getElementById('tvReplayBtn');
-  const tvLayoutBtn = document.getElementById('tvLayoutBtn');
-  const layoutBtn = document.getElementById('layoutBtn');
   const tvWinReplayBtn = document.getElementById('tvWinReplayBtn');
   const tvCommitBtn = document.getElementById('tvCommitBtn');
   const tvClearStageBtn = document.getElementById('tvClearStageBtn');
@@ -6266,9 +6201,9 @@
   // existing buttons.
   let tvEmbedded = false;   // TV Mode's display is showing inside the game screen (the TV Display view)
   const HUD_COLLAPSED_KEY = 'rummatrix.hudCollapsed';
-  let hudCollapsedPref = null;   // null = automatic: collapsed on small screens
+  let hudCollapsedPref = null;   // null = never chosen: collapsed
   try { const v = localStorage.getItem(HUD_COLLAPSED_KEY); hudCollapsedPref = v === 'true' ? true : v === 'false' ? false : null; } catch (err) { /* ignore */ }
-  const hudCollapsedNow = () => hudCollapsedPref !== null ? hudCollapsedPref : (rmViewport.height <= 520 || rmViewport.width <= 900);
+  const hudCollapsedNow = () => hudCollapsedPref !== null ? hudCollapsedPref : true;   // starts collapsed
   const hudCollapseBtn = document.getElementById('hudCollapseBtn');
   function syncHudCollapsed() {
     const hudCollapsed = hudCollapsedNow();
@@ -6309,7 +6244,7 @@
     Object.entries(SCREENS).forEach(([key, el]) => { el.hidden = key !== name; });
     document.documentElement.dataset.screen = name;
     if (name === 'home') { statusText.textContent = 'STANDBY'; renderActiveGamesList(); renderGameHistory(); renderManagePlayers(); }
-    if (name === 'settings') { renderPlayerClipList(); syncLayoutBtns(); syncFsBtn(); }
+    if (name === 'settings') { renderPlayerClipList(); syncFsBtn(); }
     if (name === 'past') renderGameHistory();
     if (name === 'players') renderManagePlayers();
     if (name === 'game') syncHud();
@@ -6432,7 +6367,7 @@
 
   function syncHud() {
     const root = document.documentElement;
-    const on = !gameScreen.hidden && rmViewport.width >= rmViewport.height;
+    const on = !gameScreen.hidden && !rmViewport.isPortrait();
     const was = root.classList.contains('hud');
     root.classList.toggle('hud', on);
     syncHudCollapsed();
@@ -6476,7 +6411,7 @@
   const canFullscreen = !!document.documentElement.requestFullscreen;
   function enterAppFullscreen() {
     if (!canFullscreen || document.fullscreenElement) return;
-    document.documentElement.requestFullscreen().then(lockScreenOrientation).catch(() => { /* needs a tap, or not permitted here */ });
+    document.documentElement.requestFullscreen().catch(() => { /* needs a tap, or not permitted here */ });
   }
   function syncFsBtn() {
     fsBtn.hidden = !canFullscreen;
@@ -6493,108 +6428,12 @@
   document.addEventListener('fullscreenchange', syncFsBtn);
   syncFsBtn();
   // Called as a game opens (a tap, so the browser allows it).
-  function openGameFullscreen() { if (rmViewport.pref === 'landscape') enterAppFullscreen(); }
+  function openGameFullscreen() { if (!rmViewport.isPortrait()) enterAppFullscreen(); }
 
-  // ---------- TURNED-APP TOUCH SCROLLING ----------
-  // When the app is turned 90 degrees (landscape layout on an upright phone) the browser
-  // doesn't translate swipes into the turned scroller's own directions, so the page
-  // wouldn't scroll. This does it by hand: a swipe scrolls the nearest scrollable
-  // element along the swipe's axis, with a little momentum on release.
-  (function turnedAppScroll() {
-    const app = document.querySelector('.app');
-    const SLOP = 8;
-    let g = null, flingId = null;
-
-    function scrollableAlong(el, axis) {
-      for (; el && el !== app.parentElement; el = el.parentElement) {
-        const cs = getComputedStyle(el);
-        if (axis === 'y') {
-          if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
-        } else if (/(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) return el;
-        if (el === app) break;
-      }
-      return null;
-    }
-    function stopFling() { if (flingId) { cancelAnimationFrame(flingId); flingId = null; } }
-    function scrollBy(el, axis, d) { if (axis === 'y') el.scrollTop += d; else el.scrollLeft += d; }
-
-    app.addEventListener('pointerdown', (e) => {
-      stopFling();
-      if (rmViewport.mode !== 'rot' || e.pointerType !== 'touch' || !e.isPrimary) return;
-      if (e.target.closest('input[type="range"]')) return;
-      g = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), axis: null, el: null, v: 0, target: e.target, moved: false };
-    });
-    document.addEventListener('pointermove', (e) => {
-      if (!g || e.pointerId !== g.id) return;
-      const dx = e.clientX - g.x, dy = e.clientY - g.y;      // window coordinates
-      // app axes: its y runs against the window's x, its x runs along the window's y
-      const dLocalY = -dx, dLocalX = dy;
-      if (!g.axis) {
-        if (Math.hypot(dx, dy) < SLOP) return;
-        g.axis = Math.abs(dLocalY) >= Math.abs(dLocalX) ? 'y' : 'x';
-        g.el = scrollableAlong(g.target, g.axis);
-        if (!g.el) { g = null; return; }
-        g.moved = true;
-      }
-      const d = g.axis === 'y' ? dLocalY : dLocalX;
-      const now = performance.now();
-      scrollBy(g.el, g.axis, -d);
-      g.v = (-d) / Math.max(1, now - g.t) * 0.8 + g.v * 0.2;   // px per ms, smoothed
-      g.x = e.clientX; g.y = e.clientY; g.t = now;
-    });
-    function endGesture(e) {
-      if (!g || e.pointerId !== g.id) return;
-      const { el, axis, v, moved } = g;
-      g = null;
-      if (!moved || Math.abs(v) < 0.1) return;
-      let vel = v, last = performance.now();
-      const step = (now) => {
-        const dt = Math.min(48, now - last); last = now;
-        scrollBy(el, axis, vel * dt);
-        vel *= Math.pow(0.94, dt / 16);
-        flingId = Math.abs(vel) > 0.02 ? requestAnimationFrame(step) : null;
-      };
-      flingId = requestAnimationFrame(step);
-    }
-    document.addEventListener('pointerup', endGesture);
-    document.addEventListener('pointercancel', endGesture);
-    // a swipe that scrolled must not also count as a tap on whatever was under the finger
-    app.addEventListener('click', (e) => { if (app.__swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
-    document.addEventListener('pointermove', () => { if (g && g.moved) app.__swiped = true; });
-    document.addEventListener('pointerdown', () => { app.__swiped = false; }, true);
-  })();
-
-  // ---------- SCREEN LAYOUT: landscape (default) or portrait ----------
-  // rmViewport (in <head>) does the actual laying out; these buttons just flip the
-  // saved choice. In fullscreen on devices that allow it, the real screen is locked
-  // to the chosen orientation too.
-  function lockScreenOrientation() {
-    try {
-      if (document.fullscreenElement && screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock(rmViewport.pref).catch(() => { /* not supported here — the app turns itself instead */ });
-      }
-    } catch (err) { /* ignore */ }
-  }
-  function syncLayoutBtns() {
-    const portrait = rmViewport.pref === 'portrait';
-    const other = portrait ? 'landscape' : 'portrait';
-    layoutBtn.textContent = portrait ? '📱 Portrait' : '🖥 Landscape';
-    tvLayoutBtn.textContent = portrait ? '📱 Portrait' : '🖥 Landscape';
-    const tip = `Layout: ${portrait ? 'portrait' : 'landscape'} — tap for ${other}`;
-    [layoutBtn, tvLayoutBtn].forEach(b => { b.title = tip; b.setAttribute('aria-label', tip); });
-  }
-  function toggleLayout() {
-    rmViewport.setPref(rmViewport.pref === 'portrait' ? 'landscape' : 'portrait');
-    syncLayoutBtns();
-    lockScreenOrientation();
-  }
-  layoutBtn.addEventListener('click', toggleLayout);
-  tvLayoutBtn.addEventListener('click', toggleLayout);
-  syncLayoutBtns();
   // Anything drawn from measured sizes redraws when the layout turns or resizes.
-  let layoutKey = `${rmViewport.mode}:${rmViewport.isPortrait()}`;
+  let layoutKey = String(rmViewport.isPortrait());
   window.addEventListener('rmviewport', () => {
-    const key = `${rmViewport.mode}:${rmViewport.isPortrait()}`;
+    const key = String(rmViewport.isPortrait());
     if (key === layoutKey) return;   // a plain resize — CSS and the size observers cope on their own
     layoutKey = key;
     if (!tvScreen.hidden) renderTvScreen();
@@ -6613,7 +6452,7 @@
     document.body.style.overflow = 'hidden';
     if (document.documentElement.requestFullscreen) {
       tvEnteredFullscreen = !document.fullscreenElement;
-      document.documentElement.requestFullscreen().then(lockScreenOrientation).catch(() => { /* fullscreen not permitted here — overlay still works windowed */ });
+      document.documentElement.requestFullscreen().catch(() => { /* fullscreen not permitted here — overlay still works windowed */ });
     }
   });
 
