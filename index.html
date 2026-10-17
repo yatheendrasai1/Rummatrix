@@ -7,6 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rummatrix">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script>
   // Applied before the stylesheet paints anything, so a saved Rummy or Terminal theme
   // choice doesn't flash the default Slate look for a frame on load.
@@ -2501,6 +2505,7 @@
     <div class="status"><span class="pulse-dot"></span><span id="statusText">STANDBY</span></div>
     <button type="button" class="theme-select layout-btn" id="layoutBtn"></button>
     <button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button>
+    <button type="button" class="theme-select layout-btn" id="installBtn" hidden title="Install Rummatrix as an app">⬇ Install app</button>
     <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
       <option value="slate">Slate</option>
       <option value="terminal">Terminal</option>
@@ -6290,6 +6295,29 @@
   new MutationObserver(syncHud).observe(gameScreen, { attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener('rmviewport', syncHud);
   syncHud();
+
+  // ---------- INSTALL AS AN APP ----------
+  // Chrome / Edge / Android offer an install prompt once the page qualifies (HTTPS +
+  // manifest + service worker); this keeps that prompt for the "Install app" button.
+  // (iPhone/iPad Safari has no prompt: Share -> Add to Home Screen.)
+  const installBtn = document.getElementById('installBtn');
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installPrompt = e;
+    installBtn.hidden = false;
+  });
+  installBtn.addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch (err) { /* ignore */ }
+    installPrompt = null;
+    installBtn.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { installPrompt = null; installBtn.hidden = true; });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* offline support just won't be available */ }); });
+  }
 
   // ---------- FULL SCREEN ----------
   // In the landscape layout, opening a game takes the whole screen (browser bars gone);
