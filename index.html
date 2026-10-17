@@ -231,6 +231,16 @@
 
   /* ---- Viewport units (the embedded TV view gives itself its own --vw / --vh) ---- */
   :root { --vh: 1vh; --vw: 1vw; }
+  /* Room for the camera cut-out, rounded corners and system bars when the app fills the screen
+     (installed full screen, or the browser's full screen): never draw under them. */
+  :root {
+    --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-top-min, 0px));
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+  @media (display-mode: fullscreen) { :root { --safe-top-min: 28px; } }
+  :root:fullscreen { --safe-top-min: 28px; }
   .layout-btn { cursor: pointer; white-space: nowrap; }
 
 
@@ -243,7 +253,7 @@
       radial-gradient(ellipse at top, var(--bg-highlight) 0%, var(--bg) 65%);
     color: var(--white);
     font-family: var(--font-body);
-    padding: 20px;
+    padding: calc(20px + var(--safe-top)) calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
     display: flex;
     justify-content: center;
   }
@@ -1629,7 +1639,7 @@
   html.hud body { display: block; padding: 0; min-height: 0; overflow: hidden; }
   html.hud.hud.hud .app {
     max-width: none; width: 100%; height: calc(100 * var(--vh));
-    padding: calc(1.6 * var(--vh)) calc(1.4 * var(--vw));
+    padding: calc(1.6 * var(--vh) + var(--safe-top)) calc(1.4 * var(--vw) + var(--safe-right)) calc(1.6 * var(--vh) + var(--safe-bottom)) calc(1.4 * var(--vw) + var(--safe-left));
     overflow: hidden; display: flex; flex-direction: column;
   }
   html.hud footer { display: none; }
@@ -1811,7 +1821,8 @@
   /* ---- TV Mode: the scores get (nearly) the whole screen ----
      The control bar is tucked away; the ⋯ button (or a quick-scoring commit) slides it
      down over the top, and it goes back by itself after a few seconds. */
-  .tv-screen { padding: calc(0.8 * var(--vh)) calc(0.8 * var(--vw)); gap: 0; }
+  .tv-screen { padding: calc(0.8 * var(--vh) + var(--safe-top)) calc(0.8 * var(--vw) + var(--safe-right)) calc(0.8 * var(--vh) + var(--safe-bottom)) calc(0.8 * var(--vw) + var(--safe-left)); gap: 0; }
+  .tv-screen.tv-embedded { padding: calc(0.8 * var(--vh)) calc(0.8 * var(--vw)); }
   .tv-grid { gap: calc(0.8 * var(--vh)) calc(0.8 * var(--vw)); }
   /* the fixed top row: game, match / limit, view dots and the ⋯ button. Swipe it sideways to change views. */
   .tv-screen { --tv-top: clamp(30px, calc(5 * var(--vh)), 44px); }
@@ -2508,7 +2519,7 @@
   .tv-add-done-btn { width: 100%; margin-top: 10px; }
 
   /* was: @media (max-width: 600px) */
-  :where(html.vp-w600) body { padding: 12px; }
+  :where(html.vp-w600) body { padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left)); }
   :where(html.vp-w600) .hud-bar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
   :where(html.vp-w600) .brand { font-size: 13px; letter-spacing: 2px; }
   :where(html.vp-w600) .panel { padding: 20px 16px; }
