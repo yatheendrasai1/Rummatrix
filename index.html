@@ -1715,11 +1715,7 @@
     box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 20px 60px rgba(0,0,0,0.35);
   }
   html.hud .hud-stage > [data-hud] { margin-bottom: calc(1.8 * var(--vh)); }
-  html.hud #gameScreen[data-view="record"]    .hud-stage > [data-hud]:not([data-hud~="record"]),
-  html.hud #gameScreen[data-view="standings"] .hud-stage > [data-hud]:not([data-hud~="standings"]),
-  html.hud #gameScreen[data-view="log"]       .hud-stage > [data-hud]:not([data-hud~="log"]),
-  html.hud #gameScreen[data-view="worm"]      .hud-stage > [data-hud]:not([data-hud~="worm"]),
-  html.hud #gameScreen[data-view="settings"]  .hud-stage > [data-hud]:not([data-hud~="settings"]) { display: none; }
+
   html.hud #wormChartSection > summary { display: none; }
   html.hud .actions-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
   html.hud #recordMatchPanel { clip-path: none; background: none; border: 0; padding: 0 !important; margin: 0 0 calc(1.8 * var(--vh)) !important; }
@@ -1831,7 +1827,7 @@
   .hud-extras-body { display: flex; flex-wrap: wrap; gap: 8px; }
   html.hud:not([data-hud-view="settings"]) .hud-bar { display: none; }
   html.hud #testDumpBtn { display: none; }
-  html.hud #gameScreen[data-view="record"] #eventLegendText { display: none; }
+  html.hud #gameScreen[data-view="points"] #eventLegendText { display: none; }
   html.hud .hud-nav-text small { display: none; }
   html.hud .hud-title-name { font-size: clamp(16px, calc(3.6 * var(--vh)), 28px); font-weight: 700; letter-spacing: 0.06em; text-shadow: none; }
   html.hud .hud-orn { display: none; }
@@ -1906,6 +1902,121 @@
   .tv-screen.staging .tv-meta { font-size: 0; display: flex; gap: 10px; }
   .tv-screen.staging .tv-meta > :not(#tvCommitBtn):not(#tvClearStageBtn) { display: none; }
   .tv-screen.staging #tvCommitBtn, .tv-screen.staging #tvClearStageBtn { pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.55); }
+
+
+  /* ================= Home, sub-screens and a game's options ================= */
+  html.vp-landscape:not(.hud) .app { max-width: 1240px; }
+  .home[hidden], .sub-screen[hidden] { display: none; }
+
+  /* home: active games (~70%) | options (~30%) */
+  .home { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); gap: calc(2.4 * var(--vw)); min-height: calc(100 * var(--vh) - 44px); }
+  .home-main { min-width: 0; }
+  .home-head { margin-bottom: calc(2.4 * var(--vh)); }
+  .home-brand { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.3em; color: var(--muted); }
+  .home-brand span { color: var(--green); }
+  .home-head h1 { margin: 6px 0 0; font-size: clamp(22px, calc(4.4 * var(--vh)), 40px); }
+  .home-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(220px, calc(24 * var(--vw)), 330px), 1fr)); gap: calc(1.8 * var(--vh)) calc(1.4 * var(--vw)); }
+  .game-card {
+    position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 160px; padding: 16px;
+    background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--white); text-align: left; font: inherit; cursor: pointer;
+  }
+  .game-card:hover { border-color: var(--orange); }
+  .game-card:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  .game-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .game-card-name { font-weight: 700; font-size: 18px; overflow-wrap: anywhere; }
+  .game-card-actions { display: flex; gap: 6px; flex: none; }
+  .gc-act { width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; }
+  .gc-act:hover { color: var(--white); border-color: var(--muted); }
+  .gc-act.danger:hover { color: #ff6b6b; border-color: #ff6b6b; }
+  .gc-avatars { display: flex; padding-left: 8px; }
+  .gc-av { width: 34px; height: 34px; margin-left: -8px; border-radius: 50%; object-fit: cover; border: 2px solid var(--panel); background: var(--panel-2); }
+  .gc-av-initial { display: grid; place-items: center; font-weight: 800; font-size: 13px; color: var(--muted); }
+  .game-card-meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .game-card-lead { font-size: 14px; margin-top: auto; }
+  .game-card-lead b { color: var(--green); }
+  .game-card-new { align-items: center; justify-content: center; gap: 6px; text-align: center; background: transparent; border-style: dashed; }
+  .game-card-new-plus { font-size: 34px; line-height: 1; color: var(--orange); }
+  .game-card-new-label { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .game-card-new-sub { font-size: 12px; color: var(--muted); }
+  .game-card-new:disabled { opacity: 0.5; cursor: not-allowed; }
+  .game-card-new:disabled:hover { border-color: var(--border); }
+
+  .home-side { display: flex; flex-direction: column; gap: calc(1.8 * var(--vh)); min-width: 0; }
+  .home-tile {
+    position: relative; flex: 1 1 0; min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1.2 * var(--vh));
+    background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--border); border-radius: 16px;
+    color: var(--white); font: inherit; cursor: pointer;
+  }
+  .home-tile:hover { border-color: var(--orange); }
+  .home-tile:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  .home-tile-ico { font-size: clamp(34px, calc(9 * var(--vh)), 72px); line-height: 1; }
+  .home-tile-label { font-size: clamp(12px, calc(2.2 * var(--vh)), 18px); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+  .home-tile-badge { position: absolute; top: 10px; right: 12px; min-width: 24px; height: 24px; padding: 0 7px; display: grid; place-items: center; border-radius: 99px; background: rgba(var(--orange-rgb), 0.2); color: var(--orange); font: 700 12px var(--font-mono); }
+  .home-tile-badge:empty { display: none; }
+  :where(html.vp-portrait) .home { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  :where(html.vp-portrait) .home-side { flex-direction: row; order: -1; }
+  :where(html.vp-portrait) .home-tile { min-height: 110px; }
+  :where(html.vp-portrait) .home-tile-ico { font-size: 34px; }
+
+  /* sub-screens: Settings, Past games, Players, New game */
+  .sub-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .sub-head h1 { margin: 0; }
+  .sub-back { flex: none; }
+  .settings-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .settings-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+  .settings-card.wide { grid-column: 1 / -1; }
+  .settings-card h2 { margin-top: 0; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .settings-row:last-child { border-bottom: 0; }
+  .settings-row[hidden] { display: none; }
+  :where(html.vp-w700) .settings-cards { grid-template-columns: minmax(0, 1fr); }
+  #pastEmpty[hidden] { display: none; }
+
+  /* a game: its three options, then each one's own page */
+  #gameScreen[data-view="hub"]     .hud-stage > [data-hud]:not([data-hud~="hub"]),
+  #gameScreen[data-view="players"] .hud-stage > [data-hud]:not([data-hud~="players"]),
+  #gameScreen[data-view="points"]  .hud-stage > [data-hud]:not([data-hud~="points"]),
+  #gameScreen[data-view="tv"]      .hud-stage > [data-hud],
+  #gameScreen[data-view="tv"] #gameOverBanner { display: none; }
+  #gameScreen[data-view="points"][data-pt="record"] .hud-stage > [data-pt]:not([data-pt~="record"]),
+  #gameScreen[data-view="points"][data-pt="log"]    .hud-stage > [data-pt]:not([data-pt~="log"]),
+  #gameScreen[data-view="points"][data-pt="worm"]   .hud-stage > [data-pt]:not([data-pt~="worm"]) { display: none; }
+  #wormChartSection > summary { display: none; }
+  .game-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .game-topbar-title { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+  html.hud .game-topbar { display: none; }
+  .hub-summary { margin: 6px 0 20px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+  .hub-summary b { color: var(--white); }
+  .hub-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .hub-option {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 190px; padding: 24px 12px;
+    background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--border); border-radius: 16px;
+    color: var(--white); font: inherit; cursor: pointer;
+  }
+  .hub-option:hover { border-color: var(--orange); }
+  .hub-option:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  .hub-option-ico { font-size: 46px; line-height: 1; }
+  .hub-option-title { font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; font-size: 15px; }
+  .hub-option-sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  :where(html.vp-portrait.vp-w700) .hub-options { grid-template-columns: minmax(0, 1fr); }
+  :where(html.vp-portrait.vp-w700) .hub-option { min-height: 96px; display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'ico title' 'ico sub'; align-items: center; justify-items: start; column-gap: 16px; row-gap: 2px; padding: 16px 20px; }
+  :where(html.vp-portrait.vp-w700) .hub-option-ico { grid-area: ico; font-size: 34px; }
+  :where(html.vp-portrait.vp-w700) .hub-option-title { grid-area: title; }
+  :where(html.vp-portrait.vp-w700) .hub-option-sub { grid-area: sub; }
+  .points-tabs { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+  .points-tab { padding: 8px 16px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 700 12px var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .points-tab.selected { background: rgba(var(--orange-rgb), 0.2); color: var(--white); }
+  /* landscape menu rail: two columns now (no right rail), title is a button, settings/home sit at the bottom */
+  html.hud #gameScreen[data-view] { grid-template-columns: var(--hud-left) minmax(0, 1fr); }
+  html.hud .hud-right { display: none; }
+  .hud-title-name { display: block; width: 100%; padding: 0; border: 0; background: none; color: var(--white); text-align: left; font-family: var(--font-display); cursor: pointer; }
+  .hud-nav { flex: 1 1 auto; }
+  .hud-nav-gap { flex: 1 1 auto; }
+  html.hud #gameScreen[data-view="hub"] .hud-stage { display: flex; flex-direction: column; }
+  html.hud .hud-stage > .game-hub { margin: auto 0; }
+  html.hud .hub-option { min-height: calc(34 * var(--vh)); }
+  html.hud .hud-stage > .game-hub .game-meta { justify-content: flex-start; gap: 18px; }
 
   /* ---- Quick scoring: drag a name to set the round's points ---- */
   .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
@@ -2497,32 +2608,81 @@
 </head>
 <body>
 <div class="app">
+  <span id="statusText" hidden>STANDBY</span>
 
-  <div class="hud-bar">
-    <div class="brand">⬡ RUMMY<span>.SYS</span></div>
-    <div class="status"><span class="pulse-dot"></span><span id="statusText">STANDBY</span></div>
-    <button type="button" class="theme-select layout-btn" id="layoutBtn"></button>
-    <button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button>
-    <button type="button" class="theme-select layout-btn" id="installBtn" hidden title="Install Rummatrix as an app">⬇ Install app</button>
-    <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
-      <option value="slate">Slate</option>
-      <option value="terminal">Terminal</option>
-      <option value="rummy">Rummy</option>
-    </select>
-  </div>
-
-  <!-- SETUP SCREEN -->
-  <section class="panel" id="setupScreen">
-    <div class="board-section" id="activeGamesSection" hidden style="margin-bottom:26px;">
-      <h2>Active Games <span class="active-games-count" id="activeGamesCount"></span></h2>
-      <div id="activeGamesList"></div>
+  <!-- HOME: active games (left, ~70%) and the options (right, ~30%) -->
+  <section class="home" id="homeScreen">
+    <div class="home-main">
+      <div class="home-head">
+        <div class="home-brand">⬡ RUMMY<span>.SYS</span></div>
+        <h1>Active games <span class="active-games-count" id="activeGamesCount"></span></h1>
+      </div>
+      <div id="activeGamesSection">
+        <div id="activeGamesList" class="home-games"></div>
+      </div>
     </div>
+    <aside class="home-side" aria-label="Options">
+      <button type="button" class="home-tile" id="homeSettingsBtn"><span class="home-tile-ico">⚙</span><span class="home-tile-label">Settings</span></button>
+      <button type="button" class="home-tile" id="homePastBtn"><span class="home-tile-ico">🕘</span><span class="home-tile-label">Past games</span><span class="home-tile-badge" id="homePastCount"></span></button>
+      <button type="button" class="home-tile" id="homePlayersBtn"><span class="home-tile-ico">👥</span><span class="home-tile-label">Players</span><span class="home-tile-badge" id="homePlayersCount"></span></button>
+    </aside>
+  </section>
 
-    <h1>Initialize New Game</h1>
-    <p class="sub">Set the player count and register call-signs to build the score matrix.</p>
+  <!-- SETTINGS -->
+  <section class="panel sub-screen" id="settingsScreen" hidden>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Settings</h1></div>
+    <div class="settings-cards">
+      <div class="settings-card">
+        <h2>Display</h2>
+        <div class="settings-row"><span>Theme</span>
+          <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
+            <option value="slate">Slate</option>
+            <option value="terminal">Terminal</option>
+            <option value="rummy">Rummy</option>
+          </select></div>
+        <div class="settings-row"><span>Screen layout</span><button type="button" class="theme-select layout-btn" id="layoutBtn"></button></div>
+        <div class="settings-row" id="fsRow"><span>Full screen</span><button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button></div>
+        <div class="settings-row" id="installRow" hidden><span>Install as an app</span><button type="button" class="theme-select layout-btn" id="installBtn" hidden title="Install Rummatrix as an app">⬇ Install app</button></div>
+      </div>
+      <div class="settings-card">
+        <h2>Sound</h2>
+        <div class="settings-row"><span>Announce the round winner</span><button type="button" class="announce-toggle" id="announceToggle" title="Speak a congratulations for the round winner">🔊 Announce!</button></div>
+        <div class="settings-row"><span>Round-won celebration sound</span><button type="button" class="announce-toggle" id="winSoundToggle" title="Mute or unmute the round-won celebration sound">🏆 Win sound: On</button></div>
+      </div>
+      <div class="settings-card wide" id="voiceSettingsSection">
+        <h2>Voice clips &amp; win videos</h2>
+      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy — and, if you like, a win video from this device that plays full-screen, start to finish, as their round-won celebration. Record up to 10 seconds, or upload an audio file — you can trim either (or a saved clip, with ✂ Trim). Saved clips stay under 3 MB.</p>
+      <div id="playerClipList"></div>
+      <div class="error-text" id="playerClipError"></div>
+      <input type="file" id="clipFileInput" accept="audio/*" hidden>
+      <input type="file" id="clipVideoInput" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
+      </div>
+    </div>
+  </section>
 
-    <details class="collapsible-section" id="managePlayersSection">
-      <summary>Manage Players <span id="managePlayersCount"></span></summary>
+  <!-- PAST GAMES -->
+  <section class="panel sub-screen" id="pastScreen" hidden>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Past games</h1></div>
+    <p class="empty-note" id="pastEmpty">No games have been ended yet.</p>
+    <div class="board-section" id="gameHistorySection" hidden>
+      <div class="history-head">
+        <h2>Played Games</h2>
+        <button type="button" class="btn-ghost" id="historyManageBtn" title="Select ended games to delete from this device" style="font-size:10px; padding:5px 10px;">🗑 Clear…</button>
+      </div>
+      <div class="history-toolbar" id="historyToolbar" hidden>
+        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> Select all</label>
+        <span class="history-count" id="historyCount">0 selected</span>
+        <button type="button" class="btn-ghost history-delete-btn" id="historyDeleteBtn" disabled style="font-size:10px; padding:5px 10px;">Delete selected</button>
+        <button type="button" class="btn-ghost" id="historyCancelBtn" style="font-size:10px; padding:5px 10px;">Cancel</button>
+      </div>
+      <div id="gameHistoryList"></div>
+    </div>
+  </section>
+
+  <!-- PLAYERS -->
+  <section class="panel sub-screen" id="playersScreen" hidden>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Players <span class="active-games-count" id="managePlayersCount"></span></h1></div>
+
       <p class="sub" style="margin:0 0 12px; font-size:13px;">Create players ahead of time, and rename them or change their pictures any time. They show up as quick-fill chips when you start a game. Changes here don't affect games already in progress.</p>
       <div class="mp-add-row">
         <div class="player-avatar-wrap">
@@ -2534,7 +2694,12 @@
       </div>
       <div class="error-text" id="mpError"></div>
       <div id="managePlayersList"></div>
-    </details>
+  </section>
+
+  <!-- NEW GAME -->
+  <section class="panel sub-screen" id="setupScreen" hidden>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Initialize New Game</h1></div>
+    <p class="sub">Set the player count and register call-signs to build the score matrix.</p>
 
     <div class="field-group">
       <label>Player Count (2–7)</label>
@@ -2610,65 +2775,60 @@
       </div>
     </div>
 
-    <div class="board-section" id="gameHistorySection" hidden style="margin-top:26px;">
-      <div class="history-head">
-        <h2>Played Games</h2>
-        <button type="button" class="btn-ghost" id="historyManageBtn" title="Select ended games to delete from this device" style="font-size:10px; padding:5px 10px;">🗑 Clear…</button>
-      </div>
-      <div class="history-toolbar" id="historyToolbar" hidden>
-        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> Select all</label>
-        <span class="history-count" id="historyCount">0 selected</span>
-        <button type="button" class="btn-ghost history-delete-btn" id="historyDeleteBtn" disabled style="font-size:10px; padding:5px 10px;">Delete selected</button>
-        <button type="button" class="btn-ghost" id="historyCancelBtn" style="font-size:10px; padding:5px 10px;">Cancel</button>
-      </div>
-      <div id="gameHistoryList"></div>
-    </div>
   </section>
 
-  <!-- GAME SCREEN -->
-  <section class="panel" id="gameScreen" hidden data-view="record">
-    <!-- Landscape "game interface" rails (hidden in the portrait layout) -->
+  <!-- GAME -->
+  <section class="panel" id="gameScreen" hidden data-view="hub" data-pt="record">
+    <!-- Landscape menu rail (hidden in the portrait layout) -->
     <aside class="hud-left hud-only">
       <div class="hud-title">
         <button type="button" class="hud-mini hud-collapse" id="hudCollapseBtn" title="Collapse the menu" aria-label="Collapse the menu" aria-expanded="true">«</button>
-        <div class="hud-title-name" id="hudGameName"></div>
-        <div class="hud-orn"></div>
+        <button type="button" class="hud-title-name" id="hudGameName" title="Back to this game's options"></button>
         <div class="hud-tagline"><span id="hudModeTag"></span>
           <button type="button" class="hud-mini" id="hudRenameBtn" title="Rename this game" aria-label="Rename this game">✎</button>
           <button type="button" class="hud-mini" id="hudModeBtn" title="Switch game mode" aria-label="Switch game mode">⇄</button>
         </div>
       </div>
       <nav class="hud-nav" id="hudNav" aria-label="Game menu">
-        <button type="button" class="hud-nav-item active" data-view="record" title="Record Match"><span class="hud-ico">✚</span><span class="hud-nav-text"><b>Record Match</b><small id="hudSubRecord"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="standings" title="Standings"><span class="hud-ico">🏆</span><span class="hud-nav-text"><b>Standings</b><small id="hudSubStandings"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="log" title="Match Log"><span class="hud-ico">☰</span><span class="hud-nav-text"><b>Match Log</b><small id="hudSubLog"></small></span></button>
-        <button type="button" class="hud-nav-item" data-view="worm" title="Score Worm"><span class="hud-ico">〰</span><span class="hud-nav-text"><b>Score Worm</b><small>Totals by round</small></span></button>
-        <button type="button" class="hud-nav-item" data-view="tv" title="TV Display"><span class="hud-ico">📺</span><span class="hud-nav-text"><b>TV Display</b><small>Live scoreboard</small></span></button>
-        <button type="button" class="hud-nav-item" data-view="settings" title="Settings"><span class="hud-ico">⚙</span><span class="hud-nav-text"><b>Settings</b><small>Players · voices · more</small></span></button>
-        <button type="button" class="hud-nav-item" data-action="switch" title="Switch Game"><span class="hud-ico">🔀</span><span class="hud-nav-text"><b>Switch Game</b><small>Saved automatically</small></span></button>
+        <button type="button" class="hud-nav-item" data-view="players" title="Players list"><span class="hud-ico">👥</span><span class="hud-nav-text"><b>Players list</b></span></button>
+        <button type="button" class="hud-nav-item" data-view="points" title="Points list"><span class="hud-ico">🔢</span><span class="hud-nav-text"><b>Points list</b></span></button>
+        <button type="button" class="hud-nav-item" data-view="tv" title="TV Mode"><span class="hud-ico">📺</span><span class="hud-nav-text"><b>TV Mode</b></span></button>
+        <span class="hud-nav-gap"></span>
+        <button type="button" class="hud-nav-item" data-action="settings" title="Settings"><span class="hud-ico">⚙</span><span class="hud-nav-text"><b>Settings</b></span></button>
+        <button type="button" class="hud-nav-item" data-action="home" title="All games"><span class="hud-ico">⌂</span><span class="hud-nav-text"><b>All games</b></span></button>
       </nav>
-      <div class="hud-card hud-slot" id="hudSlot"></div>
-    </aside>
-    <aside class="hud-right hud-only">
-      <div class="hud-card hud-status" id="hudStatus"></div>
-      <div class="hud-card hud-preview" id="hudPreview"></div>
     </aside>
     <div class="hud-stage" id="hudStage">
-    <div class="hud-extras" id="hudExtras" data-hud="settings"><h2>Round options</h2><div class="hud-extras-body" id="hudExtrasBody"></div></div>
-    <div class="game-meta" data-hud="none">
-      <div class="game-name-display">
-        <span id="gameNameDisplay"></span>
-        <button type="button" class="edit-max-btn" id="editGameNameBtn" title="Rename this game" aria-label="Rename this game">✎</button>
-      </div>
-      <div class="game-mode-display">
-        <b id="gameModeDisplay">Elimination</b>
-        <button type="button" class="edit-max-btn" id="switchModeBtn" title="Switch game mode" aria-label="Switch game mode">⇄</button>
-      </div>
+    <div class="game-topbar" id="gameTopbar" data-hud="hub players points">
+      <button type="button" class="btn-ghost" id="gameBackBtn">‹ Games</button>
+      <span class="game-topbar-title" id="gameTopbarTitle"></span>
+      <button type="button" class="btn-ghost" id="gameSettingsBtn" title="Settings" aria-label="Settings">⚙</button>
     </div>
 
     <div id="gameOverBanner" hidden></div>
 
-    <div class="board-section" data-hud="settings">
+    <!-- the three options for this game -->
+    <div class="game-hub" id="gameHub" data-hud="hub">
+      <div class="game-meta">
+        <div class="game-name-display">
+          <span id="gameNameDisplay"></span>
+          <button type="button" class="edit-max-btn" id="editGameNameBtn" title="Rename this game" aria-label="Rename this game">✎</button>
+        </div>
+        <div class="game-mode-display">
+          <b id="gameModeDisplay">Elimination</b>
+          <button type="button" class="edit-max-btn" id="switchModeBtn" title="Switch game mode" aria-label="Switch game mode">⇄</button>
+        </div>
+      </div>
+      <p class="hub-summary" id="hubSummary"></p>
+      <div class="hub-options">
+        <button type="button" class="hub-option" data-view="players"><span class="hub-option-ico">👥</span><span class="hub-option-title">Players list</span><span class="hub-option-sub" id="hubSubPlayers"></span></button>
+        <button type="button" class="hub-option" data-view="points"><span class="hub-option-ico">🔢</span><span class="hub-option-title">Points list</span><span class="hub-option-sub" id="hubSubPoints"></span></button>
+        <button type="button" class="hub-option" data-view="tv"><span class="hub-option-ico">📺</span><span class="hub-option-title">TV Mode</span><span class="hub-option-sub">Live scoreboard</span></button>
+      </div>
+    </div>
+
+    <!-- players list -->
+    <div class="board-section" data-hud="players">
       <h2 style="display:flex; align-items:center; justify-content:space-between;">
         Players
         <button class="btn-ghost" id="renamePlayersBtn" type="button" style="font-size:10px; padding:5px 10px;">✎ Edit Players</button>
@@ -2676,7 +2836,29 @@
       <div id="playerNamesDisplay"></div>
     </div>
 
-    <div class="panel" id="recordMatchPanel" data-hud="record" style="margin:0 0 18px; padding:14px 16px;">
+    <div class="board-section" data-hud="players">
+      <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
+        <span>Player Summary</span>
+        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button><button type="button" class="edit-max-btn" id="toggleOutBtn" hidden></button></span>
+      </h2>
+      <div id="summaryList" class="summary-list-compact"></div>
+    </div>
+
+    <div class="actions-row" data-hud="players">
+      <button class="btn-ghost" id="tvModeBtn">📺 Full-screen TV</button>
+      <button class="btn-ghost" id="switchGameBtn" title="Save progress and go back to all games">🔀 All games</button>
+      <button class="btn-ghost" id="cloneGameBtn" title="Duplicate this game — full history included — as a new active game">⧉ Clone Game</button>
+      <button class="btn-ghost danger" id="endGameBtn">⏻ End Game</button>
+    </div>
+
+    <!-- points list: record / log / worm -->
+    <div class="points-tabs" id="pointsTabs" data-hud="points" role="tablist">
+      <button type="button" class="points-tab selected" data-pt="record" role="tab">Record match</button>
+      <button type="button" class="points-tab" data-pt="log" role="tab">Match log</button>
+      <button type="button" class="points-tab" data-pt="worm" role="tab">Score worm</button>
+    </div>
+
+    <div class="panel" id="recordMatchPanel" data-hud="points" data-pt="record" style="margin:0 0 18px; padding:14px 16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
         <h2 style="margin-bottom:0;">Record Match #<span id="entryMatchNum"></span></h2>
         <button class="btn-ghost" id="testDumpBtn" type="button" style="font-size:10px; padding:6px 12px; border-style:dashed;" title="Dev/testing only — appends 10 random valid rounds">🧪 Test Dump ×10</button>
@@ -2686,20 +2868,10 @@
       <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <button class="btn-primary" id="addMatchBtn" style="padding:10px 20px; font-size:12px;">Add Match ▹</button>
         <button type="button" class="voice-entry-btn" id="voiceEntryBtn" title="Speak each active player's round score in turn">🎤 Voice Entry</button>
-        <button type="button" class="announce-toggle" id="announceToggle" title="Speak a congratulations for the round winner">🔊 Announce!</button>
-        <button type="button" class="announce-toggle" id="winSoundToggle" title="Mute or unmute the round-won celebration sound">🏆 Win sound: On</button>
       </div>
     </div>
 
-    <div class="board-section" data-hud="standings">
-      <h2 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px;">
-        <span>Player Summary</span>
-        <span class="summary-meta">MATCH <b id="matchNumDisplay">1</b> · <span id="limitLabel">MAX</span> <b id="maxPointsDisplay">-</b><button type="button" class="edit-max-btn" id="editMaxPointsBtn" title="Change the max points limit" aria-label="Change the max points limit">✎</button><button type="button" class="edit-max-btn" id="toggleOutBtn" hidden></button></span>
-      </h2>
-      <div id="summaryList" class="summary-list-compact"></div>
-    </div>
-
-    <div class="board-section" data-hud="log">
+    <div class="board-section" data-hud="points" data-pt="log">
       <h2 style="display:flex; align-items:center; justify-content:space-between;">
         Match Log
         <button class="btn-ghost" id="exportCsvBtn" type="button" title="Export CSV" aria-label="Export CSV" style="font-size:12px; padding:5px 10px;">⬇</button>
@@ -2707,16 +2879,9 @@
       <div id="matchLogList"></div>
     </div>
 
-    <div class="actions-row" data-hud="settings">
-      <button class="btn-ghost" id="tvModeBtn">📺 TV Mode</button>
-      <button class="btn-ghost" id="switchGameBtn" title="Save progress and go back to pick another active game">🔀 Switch Game</button>
-      <button class="btn-ghost" id="cloneGameBtn" title="Duplicate this game — full history included — as a new active game">⧉ Clone Game</button>
-      <button class="btn-ghost danger" id="endGameBtn">⏻ End Game</button>
-    </div>
+    <p class="sub" id="eventLegendText" data-hud="points" data-pt="record" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
 
-    <p class="sub" id="eventLegendText" data-hud="record settings" style="margin:18px 0 0; font-size:12px; font-family:var(--font-mono); letter-spacing:0.5px; color:var(--muted); text-align:center;"></p>
-
-    <details class="collapsible-section" id="wormChartSection" data-hud="worm">
+    <details class="collapsible-section" id="wormChartSection" data-hud="points" data-pt="worm" open>
       <summary>Score Worm</summary>
       <div class="worm-chart-wrap">
         <p class="worm-chart-empty" id="wormChartEmpty">No matches recorded yet — the worm graph will trace each player's running total as you add rounds.</p>
@@ -2729,19 +2894,9 @@
       </div>
     </details>
 
-    <details class="collapsible-section" id="voiceSettingsSection" data-hud="settings">
-      <summary>Voice Settings</summary>
-      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy — and, if you like, a win video from this device that plays full-screen, start to finish, as their round-won celebration. Record up to 10 seconds, or upload an audio file — you can trim either (or a saved clip, with ✂ Trim). Saved clips stay under 3 MB.</p>
-      <div id="playerClipList"></div>
-      <div class="error-text" id="playerClipError"></div>
-      <input type="file" id="clipFileInput" accept="audio/*" hidden>
-      <input type="file" id="clipVideoInput" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
-    </details>
-
     </div><!-- /hud-stage -->
   </section>
 
-  <footer>Lower total leads the matrix · reloading after End Game returns to setup.</footer>
 </div>
 
 <!-- TV MODE — a single, no-scroll screen sized for casting to a TV -->
@@ -2966,6 +3121,7 @@
 
   function renderManagePlayers() {
     managePlayersCount.textContent = recentPlayers.length ? `(${recentPlayers.length})` : '';
+    document.getElementById('homePlayersCount').textContent = recentPlayers.length ? String(recentPlayers.length) : '';
     mpNewAvatar.innerHTML = mpNewAvatarData ? `<img src="${mpNewAvatarData}" alt="">` : `<span class="avatar-placeholder">＋</span>`;
     mpNewAvatarClear.hidden = !mpNewAvatarData;
     managePlayersList.innerHTML = recentPlayers.length === 0
@@ -3556,15 +3712,37 @@
     playerClipError.textContent = text || '';
   }
 
+  // Clips and win videos belong to a player's name, not to a game, so the list is everyone
+  // saved under Players plus whoever is in the open game.
+  let clipRosterNow = [];
+  function clipRoster() {
+    const list = [], seen = new Set();
+    const add = (name, avatar) => {
+      const k = (name || '').trim().toLowerCase();
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      list.push({ name, avatar: avatar || null });
+    };
+    recentPlayers.forEach(p => add(p.name, p.avatar));
+    players.forEach((n, i) => add(n, playerAvatars[i]));
+    return list;
+  }
+  function clipAvatarHtml(entry) {
+    if (entry.avatar) return `<img class="player-avatar avatar-xs" src="${entry.avatar}" alt=""${photoPosStyle(entry.avatar)}>`;
+    return `<span class="player-avatar player-avatar-placeholder avatar-xs" aria-hidden="true">${escapeHtml((entry.name || '?')[0].toUpperCase())}</span>`;
+  }
+
   function renderPlayerClipList() {
-    if (players.length === 0) { playerClipList.innerHTML = ''; return; }
+    clipRosterNow = clipRoster();
+    if (clipRosterNow.length === 0) { playerClipList.innerHTML = '<p class="empty-note">No players yet — add some under Players on the home screen, then give them clips here.</p>'; return; }
     const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-    playerClipList.innerHTML = players.map((name, i) => {
+    playerClipList.innerHTML = clipRosterNow.map(({ name }, i) => {
+      const entry = clipRosterNow[i];
       const has = hasPlayerClip(name);
       const recording = clipRecordingIdx === i;
       const busyElsewhere = clipRecordingIdx !== null && !recording;
       return `<div class="clip-row" data-clip-idx="${i}">
-        <span class="clip-row-player">${avatarHtml(i, 'avatar-xs')}<span>${escapeHtml(name)}</span></span>
+        <span class="clip-row-player">${clipAvatarHtml(entry)}<span>${escapeHtml(name)}</span></span>
         <span class="clip-row-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(name.trim().toLowerCase()) || 'Clip saved')}` : 'No clip')}</span>
         <span class="clip-row-actions">
           ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
@@ -3583,6 +3761,19 @@
     }).join('');
   }
 
+  // Plays a player's win video full screen so it can be checked from Settings.
+  function previewWinVideo(name) {
+    const url = playerVideoUrls.get(name.trim().toLowerCase());
+    if (!url || winOverlay) return;
+    const el = document.createElement('div');
+    el.className = 'win-overlay win-fullvideo';
+    el.innerHTML = `<video class="win-video" src="${escapeAttr(url)}" playsinline controls autoplay></video><button type="button" class="win-mute" aria-label="Close the preview">✕</button>`;
+    const close = () => el.remove();
+    el.querySelector('button').addEventListener('click', close);
+    el.querySelector('video').addEventListener('ended', close);
+    document.body.appendChild(el);
+  }
+
   function stopClipRecording() {
     clearTimeout(clipRecordTimer);
     if (clipRecorder && clipRecorder.state !== 'inactive') clipRecorder.stop();
@@ -3596,7 +3787,7 @@
   }
 
   function startClipRecording(i) {
-    const name = players[i];
+    const name = clipRosterNow[i].name;
     setClipMessage('');
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       const chunks = [];
@@ -3623,7 +3814,7 @@
     const btn = e.target.closest('[data-clip-action]');
     if (!btn || btn.disabled) return;
     const i = Number(btn.closest('.clip-row').dataset.clipIdx);
-    const name = players[i];
+    const name = clipRosterNow[i] && clipRosterNow[i].name;
     if (!name) return;
     switch (btn.dataset.clipAction) {
       case 'record':
@@ -3651,7 +3842,7 @@
         clipVideoInput.click();
         break;
       case 'video-preview':
-        playRoundWon(i, { round: Math.max(1, matches.length), score: 0 });
+        previewWinVideo(name);
         break;
       case 'video-remove':
         if (!confirm(`Remove ${name}'s win video?`)) return;
@@ -3666,7 +3857,7 @@
 
   clipFileInput.addEventListener('change', () => {
     const file = clipFileInput.files && clipFileInput.files[0];
-    const name = players[clipUploadIdx];
+    const name = clipRosterNow[clipUploadIdx] && clipRosterNow[clipUploadIdx].name;
     clipUploadIdx = null;
     if (!file || !name) return;
     if (!file.type.startsWith('audio/')) { setClipMessage('Please choose an audio file.'); return; }
@@ -3676,7 +3867,7 @@
 
   clipVideoInput.addEventListener('change', () => {
     const file = clipVideoInput.files && clipVideoInput.files[0];
-    const name = players[clipUploadIdx];
+    const name = clipRosterNow[clipUploadIdx] && clipRosterNow[clipUploadIdx].name;
     clipUploadIdx = null;
     if (!file || !name) return;
     if (!(file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogv)$/i.test(file.name))) { setClipMessage('Please choose a video file.'); return; }
@@ -4679,10 +4870,10 @@
     maxRoundPoints = eventPts.fullPts;
     saveActiveGame();
 
-    setupScreen.hidden = true;
-    gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
     renderAll();
+    showScreen('game');
+    setGameView('points', 'record');
     openGameFullscreen();
   });
 
@@ -5170,9 +5361,7 @@
     fullPointsInput.value = '';
     importCsvInput.value = '';
     setupError.textContent = '';
-    gameScreen.hidden = true;
-    setupScreen.hidden = false;
-    statusText.textContent = 'STANDBY';
+    showScreen('home');
   }
 
   endGameBtn.addEventListener('click', () => {
@@ -6179,9 +6368,43 @@
 
   const hudNav = document.getElementById('hudNav');
   const hudStage = document.getElementById('hudStage');
-  let hudView = 'record';
+  const homeScreen = document.getElementById('homeScreen');
+  const settingsScreen = document.getElementById('settingsScreen');
+  const pastScreen = document.getElementById('pastScreen');
+  const playersScreen = document.getElementById('playersScreen');
 
-  // The TV Display view reuses the TV Mode screen itself, placed inside the middle area
+  // ---------- SCREENS ----------
+  // home (active games + options) -> game (its three options) / settings / past games /
+  // players / new game. Back goes to where the screen was opened from.
+  const SCREENS = { home: homeScreen, newgame: setupScreen, settings: settingsScreen, past: pastScreen, players: playersScreen, game: gameScreen };
+  let currentScreen = 'home';
+  let screenReturn = 'home';
+  let gameView = 'hub';      // hub | players | points | tv
+  let gamePt = 'record';     // points list tab: record | log | worm
+
+  function showScreen(name, opts) {
+    if (opts && opts.from) screenReturn = opts.from;
+    if (name !== 'game' && tvEmbedded) { closeEmbeddedTv(); gameView = 'hub'; gameScreen.dataset.view = 'hub'; }
+    currentScreen = name;
+    Object.entries(SCREENS).forEach(([key, el]) => { el.hidden = key !== name; });
+    document.documentElement.dataset.screen = name;
+    if (name === 'home') { statusText.textContent = 'STANDBY'; renderActiveGamesList(); renderGameHistory(); renderManagePlayers(); }
+    if (name === 'settings') { renderPlayerClipList(); syncLayoutBtns(); syncFsBtn(); }
+    if (name === 'past') renderGameHistory();
+    if (name === 'players') renderManagePlayers();
+    const app = document.querySelector('.app');
+    app.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('[data-back]').forEach(btn => btn.addEventListener('click', () => {
+    if (currentScreen === 'game') return;
+    showScreen(screenReturn === 'game' && players.length ? 'game' : 'home');
+  }));
+  document.getElementById('homeSettingsBtn').addEventListener('click', () => showScreen('settings', { from: 'home' }));
+  document.getElementById('homePastBtn').addEventListener('click', () => showScreen('past', { from: 'home' }));
+  document.getElementById('homePlayersBtn').addEventListener('click', () => showScreen('players', { from: 'home' }));
+
+  // The TV Mode option reuses the TV Mode screen itself, placed inside the middle area
   // and sized to it (the TV views measure in --vw/--vh, so giving the element its own
   // values makes them fit the space they're given).
   function sizeEmbeddedTv() {
@@ -6216,65 +6439,72 @@
   }
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(sizeEmbeddedTv).observe(hudStage);
 
-  function setHudView(view) {
-    if (hudView === 'tv' && view !== 'tv') closeEmbeddedTv();
-    hudView = view;
+  // ---------- A GAME'S OPTIONS: Players list / Points list / TV Mode ----------
+  function setPointsTab(pt) {
+    gamePt = pt;
+    gameScreen.dataset.pt = pt;
+    document.querySelectorAll('#pointsTabs .points-tab').forEach(b => {
+      const on = b.dataset.pt === pt;
+      b.classList.toggle('selected', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    if (pt === 'worm') renderWormChart();
+  }
+  function setGameView(view, pt) {
+    if (view === 'tv' && !document.documentElement.classList.contains('hud')) {
+      // no room to show it inside the page (portrait layout): use the full-screen TV Mode
+      tvModeBtn.click();
+      return;
+    }
+    if (gameView === 'tv' && view !== 'tv') closeEmbeddedTv();
+    gameView = view;
     gameScreen.dataset.view = view;
-    document.documentElement.dataset.hudView = view;
+    if (pt) setPointsTab(pt); else gameScreen.dataset.pt = gamePt;
     hudNav.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    if (view === 'worm') { document.getElementById('wormChartSection').open = true; renderWormChart(); }
-    if (view === 'settings') document.getElementById('voiceSettingsSection').open = true;
+    if (view === 'points') setPointsTab(gamePt);
     if (view === 'tv') openEmbeddedTv();
     hudStage.scrollTop = 0;
+    renderHub();
   }
   hudNav.addEventListener('click', (e) => {
     const item = e.target.closest('.hud-nav-item');
     if (!item) return;
-    if (item.dataset.view) setHudView(item.dataset.view);
-    else if (item.dataset.action === 'switch') switchGameBtn.click();
+    if (item.dataset.view) setGameView(item.dataset.view);
+    else if (item.dataset.action === 'settings') showScreen('settings', { from: 'game' });
+    else if (item.dataset.action === 'home') switchGameBtn.click();
   });
+  document.getElementById('gameHub').addEventListener('click', (e) => {
+    const opt = e.target.closest('.hub-option');
+    if (opt) setGameView(opt.dataset.view);
+  });
+  document.getElementById('pointsTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.points-tab');
+    if (tab) setPointsTab(tab.dataset.pt);
+  });
+  document.getElementById('hudGameName').addEventListener('click', () => setGameView('hub'));
+  document.getElementById('gameBackBtn').addEventListener('click', () => { if (gameView === 'hub') switchGameBtn.click(); else setGameView('hub'); });
+  document.getElementById('gameSettingsBtn').addEventListener('click', () => showScreen('settings', { from: 'game' }));
   document.getElementById('hudRenameBtn').addEventListener('click', () => editGameNameBtn.click());
   document.getElementById('hudModeBtn').addEventListener('click', () => switchModeBtn.click());
-  document.getElementById('hudPreview').addEventListener('click', (e) => { if (e.target.closest('.hud-open-btn, .hud-pslot')) setHudView('standings'); });
 
-  function renderHud() {
-    if (!document.documentElement.classList.contains('hud')) return;
+  function renderHub() {
+    if (gameScreen.hidden || players.length === 0) return;
     const data = tvTableData(matches.length);
-    const total = players.length;
     const rounds = gameMode === 'rounds';
     const result = computeGameResult(currentGameSnapshotLite(), data.totals, data.outFlags);
     const inCount = data.outFlags.filter(o => !o).length;
-
-    document.getElementById('hudGameName').textContent = gameName || 'Untitled game';
-    document.getElementById('hudModeTag').textContent = `${modeLabel(gameMode)} · ${rounds ? `${totalRounds} matches` : `max ${maxPoints ?? '—'}`}`;
-    document.getElementById('hudSubRecord').textContent = rounds ? `Match ${Math.min(matches.length + 1, totalRounds)} of ${totalRounds}` : `Match #${matches.length + 1}`;
-    document.getElementById('hudSubStandings').textContent = `${total} players · ${inCount} in`;
-    document.getElementById('hudSubLog').textContent = `${matches.length} round${matches.length === 1 ? '' : 's'}`;
-
-    document.getElementById('hudSlot').innerHTML = `<span class="hud-slot-ico">🂡</span>
-      <div style="min-width:0"><div class="hud-slot-label">Active game</div>
-      <div class="hud-slot-name">${escapeHtml(gameName || 'Untitled game')}</div>
-      <div class="hud-slot-meta">${total} players · ${matches.length} round${matches.length === 1 ? '' : 's'} · saved</div></div>`;
-
-    // leader
     const lead = data.order.find(p => !data.outFlags[p]);
-    const started = matches.length > 0 && lead !== undefined;
-    const progress = rounds ? (totalRounds ? matches.length / totalRounds : 0) : (maxPoints && started ? data.totals[lead] / maxPoints : 0);
-    const progressText = rounds ? `Match ${Math.min(matches.length, totalRounds)} / ${totalRounds}` : (started ? `${data.totals[lead]} / ${maxPoints}` : `0 / ${maxPoints ?? '—'}`);
-    document.getElementById('hudStatus').innerHTML = started
-      ? `<div class="hud-lead-av" style="--ac:${tvAccent(lead)}">${tvLogoHtml(lead)}</div>
-         <div style="min-width:0"><div class="hud-lead-name">${escapeHtml(players[lead])}</div>
-         <div class="hud-lead-sub">${result.over ? 'Winner' : 'Leading'} · <b>${data.totals[lead]}</b> pts</div>
-         <div class="hud-meter"><i style="width:${Math.max(2, Math.min(100, progress * 100))}%"></i></div></div>`
-      : `<div class="hud-lead-av">${tvLogoHtml(dealerIdx)}</div>
-         <div style="min-width:0"><div class="hud-lead-name">No leader yet</div>
-         <div class="hud-lead-sub">Play the first round</div>
-         <div class="hud-meter"><i style="width:2%"></i></div></div>`;
-
-    // standings preview
-    const slots = data.order.slice(0, 8).map(p => `<div class="hud-pslot ${data.outFlags[p] ? 'out' : ''} ${started && p === lead ? 'lead' : ''}" style="--ac:${tvAccent(p)}" title="${escapeAttr(players[p])}">${tvLogoHtml(p)}<b>${data.totals[p]}</b></div>`).join('');
-    document.getElementById('hudPreview').innerHTML = `<div class="hud-card-head">Standings</div><div class="hud-slots">${slots}</div>
-      <button type="button" class="hud-open-btn">Open standings ▸</button>`;
+    const title = gameName || 'Untitled game';
+    document.getElementById('hudGameName').textContent = title;
+    document.getElementById('gameTopbarTitle').textContent = title;
+    document.getElementById('hudModeTag').textContent = `${modeLabel(gameMode)} · ${rounds ? `${totalRounds} matches` : `max ${maxPoints ?? '—'}`}`;
+    document.getElementById('gameBackBtn').textContent = gameView === 'hub' ? '‹ Games' : '‹ Options';
+    const roundsText = `${matches.length} round${matches.length === 1 ? '' : 's'}`;
+    document.getElementById('hubSummary').innerHTML = result.over
+      ? `${players.length} players · ${roundsText} · 🏆 ${escapeHtml(result.winners.map(i => players[i]).join(' & ') || 'no winner')}`
+      : `${players.length} players · ${roundsText}${matches.length && lead !== undefined ? ` · Leading: <b>${escapeHtml(players[lead])}</b> (${data.totals[lead]})` : ''}`;
+    document.getElementById('hubSubPlayers').textContent = `${players.length} players · ${inCount} in`;
+    document.getElementById('hubSubPoints').textContent = rounds ? `Match ${Math.min(matches.length + 1, totalRounds)} of ${totalRounds}` : `Match #${matches.length + 1}`;
   }
 
   function syncHud() {
@@ -6283,12 +6513,8 @@
     const was = root.classList.contains('hud');
     root.classList.toggle('hud', on);
     syncHudCollapsed();
-    // Announce / win-sound toggles live under Settings in this layout
-    const extras = document.getElementById('hudExtrasBody');
-    if (on && !was) { extras.append(announceToggle, winSoundToggle); }
-    if (!on && was) { voiceEntryBtn.after(announceToggle, winSoundToggle); }
-    if (!on && tvEmbedded) { closeEmbeddedTv(); hudView = 'record'; gameScreen.dataset.view = 'record'; }
-    if (on && !was) { setHudView(hudView); renderHud(); }
+    if (!on && tvEmbedded) { closeEmbeddedTv(); gameView = 'hub'; gameScreen.dataset.view = 'hub'; }
+    if (on && !was) renderHub();
   }
   new MutationObserver(syncHud).observe(gameScreen, { attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener('rmviewport', syncHud);
@@ -6304,6 +6530,7 @@
     e.preventDefault();
     installPrompt = e;
     installBtn.hidden = false;
+    document.getElementById('installRow').hidden = false;
   });
   installBtn.addEventListener('click', async () => {
     if (!installPrompt) return;
@@ -6311,8 +6538,9 @@
     try { await installPrompt.userChoice; } catch (err) { /* ignore */ }
     installPrompt = null;
     installBtn.hidden = true;
+    document.getElementById('installRow').hidden = true;
   });
-  window.addEventListener('appinstalled', () => { installPrompt = null; installBtn.hidden = true; });
+  window.addEventListener('appinstalled', () => { installPrompt = null; installBtn.hidden = true; document.getElementById('installRow').hidden = true; });
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* offline support just won't be available */ }); });
   }
@@ -6329,6 +6557,7 @@
   }
   function syncFsBtn() {
     fsBtn.hidden = !canFullscreen;
+    document.getElementById('fsRow').hidden = !canFullscreen;
     const on = !!document.fullscreenElement;
     fsBtn.textContent = on ? '⤢ Exit full screen' : '⛶ Full screen';
     fsBtn.title = on ? 'Leave full screen' : 'Use the whole screen';
@@ -6974,10 +7203,10 @@
         matchEvents = importedMatches.map(m => m.map(v => v === null ? null : inferManualEventTag(v)));
         saveActiveGame();
 
-        setupScreen.hidden = true;
-        gameScreen.hidden = false;
         statusText.textContent = 'GAME ACTIVE';
         renderAll();
+        showScreen('game');
+        setGameView('points', 'record');
         openGameFullscreen();
       } catch (err) {
         setupError.textContent = err.message || 'Could not parse that CSV file.';
@@ -7037,60 +7266,72 @@
     activeGamesList.push(clone);
     saveActiveGamesList();
     renderActiveGamesList();
-    alert('Game cloned — find it under Active Games on the setup screen to switch to it.');
+    alert('Game cloned — it is now in your active games.');
   }
 
   function renderActiveGamesList() {
-    if (activeGamesList.length === 0) {
-      activeGamesSection.hidden = true;
-      activeGamesListEl.innerHTML = '';
-      activeGamesCount.textContent = '';
-      return;
-    }
-    activeGamesSection.hidden = false;
-    activeGamesCount.textContent = `(${activeGamesList.length}/${MAX_ACTIVE_GAMES})`;
-    activeGamesListEl.innerHTML = activeGamesList.map(g => {
+    const atMax = activeGamesList.length >= MAX_ACTIVE_GAMES;
+    activeGamesCount.textContent = activeGamesList.length ? `(${activeGamesList.length}/${MAX_ACTIVE_GAMES})` : '';
+    const cards = activeGamesList.map(g => {
       const totals = computeTotalsForSnapshot(g);
-      const leadIdx = totals.reduce((best, t, i) => (best === -1 || t < totals[best]) ? i : best, -1);
-      return `<div class="history-item">
-        <div class="history-row-top">
-          <span class="history-date">${g.gameName ? `<span class="history-game-name">${escapeHtml(g.gameName)}</span>` : escapeHtml(g.players.join(', '))}</span>
+      const out = computeOutFlagsForSnapshot(g, totals);
+      const leadIdx = g.matches.length ? totals.reduce((best, t, i) => (out[i] ? best : (best === -1 || t < totals[best]) ? i : best), -1) : -1;
+      const avatars = g.players.slice(0, 6).map((name, i) => {
+        const url = Array.isArray(g.playerAvatars) ? g.playerAvatars[i] : null;
+        return url ? `<img class="gc-av" src="${url}" alt="">` : `<span class="gc-av gc-av-initial">${escapeHtml((name || '?')[0].toUpperCase())}</span>`;
+      }).join('');
+      const extra = g.players.length > 6 ? `<span class="gc-av gc-av-initial">+${g.players.length - 6}</span>` : '';
+      const mode = g.gameMode === 'rounds' ? `Fixed · ${g.totalRounds} matches` : `Elimination · max ${g.maxPoints}`;
+      return `<div class="game-card" role="button" tabindex="0" data-game-id="${g.id}">
+        <div class="game-card-top">
+          <div class="game-card-name">${g.gameName ? escapeHtml(g.gameName) : escapeHtml(g.players.join(', '))}</div>
+          <div class="game-card-actions">
+            <button type="button" class="gc-act clone-game-btn" data-game-id="${g.id}" title="Clone this game" aria-label="Clone this game">⧉</button>
+            <button type="button" class="gc-act danger end-saved-game-btn" data-game-id="${g.id}" title="End this game" aria-label="End this game">⏻</button>
+          </div>
         </div>
-        ${g.gameName ? `<div class="history-meta">Players: ${escapeHtml(g.players.join(', '))}</div>` : ''}
-        <div class="history-meta">Rounds: ${g.matches.length} · Leading: ${leadIdx !== -1 ? escapeHtml(g.players[leadIdx]) : '—'}</div>
-        <div class="actions-row" style="margin-top:8px;">
-          <button type="button" class="btn-ghost resume-game-btn" data-game-id="${g.id}" style="font-size:11px; padding:6px 12px;">▶ Resume</button>
-          <button type="button" class="btn-ghost clone-game-btn" data-game-id="${g.id}" style="font-size:11px; padding:6px 12px;">⧉ Clone</button>
-          <button type="button" class="btn-ghost danger end-saved-game-btn" data-game-id="${g.id}" style="font-size:11px; padding:6px 12px;">⏻ End</button>
-        </div>
+        <div class="gc-avatars">${avatars}${extra}</div>
+        <div class="game-card-meta">${mode} · ${g.matches.length} round${g.matches.length === 1 ? '' : 's'}</div>
+        <div class="game-card-lead">${leadIdx !== -1 ? `Leading: <b>${escapeHtml(g.players[leadIdx])}</b> (${totals[leadIdx]})` : 'No rounds yet'}</div>
       </div>`;
     }).join('');
+    const newCard = `<button type="button" class="game-card game-card-new" id="newGameCard" ${atMax ? 'disabled' : ''}>
+        <span class="game-card-new-plus">＋</span>
+        <span class="game-card-new-label">New game</span>
+        <span class="game-card-new-sub">${atMax ? `You have ${MAX_ACTIVE_GAMES} active games — end one first` : 'Pick players and a mode'}</span>
+      </button>`;
+    activeGamesListEl.innerHTML = cards + newCard;
+  }
+
+  function openActiveGame(id) {
+    const game = activeGamesList.find(g => g.id === id);
+    if (game) loadGameIntoState(game);
   }
 
   activeGamesListEl.addEventListener('click', (e) => {
-    const resumeBtn = e.target.closest('.resume-game-btn');
-    if (resumeBtn) {
-      const game = activeGamesList.find(g => g.id === resumeBtn.dataset.gameId);
-      if (game) loadGameIntoState(game);
-      return;
-    }
     const cloneBtn = e.target.closest('.clone-game-btn');
-    if (cloneBtn) {
-      cloneGame(cloneBtn.dataset.gameId);
-      return;
-    }
+    if (cloneBtn) { cloneGame(cloneBtn.dataset.gameId); return; }
     const endBtn = e.target.closest('.end-saved-game-btn');
     if (endBtn) {
       const id = endBtn.dataset.gameId;
       const game = activeGamesList.find(g => g.id === id);
       if (!game) return;
-      if (!confirm('End this game? It will be archived to Game History.')) return;
+      if (!confirm('End this game? It will be archived to Past games.')) return;
       archiveGameToHistory(game);
       removeActiveGameById(id);
       if (id === currentGameId) currentGameId = null;
       renderActiveGamesList();
       renderGameHistory();
+      return;
     }
+    if (e.target.closest('#newGameCard')) { showScreen('newgame', { from: 'home' }); return; }
+    const card = e.target.closest('.game-card[data-game-id]');
+    if (card) openActiveGame(card.dataset.gameId);
+  });
+  activeGamesListEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.game-card[data-game-id]');
+    if (card && e.target === card) { e.preventDefault(); openActiveGame(card.dataset.gameId); }
   });
 
   // ---------- GAME HISTORY ----------
@@ -7127,6 +7368,8 @@
   }
 
   function renderGameHistory() {
+    document.getElementById('homePastCount').textContent = gameHistory.length ? String(gameHistory.length) : '';
+    document.getElementById('pastEmpty').hidden = gameHistory.length > 0;
     if (gameHistory.length === 0) {
       historySelecting = false;
       historySelected.clear();
@@ -7348,7 +7591,7 @@
     renderPlayerNames();
     buildEntryGrid();
     renderBoards();
-    renderHud();
+    renderHub();
   }
 
   // Hide / show players who are out in the Player Summary and the round-entry rows
@@ -8034,10 +8277,10 @@
     const loadedTotals = getTotals(matches);
     gameOverCelebrated = computeGameResult(currentGameSnapshotLite(), loadedTotals, getOutFlags(loadedTotals)).over;
 
-    setupScreen.hidden = true;
-    gameScreen.hidden = false;
     statusText.textContent = 'GAME ACTIVE';
     renderAll();
+    showScreen('game');
+    setGameView('hub');
     openGameFullscreen();
   }
 
@@ -8048,19 +8291,8 @@
     g && Array.isArray(g.players) && g.players.length >= MIN_PLAYERS && Array.isArray(g.matches)
   );
 
-  (function restoreActiveGame() {
-    if (activeGamesList.length === 0) {
-      renderGameHistory();
-      return;
-    }
-    if (activeGamesList.length === 1) {
-      loadGameIntoState(activeGamesList[0]);
-      return;
-    }
-    // 2 or 3 saved games — show the picker instead of guessing which to resume.
-    renderGameHistory();
-    renderActiveGamesList();
-  })();
+  // The home screen is always where a fresh open lands; a game is opened by tapping it.
+  showScreen('home');
 </script>
 </body>
 </html>
