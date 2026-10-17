@@ -1929,6 +1929,37 @@
   html.hud.vp-short .hud-bar .brand { font-size: 12px; }
   html.hud.vp-short .hud-bar .layout-btn, html.hud.vp-short .hud-bar .theme-select { padding: 4px 8px; }
 
+
+  /* ---- TV Mode: the scores get (nearly) the whole screen ----
+     The control bar is tucked away; the ⋯ button (or a quick-scoring commit) slides it
+     down over the top, and it goes back by itself after a few seconds. */
+  .tv-screen { padding: calc(0.8 * var(--vh)) calc(0.8 * var(--vw)); gap: 0; }
+  .tv-grid { gap: calc(0.8 * var(--vh)) calc(0.8 * var(--vw)); }
+  .tv-header {
+    position: absolute; left: 0; right: 0; top: 0; z-index: 30;
+    padding: calc(1.2 * var(--vh)) calc(1.6 * var(--vw));
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    transform: translateY(-105%); transition: transform 0.25s ease; pointer-events: none;
+  }
+  .tv-screen.chrome-open .tv-header { transform: none; pointer-events: auto; }
+  .tv-chrome-btn {
+    position: absolute; bottom: calc(1.2 * var(--vh)); left: 50%; transform: translateX(-50%); z-index: 31;
+    width: 26px; height: 26px; padding: 0; border-radius: 50%;
+    display: grid; place-items: center; line-height: 1; font-size: 16px;
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border); color: var(--muted);
+    opacity: 0.35; cursor: pointer; transition: opacity 0.2s ease;
+  }
+  .tv-chrome-btn:hover, .tv-screen.chrome-open .tv-chrome-btn { opacity: 1; }
+  .tv-screen.chrome-open .tv-chrome-btn { display: none; }
+  .tv-screen.staging .tv-chrome-btn { display: none; }
+  .tv-screen.staging .tv-header { top: auto; bottom: calc(1.6 * var(--vh)); transform: none; background: none; border: 0; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; justify-content: center; pointer-events: none; }
+  .tv-screen.staging .tv-header > :not(.tv-meta) { display: none; }
+  .tv-screen.staging .tv-meta { font-size: 0; display: flex; gap: 10px; }
+  .tv-screen.staging .tv-meta > :not(#tvCommitBtn):not(#tvClearStageBtn) { display: none; }
+  .tv-screen.staging #tvCommitBtn, .tv-screen.staging #tvClearStageBtn { pointer-events: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.55); }
+
   /* ---- Quick scoring: drag a name to set the round's points ---- */
   .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
   .tv-table-row[data-player-idx]:not(.out) .tv-table-player { touch-action: none; cursor: ew-resize; }
@@ -2767,7 +2798,8 @@
 
 <!-- TV MODE — a single, no-scroll screen sized for casting to a TV -->
 <div class="tv-screen" id="tvScreen" hidden>
-  <div class="tv-header">
+  <button type="button" class="tv-chrome-btn" id="tvChromeBtn" title="Show controls" aria-label="Show controls" aria-expanded="false">⋯</button>
+  <div class="tv-header" id="tvHeader">
     <span class="tv-brand"><span class="tv-game-name" id="tvGameName"></span></span>
     <span class="tv-meta">MATCH <b id="tvMatchNum">1</b> · <span id="tvLimitLabel">MAX</span> <b id="tvMaxPoints">-</b> <button type="button" class="tv-add-btn" id="tvAddScoreBtn" title="Add a match without leaving TV Mode" aria-label="Add a match">+</button><button type="button" class="tv-toggle-btn" id="tvShowOutBtn" title="Show eliminated players" aria-label="Show eliminated players">+</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvShowNamesBtn" title="Show player names" aria-label="Show player names">Aa</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvTableBtn" title="Show points table" aria-label="Show points table">☰ Table</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvReplayBtn" title="Replay the latest round's movement" aria-label="Replay the latest round's movement" hidden>⟲ Replay</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvWinReplayBtn" title="Replay the round-won celebration for the latest round" aria-label="Replay the round-won celebration" hidden>🏆 Win</button><button type="button" class="tv-toggle-btn tv-names-btn" id="tvLayoutBtn"></button><button type="button" class="tv-toggle-btn tv-commit-btn" id="tvCommitBtn" title="Add the points set by dragging as a new round" aria-label="Commit the round's points" disabled>✓ Commit</button><button type="button" class="tv-toggle-btn tv-names-btn tv-clear-stage-btn" id="tvClearStageBtn" title="Clear the points set so far" aria-label="Clear the points set so far" disabled>✕ Clear</button></span>
     <button type="button" class="tv-exit-btn" id="tvExitBtn" title="Exit TV Mode (Esc)" aria-label="Exit TV Mode">✕</button>
@@ -5789,6 +5821,9 @@
     tvCommitBtn.hidden = !showStageBtns;
     tvClearStageBtn.hidden = !showStageBtns;
     tvClearStageBtn.disabled = n === 0;
+    // While points wait for Commit, only Commit / Clear show, floating at the bottom, so nothing covers a row.
+    tvScreen.classList.toggle('staging', showStageBtns);
+    if (showStageBtns) setTvChrome(false);
     applyStagedChips();
   }
 
@@ -6256,6 +6291,7 @@
     tvPrevTotals = null; lastRoundWinnerIdx = null; tvStatsShown.clear(); tvShowOutPlayers = false;
     updateTvShowOutBtn();
     tvScreen.hidden = false;
+    setTvChrome(true, 3500);
     sizeEmbeddedTv();
     renderTvScreen();
   }
@@ -6491,6 +6527,7 @@
     updateTvShowOutBtn();
     renderTvScreen();
     tvScreen.hidden = false;
+    setTvChrome(true, 3500);
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     if (document.documentElement.requestFullscreen) {
@@ -6515,6 +6552,23 @@
   // TV Mode was reopened and closed properly.
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement && !tvScreen.hidden && !tvEmbedded) exitTvMode();
+  });
+
+  // ---------- TV MODE: controls tucked away ----------
+  const tvChromeBtn = document.getElementById('tvChromeBtn');
+  const tvHeader = document.getElementById('tvHeader');
+  let tvChromeTimer = null;
+  function setTvChrome(open, autoCloseMs) {
+    clearTimeout(tvChromeTimer);
+    tvScreen.classList.toggle('chrome-open', open);
+    tvChromeBtn.setAttribute('aria-expanded', String(open));
+    if (open) tvChromeTimer = setTimeout(() => setTvChrome(false), autoCloseMs || 7000);
+  }
+  tvChromeBtn.addEventListener('click', () => setTvChrome(true));
+  // using the bar keeps it open a while longer; a press anywhere else puts it away
+  tvHeader.addEventListener('pointerdown', () => { if (!tvScreen.classList.contains('staging')) setTvChrome(true); });
+  tvScreen.addEventListener('pointerdown', (e) => {
+    if (tvScreen.classList.contains('chrome-open') && !e.target.closest('#tvHeader, #tvChromeBtn')) setTvChrome(false);
   });
 
   // ---------- TV MODE: add a match without leaving the screen ----------
