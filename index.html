@@ -3399,7 +3399,7 @@
   });
   mpEditCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('mp-name')) e.target.blur(); });
 
-  renderManagePlayers();
+  queueMicrotask(() => renderManagePlayers());   // after the rest of the script has set up (avatar helpers it uses come later)
 
   const setupError = document.getElementById('setupError');
   const startBtn = document.getElementById('startBtn');
