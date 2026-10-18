@@ -604,7 +604,29 @@
   .mp-row { padding: 8px 0; border-bottom: 1px solid var(--border); }
   .mp-row:last-child { border-bottom: none; }
   .mp-row .mp-delete { flex: none; }
-  .mp-empty { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .mp-empty { color: var(--muted); font-size: 13px; margin: 8px 0 0; grid-column: 1 / -1; }
+  .mp-grid .celeb-tile { position: relative; }
+  .mp-wins { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .mp-wins b { color: #ffc94d; }
+  .celeb-tile.mp-add-tile { justify-content: center; border: 0; background: linear-gradient(135deg, #ffa24c, #ff6a2b); color: #fff; min-height: 128px; }
+  .celeb-tile.mp-add-tile:hover { filter: brightness(1.07); }
+  .mp-add-plus { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.25); font-size: 28px; line-height: 1; }
+  .mp-card[hidden] { display: none; }
+  .mp-form .error-text:empty { display: none; }
+  #mpEditCard .mp-row { display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 0; border: 0; }
+  p.clip-hint { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .mp-form { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .mp-big-av .avatar-btn { width: 96px; height: 96px; border: 0; background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .mp-big-av .avatar-placeholder { font-size: 38px; color: #fff; font-weight: 800; }
+  .mp-big-av .avatar-clear-btn { width: 28px; height: 28px; font-size: 16px; top: 0; right: 0; }
+  .mp-av-hint { font-size: 12px; color: var(--muted); }
+  .mp-input { width: 100%; font-size: 18px !important; text-align: center; padding: 12px 14px !important; border-radius: 14px !important; }
+  .mp-save { width: 100%; flex: none; }
+  .mp-actions { display: flex; gap: 8px; width: 100%; }
+  .mp-actions .clip-btn { flex: 1; }
+  .mp-stats { display: flex; gap: 8px; width: 100%; }
+  .mp-stat { flex: 1; background: var(--panel-2); border-radius: 14px; padding: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+  .mp-stat b { display: block; font-size: 20px; color: var(--white); }
   #managePlayersCount { color: var(--muted); font-weight: 400; margin-left: 6px; }
 
   .event-points-grid { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 12px; }
@@ -2765,18 +2787,26 @@
   <section class="panel sub-screen" id="playersScreen" hidden>
     <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Players <span class="active-games-count" id="managePlayersCount"></span></h1></div>
 
-      <p class="sub" style="margin:0 0 12px; font-size:13px;">Create players ahead of time, and rename them or change their pictures any time. They show up as quick-fill chips when you start a game. Changes here don't affect games already in progress.</p>
-      <div class="mp-add-row">
-        <div class="player-avatar-wrap">
+      <p class="clip-hint">Tap a player to rename them or change their picture.</p>
+      <div id="managePlayersList" class="celeb-grid mp-grid"></div>
+  </section>
+
+  <div class="clip-sheet" id="mpSheet" hidden>
+    <div class="clip-sheet-card mp-card" id="mpAddCard" role="dialog" aria-modal="true" aria-label="New player">
+      <div class="clip-sheet-head"><b>New player</b><button type="button" class="clip-sheet-x" data-mp-close aria-label="Close">✕</button></div>
+      <div class="mp-form">
+        <div class="player-avatar-wrap mp-big-av">
           <button type="button" class="avatar-btn" id="mpNewAvatarBtn" title="Add a picture (optional)" aria-label="Add a picture for the new player"><span class="avatar-circle" id="mpNewAvatar"></span></button>
           <button type="button" class="avatar-clear-btn" id="mpNewAvatarClear" title="Remove picture" hidden>×</button>
         </div>
-        <input type="text" id="mpNewName" maxlength="20" placeholder="New player name" autocomplete="off">
-        <button type="button" class="btn-primary" id="mpAddBtn" style="padding:10px 18px; font-size:12px;">Add</button>
+        <span class="mp-av-hint">Tap to add a photo</span>
+        <input type="text" id="mpNewName" class="mp-input" maxlength="20" placeholder="Player name" autocomplete="off">
+        <div class="error-text" id="mpError"></div>
+        <button type="button" class="clip-btn main mp-save" id="mpAddBtn">Add player</button>
       </div>
-      <div class="error-text" id="mpError"></div>
-      <div id="managePlayersList"></div>
-  </section>
+    </div>
+    <div class="clip-sheet-card mp-card" id="mpEditCard" role="dialog" aria-modal="true" aria-label="Edit player"></div>
+  </div>
 
   <!-- NEW GAME -->
   <section class="panel sub-screen" id="setupScreen" hidden>
@@ -3175,31 +3205,105 @@
     catch (err) { return false; }
   }
 
-  function mpMessage(text) { mpError.style.color = ''; mpError.textContent = text || ''; }
+  function mpMessage(text) {
+    mpError.style.color = ''; mpError.textContent = text || '';
+    const e = document.querySelector('#mpEditCard .mp-edit-err');
+    if (e) e.textContent = text || '';
+  }
 
   function mpAvatarInner(avatar, name) {
     return avatar ? `<img src="${avatar}" alt="">` : `<span class="avatar-placeholder">${escapeHtml(name ? name[0].toUpperCase() : '?')}</span>`;
   }
 
-  function renderManagePlayers() {
+  function renderManagePlayers(keepSheet) {
     managePlayersCount.textContent = recentPlayers.length ? `(${recentPlayers.length})` : '';
     document.getElementById('homePlayersCount').textContent = recentPlayers.length ? String(recentPlayers.length) : '';
     mpNewAvatar.innerHTML = mpNewAvatarData ? `<img src="${mpNewAvatarData}" alt="">` : `<span class="avatar-placeholder">＋</span>`;
     mpNewAvatarClear.hidden = !mpNewAvatarData;
-    managePlayersList.innerHTML = recentPlayers.length === 0
-      ? '<p class="mp-empty">No saved players yet — add one above, or start a game and its players are saved automatically.</p>'
-      : recentPlayers.map((pl, i) => `<div class="mp-row" data-idx="${i}">
-          <div class="player-avatar-wrap">
-            <button type="button" class="avatar-btn mp-avatar" title="Change picture" aria-label="Change ${escapeAttr(pl.name)}'s picture"><span class="avatar-circle">${mpAvatarInner(pl.avatar, pl.name)}</span></button>
-            <button type="button" class="avatar-clear-btn mp-avatar-clear" title="Remove picture" aria-label="Remove ${escapeAttr(pl.name)}'s picture" ${pl.avatar ? '' : 'hidden'}>×</button>
-          </div>
-          <input type="text" class="mp-name" maxlength="20" value="${escapeAttr(pl.name)}" aria-label="Player name" autocomplete="off">
-          <button type="button" class="btn-ghost danger mp-delete" title="Delete this player" aria-label="Delete ${escapeAttr(pl.name)}" style="padding:8px 12px; font-size:12px;">🗑</button>
-        </div>`).join('');
+    const stats = rosterStats();
+    managePlayersList.innerHTML = `<button type="button" class="celeb-tile mp-add-tile" data-mp-add><span class="mp-add-plus">＋</span><span>Add player</span></button>`
+      + (recentPlayers.length === 0
+        ? '<p class="mp-empty">No players yet — add one, or start a game and its players are saved automatically.</p>'
+        : recentPlayers.map((pl, i) => {
+          const st = stats.get(pl.name.toLowerCase()) || { wins: 0, games: 0 };
+          return `<button type="button" class="celeb-tile" data-mp-open="${i}">
+            ${clipAvatarHtml(pl)}<span class="celeb-name">${escapeHtml(pl.name)}</span>
+            <span class="mp-wins">${st.wins ? `🏆 <b>${st.wins}</b>` : (st.games ? `${st.games} played` : 'New')}</span>
+          </button>`;
+        }).join(''));
+    if (!keepSheet) renderMpSheet(stats);
   }
 
-  function refreshRosterViews() {
-    renderManagePlayers();
+  // Wins and games played per player name (lower-cased), from Past games.
+  function rosterStats() {
+    const m = new Map();
+    const get = n => { const k = n.toLowerCase(); if (!m.has(k)) m.set(k, { wins: 0, games: 0 }); return m.get(k); };
+    gameHistory.forEach(g => {
+      (g.players || []).forEach(n => get(n).games++);
+      if (g.winner) g.winner.split(' & ').forEach(n => get(n).wins++);
+    });
+    return m;
+  }
+
+  // One sheet, two faces: "New player" (static form) and editing a saved player.
+  const mpSheet = document.getElementById('mpSheet');
+  const mpAddCard = document.getElementById('mpAddCard');
+  const mpEditCard = document.getElementById('mpEditCard');
+  let mpSheetMode = null;   // null | 'add' | player index being edited
+  function renderMpSheet(stats) {
+    if (typeof mpSheetMode === 'number' && !recentPlayers[mpSheetMode]) mpSheetMode = null;
+    mpSheet.hidden = mpSheetMode === null;
+    mpAddCard.hidden = mpSheetMode !== 'add';
+    mpEditCard.hidden = typeof mpSheetMode !== 'number';
+    if (typeof mpSheetMode !== 'number') { mpEditCard.innerHTML = ''; return; }
+    const i = mpSheetMode, pl = recentPlayers[i];
+    const st = (stats || rosterStats()).get(pl.name.toLowerCase()) || { wins: 0, games: 0 };
+    mpEditCard.innerHTML = `<div class="mp-row" data-idx="${i}">
+      <div class="clip-sheet-head"><b>Edit player</b><button type="button" class="clip-sheet-x" data-mp-close aria-label="Close">✕</button></div>
+      <div class="mp-form">
+        <div class="player-avatar-wrap mp-big-av">
+          <button type="button" class="avatar-btn mp-avatar" title="Change picture" aria-label="Change ${escapeAttr(pl.name)}'s picture"><span class="avatar-circle">${mpAvatarInner(pl.avatar, pl.name)}</span></button>
+          <button type="button" class="avatar-clear-btn mp-avatar-clear" title="Remove picture" aria-label="Remove ${escapeAttr(pl.name)}'s picture" ${pl.avatar ? '' : 'hidden'}>×</button>
+        </div>
+        <span class="mp-av-hint">Tap to change the photo</span>
+        <input type="text" class="mp-name mp-input" maxlength="20" value="${escapeAttr(pl.name)}" aria-label="Player name" autocomplete="off">
+        <div class="error-text mp-edit-err"></div>
+        <div class="mp-stats"><div class="mp-stat"><b>${st.wins}</b>wins</div><div class="mp-stat"><b>${st.games}</b>games</div></div>
+        <div class="mp-actions">
+          <button type="button" class="clip-btn" data-mp-celeb>🎤 Celebration</button>
+          <button type="button" class="clip-btn icon danger mp-delete" title="Delete this player" aria-label="Delete ${escapeAttr(pl.name)}">🗑</button>
+        </div>
+        <button type="button" class="clip-btn main mp-save" data-mp-close>Done</button>
+      </div>
+    </div>`;
+  }
+  function openMpSheet(mode) {
+    mpSheetMode = mode;
+    mpMessage('');
+    renderMpSheet();
+    if (mode === 'add') setTimeout(() => mpNewName.focus(), 50);
+  }
+  function closeMpSheet() {
+    // Let a pending rename (input "change") land before the sheet goes away.
+    if (document.activeElement && document.activeElement.classList.contains('mp-name')) document.activeElement.blur();
+    mpSheetMode = null;
+    mpMessage('');
+    renderMpSheet();
+  }
+  mpSheet.addEventListener('click', (e) => {
+    if (e.target === mpSheet || e.target.closest('[data-mp-close]')) { closeMpSheet(); return; }
+    if (e.target.closest('[data-mp-celeb]')) {
+      const pl = recentPlayers[mpSheetMode];
+      closeMpSheet();
+      if (!pl) return;
+      clipOpenKey = pl.name.trim().toLowerCase();
+      showScreen('settings', { from: 'players' });
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !mpSheet.hidden) closeMpSheet(); });
+
+  function refreshRosterViews(keepSheet) {
+    renderManagePlayers(keepSheet);
     renderSetupRoster();
   }
 
@@ -3235,14 +3339,19 @@
     if (!persistRoster()) { recentPlayers.shift(); mpMessage('Could not save — this device\'s storage is full. Try a smaller picture or delete players you no longer need.'); return; }
     mpNewName.value = '';
     mpNewAvatarData = null;
+    mpSheetMode = null;
     mpMessage('');
     refreshRosterViews();
-    mpNewName.focus();
   }
   mpAddBtn.addEventListener('click', addRosterPlayer);
   mpNewName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addRosterPlayer(); } });
 
   managePlayersList.addEventListener('click', (e) => {
+    if (e.target.closest('[data-mp-add]')) { openMpSheet('add'); return; }
+    const tile = e.target.closest('[data-mp-open]');
+    if (tile) openMpSheet(Number(tile.dataset.mpOpen));
+  });
+  mpEditCard.addEventListener('click', (e) => {
     const row = e.target.closest('.mp-row');
     if (!row) return;
     const idx = Number(row.dataset.idx);
@@ -3264,13 +3373,14 @@
       if (!confirm(`Delete ${pl.name} from your saved players? Games already in progress are not affected.`)) return;
       recentPlayers.splice(idx, 1);
       persistRoster();
+      mpSheetMode = null;
       mpMessage('');
       refreshRosterViews();
     }
   });
 
   // Renaming saves when the field loses focus or Enter is pressed.
-  managePlayersList.addEventListener('change', (e) => {
+  mpEditCard.addEventListener('change', (e) => {
     const input = e.target.closest('.mp-name');
     if (!input) return;
     const idx = Number(input.closest('.mp-row').dataset.idx);
@@ -3285,9 +3395,9 @@
     // Their Rummy voice clip is keyed by name, so it follows the rename.
     if (old.toLowerCase() !== name.toLowerCase()) renamePlayerMedia(old, name);
     mpMessage('');
-    refreshRosterViews();
+    refreshRosterViews(true);   // keep the sheet as is, so a tap on Done that caused this blur still lands
   });
-  managePlayersList.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('mp-name')) e.target.blur(); });
+  mpEditCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList.contains('mp-name')) e.target.blur(); });
 
   renderManagePlayers();
 
@@ -6318,6 +6428,7 @@
     if (name === 'home') { statusText.textContent = 'STANDBY'; renderActiveGamesList(); renderGameHistory(); renderManagePlayers(); }
     if (name === 'settings') { renderPlayerClipList(); syncFsBtn(); }
     else if (clipOpenKey && clipRecordingIdx === null) { clipOpenKey = null; clipSheet.hidden = true; }
+    if (name !== 'players' && mpSheetMode !== null) { mpSheetMode = null; renderMpSheet(); }
     if (name === 'newgame') resetSetupForm();
     if (name === 'import') resetImportForm();
     if (name === 'past') renderGameHistory();
