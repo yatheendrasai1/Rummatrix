@@ -1952,7 +1952,6 @@
   .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .settings-row:last-child { border-bottom: 0; }
   .settings-row[hidden] { display: none; }
-  .settings-row .announce-toggle { white-space: nowrap; flex: none; }
   :where(html.vp-w700) .settings-cards { grid-template-columns: minmax(0, 1fr); }
   #pastEmpty[hidden] { display: none; }
 
@@ -2561,28 +2560,67 @@
   /* In-TV-mode "add a match" overlay — reuses the main Record Match panel,
      just moved on top of the score grid instead of navigating away. */
   /* Voice Settings: per-player Rummy voice clips. */
-  #voiceSettingsSection { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--border); }
-  .clip-hint { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
-  .clip-row { border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); margin-bottom: 8px; overflow: hidden; }
-  .clip-row.open { border-color: var(--orange); }
-  .clip-row-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: none; border: 0; color: var(--white); font: inherit; text-align: left; cursor: pointer; }
-  .clip-row-player { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; font-weight: 600; }
-  .clip-row-player span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .clip-chips { display: flex; gap: 6px; flex: none; }
-  .clip-chip { padding: 3px 9px; border-radius: 99px; border: 1px solid var(--border); font-size: 12px; color: var(--muted); opacity: 0.7; }
-  .clip-chip.on { color: var(--green); border-color: var(--green); opacity: 1; }
-  .clip-chip.rec { color: var(--orange); border-color: var(--orange); opacity: 1; }
-  .clip-chev { flex: none; color: var(--muted); transition: transform 0.15s; }
-  .clip-row.open .clip-chev { transform: rotate(90deg); }
-  .clip-row-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 4px 12px 12px; }
-  .clip-sec { background: var(--panel); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .clip-sec-title { font-weight: 600; font-size: 13px; }
-  .clip-sec-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  /* Settings: theme swatches, toggle tiles and a grid of players (details in a sheet) */
+  .set-wrap { display: flex; flex-direction: column; gap: 12px; max-width: 900px; }
+  .set-title { margin: 10px 0 0; font-size: 15px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .set-title-note { font: 400 12px var(--font-body, inherit); color: var(--muted); text-transform: none; letter-spacing: 0; }
+  .theme-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 2px solid var(--border); border-radius: 16px; background: var(--panel-2); color: var(--white); font: 600 13px var(--font-body, inherit); cursor: pointer; }
+  .theme-swatch.sel { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(var(--orange-rgb), 0.25); }
+  .sw-prev { width: 100%; height: 44px; border-radius: 10px; background: linear-gradient(135deg, var(--a) 0 55%, var(--b) 55% 78%, var(--c) 78%); }
+  .set-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .set-tile-wrap { display: contents; }
+  .set-tile-wrap[hidden], .set-tile[hidden] { display: none; }
+  .set-tile { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "ico . sw" "lab lab lab"; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel-2); color: var(--white); font: 600 14px var(--font-body, inherit); text-align: left; cursor: pointer; }
+  .set-tile-ico { grid-area: ico; width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,0.08); font-size: 18px; }
+  .set-tile-label { grid-area: lab; min-width: 0; }
+  .set-switch { grid-area: sw; position: relative; width: 42px; height: 24px; flex: none; border-radius: 99px; background: rgba(255,255,255,0.15); transition: background 0.15s; }
+  .set-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+  .set-tile.on .set-switch { background: var(--green); }
+  .set-tile.on .set-switch::after { transform: translateX(18px); }
+  .set-tile.on { border-color: rgba(var(--green-rgb), 0.5); }
+
+  .celeb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .celeb-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel-2); color: var(--white); font: 600 13px var(--font-body, inherit); cursor: pointer; min-width: 0; }
+  .celeb-tile:hover { border-color: var(--orange); }
+  .celeb-tile .player-avatar { width: 52px; height: 52px; font-size: 20px; }
+  .celeb-tile .player-avatar-placeholder, .clip-sheet-head .player-avatar-placeholder { border: 0; color: #fff; font-weight: 800; background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .celeb-tile:nth-child(5n+2) .player-avatar-placeholder { background: linear-gradient(135deg, #3fd6a2, #12a37a); }
+  .celeb-tile:nth-child(5n+3) .player-avatar-placeholder { background: linear-gradient(135deg, #ffa24c, #ff6a2b); }
+  .celeb-tile:nth-child(5n+4) .player-avatar-placeholder { background: linear-gradient(135deg, #5db4ff, #3a6df0); }
+  .celeb-tile:nth-child(5n+5) .player-avatar-placeholder { background: linear-gradient(135deg, #ff7aa8, #e0448a); }
+  .celeb-tile.set { border-color: rgba(var(--green-rgb), 0.55); }
+  .celeb-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .celeb-marks { display: flex; gap: 8px; font-size: 16px; }
+  .celeb-marks span { opacity: 0.22; filter: grayscale(1); }
+  .celeb-marks span.on { opacity: 1; filter: none; }
+
+  .clip-sheet { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left)); }
+  .clip-sheet[hidden] { display: none; }
+  :where(html.vp-portrait) .clip-sheet { align-items: flex-end; padding-left: 0; padding-right: 0; padding-bottom: 0; }
+  .clip-sheet-card { width: min(560px, 100%); max-height: 100%; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  :where(html.vp-portrait) .clip-sheet-card { border-radius: 22px 22px 0 0; padding-bottom: calc(18px + var(--safe-bottom)); }
+  .clip-sheet-head { display: flex; align-items: center; gap: 12px; }
+  .clip-sheet-head .player-avatar { width: 46px; height: 46px; font-size: 18px; }
+  .clip-sheet-head b { flex: 1; min-width: 0; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip-sheet-x { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--panel-2); color: var(--white); font-size: 16px; cursor: pointer; }
+  .clip-sec { background: var(--panel-2); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .clip-sec-top { display: flex; align-items: center; gap: 10px; }
+  .clip-sec-ico { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 12px; font-size: 18px; color: #fff; }
+  .clip-sec-ico.v { background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .clip-sec-ico.w { background: linear-gradient(135deg, #ffa24c, #ff6a2b); }
+  .clip-sec-top div { min-width: 0; display: flex; flex-direction: column; }
+  .clip-sec-title { font-weight: 700; font-size: 15px; }
+  .clip-sec-status { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .clip-sec-status.has-clip { color: var(--green); }
   .clip-sec-status.recording { color: var(--orange); }
-  .clip-sec-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .clip-sec-actions button { font-size: 12px; padding: 8px 12px; }
-  :where(html.vp-w600) .clip-row-body { grid-template-columns: minmax(0, 1fr); }
+  .clip-sec-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .clip-btn { flex: 1 1 auto; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--white); font: 600 14px var(--font-body, inherit); cursor: pointer; white-space: nowrap; }
+  .clip-btn.main { border: 0; background: var(--orange); color: #fff; }
+  .clip-btn.rec { border: 0; background: #e5484d; color: #fff; }
+  .clip-btn.icon { flex: 0 0 44px; padding: 0; }
+  .clip-btn.danger { color: #ff6b6b; }
+  .clip-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .tv-add-modal {
     position: absolute;
@@ -2669,33 +2707,40 @@
   <!-- SETTINGS -->
   <section class="panel sub-screen" id="settingsScreen" hidden>
     <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Settings</h1></div>
-    <div class="settings-cards">
-      <div class="settings-card">
-        <h2>Display</h2>
-        <div class="settings-row"><span>Theme</span>
-          <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
-            <option value="slate">Slate</option>
-            <option value="terminal">Terminal</option>
-            <option value="rummy">Rummy</option>
-          </select></div>
-        <div class="settings-row" id="fsRow"><span>Full screen</span><button type="button" class="theme-select layout-btn" id="fsBtn" hidden></button></div>
-        <div class="settings-row" id="installRow" hidden><span>Install as an app</span><button type="button" class="theme-select layout-btn" id="installBtn" hidden title="Install Rummatrix as an app">⬇ Install app</button></div>
+    <div class="set-wrap">
+      <h2 class="set-title">Theme</h2>
+      <div class="theme-swatches" id="themeSwatches">
+        <button type="button" class="theme-swatch" data-pick="slate"><span class="sw-prev" style="--a:#0e1116;--b:#7c9cff;--c:#5fe3b0"></span><span>Slate</span></button>
+        <button type="button" class="theme-swatch" data-pick="terminal"><span class="sw-prev" style="--a:#050b08;--b:#ff6a1f;--c:#33e18a"></span><span>Terminal</span></button>
+        <button type="button" class="theme-swatch" data-pick="rummy"><span class="sw-prev" style="--a:#0a2e1e;--b:#b3261e;--c:#d4af37"></span><span>Rummy</span></button>
       </div>
-      <div class="settings-card">
-        <h2>Sound</h2>
-        <div class="settings-row"><span>Announce the round winner</span><button type="button" class="announce-toggle" id="announceToggle" title="Speak a congratulations for the round winner">🔊 Announce!</button></div>
-        <div class="settings-row"><span>Round-won celebration sound</span><button type="button" class="announce-toggle" id="winSoundToggle" title="Mute or unmute the round-won celebration sound">🏆 Win sound: On</button></div>
+      <select id="themeSelect" hidden aria-hidden="true" tabindex="-1">
+        <option value="slate">Slate</option>
+        <option value="terminal">Terminal</option>
+        <option value="rummy">Rummy</option>
+      </select>
+
+      <h2 class="set-title">Game</h2>
+      <div class="set-tiles">
+        <button type="button" class="set-tile" id="winSoundToggle"><span class="set-tile-ico">🏆</span><span class="set-tile-label">Win sound</span><span class="set-switch" aria-hidden="true"></span></button>
+        <button type="button" class="set-tile" id="announceToggle"><span class="set-tile-ico">📣</span><span class="set-tile-label">Announce winner</span><span class="set-switch" aria-hidden="true"></span></button>
+        <div id="fsRow" class="set-tile-wrap"><button type="button" class="set-tile" id="fsBtn" hidden><span class="set-tile-ico">⛶</span><span class="set-tile-label">Full screen</span><span class="set-switch" aria-hidden="true"></span></button></div>
+        <div id="installRow" class="set-tile-wrap" hidden><button type="button" class="set-tile" id="installBtn" hidden title="Install Rummatrix as an app"><span class="set-tile-ico">⬇</span><span class="set-tile-label">Install app</span></button></div>
       </div>
-      <div class="settings-card wide" id="voiceSettingsSection">
-        <h2>Players’ voice &amp; win video</h2>
-      <p class="clip-hint">Tap a player to set their Rummy voice clip and win video.</p>
-      <div id="playerClipList"></div>
-      <div class="error-text" id="playerClipError"></div>
-      <input type="file" id="clipFileInput" accept="audio/*" hidden>
-      <input type="file" id="clipVideoInput" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
+
+      <div id="voiceSettingsSection">
+        <h2 class="set-title">Player celebrations <span class="set-title-note">tap a player · 🎤 voice · 🎬 video</span></h2>
+        <div id="playerClipList" class="celeb-grid"></div>
+        <div class="error-text" id="playerClipError"></div>
+        <input type="file" id="clipFileInput" accept="audio/*" hidden>
+        <input type="file" id="clipVideoInput" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
       </div>
     </div>
   </section>
+
+  <div class="clip-sheet" id="clipSheet" hidden>
+    <div class="clip-sheet-card" id="clipSheetCard" role="dialog" aria-modal="true" aria-label="Player celebration"></div>
+  </div>
 
   <!-- PAST GAMES -->
   <section class="panel sub-screen" id="pastScreen" hidden>
@@ -3063,6 +3108,7 @@
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) metaThemeColor.content = THEME_META_COLORS[theme] || THEME_META_COLORS.slate;
     themeSelect.value = theme;
+    document.querySelectorAll('#themeSwatches .theme-swatch').forEach(b => b.classList.toggle('sel', b.dataset.pick === theme));
   }
 
   let currentTheme = 'slate';
@@ -3072,6 +3118,12 @@
   } catch (err) { /* ignore — default to the Slate theme */ }
   applyTheme(currentTheme);
 
+  document.getElementById('themeSwatches').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    themeSelect.value = b.dataset.pick;
+    themeSelect.dispatchEvent(new Event('change'));
+  });
   themeSelect.addEventListener('change', () => {
     currentTheme = THEMES.includes(themeSelect.value) ? themeSelect.value : 'slate';
     applyTheme(currentTheme);
@@ -3715,11 +3767,15 @@
   let clipRecordingIdx = null;   // player index being recorded
   let clipRecordTimer = null;
   let clipUploadIdx = null;      // player index awaiting a chosen file
-  let clipOpenKey = null;        // lower-cased name of the expanded player row
+  let clipOpenKey = null;        // lower-cased name of the player whose sheet is open
+  const clipSheet = document.getElementById('clipSheet');
+  const clipSheetCard = document.getElementById('clipSheetCard');
 
   function setClipMessage(text) {
     playerClipError.style.color = '';
     playerClipError.textContent = text || '';
+    const inSheet = clipSheetCard.querySelector('.clip-sheet-err');
+    if (inSheet) inSheet.textContent = text || '';
   }
 
   // Clips and win videos belong to a player's name, not to a game, so the list is everyone
@@ -3746,41 +3802,50 @@
     clipRosterNow = clipRoster();
     if (clipRosterNow.length === 0) { playerClipList.innerHTML = '<p class="empty-note">No players yet — add some under Players on the home screen, then give them clips here.</p>'; return; }
     const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-    playerClipList.innerHTML = clipRosterNow.map(({ name }, i) => {
-      const entry = clipRosterNow[i];
-      const key = name.trim().toLowerCase();
-      const has = hasPlayerClip(name);
-      const hasVid = hasPlayerVideo(name);
-      const recording = clipRecordingIdx === i;
-      const busyElsewhere = clipRecordingIdx !== null && !recording;
-      const open = clipOpenKey === key || recording;
-      const body = !open ? '' : `<div class="clip-row-body">
-        <div class="clip-sec">
-          <div class="clip-sec-title">🎤 Voice clip</div>
-          <div class="clip-sec-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(key) || 'Clip saved')}` : 'Plays after a Rummy win')}</div>
-          <div class="clip-sec-actions">
-            ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
-            ${recording ? '' : `<button type="button" class="btn-ghost" data-clip-action="upload" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ ${has ? 'Replace' : 'Upload'}</button>`}
-            ${has && !recording ? `<button type="button" class="btn-ghost" data-clip-action="play">▶ Play</button><button type="button" class="btn-ghost" data-clip-action="trim">✂ Trim</button><button type="button" class="btn-ghost danger" data-clip-action="remove" aria-label="Remove clip">🗑</button>` : ''}
-          </div>
-        </div>
-        <div class="clip-sec">
-          <div class="clip-sec-title">🎬 Win video</div>
-          <div class="clip-sec-status${hasVid ? ' has-clip' : ''}">${hasVid ? `✓ ${escapeHtml(playerVideoNames.get(key) || 'Win video')}` : 'Plays full-screen on a win'}</div>
-          <div class="clip-sec-actions">
-            <button type="button" class="btn-ghost" data-clip-action="video-choose" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ ${hasVid ? 'Replace' : 'Choose'}</button>
-            ${hasVid ? `<button type="button" class="btn-ghost" data-clip-action="video-preview">▶ Preview</button><button type="button" class="btn-ghost danger" data-clip-action="video-remove" aria-label="Remove video">🗑</button>` : ''}
-          </div>
-        </div>
-      </div>`;
-      return `<div class="clip-row${open ? ' open' : ''}" data-clip-idx="${i}">
-        <button type="button" class="clip-row-head" data-clip-toggle aria-expanded="${open}">
-          <span class="clip-row-player">${clipAvatarHtml(entry)}<span>${escapeHtml(name)}</span></span>
-          <span class="clip-chips"><span class="clip-chip${recording ? ' rec' : (has ? ' on' : '')}" title="Voice clip">🎤${has ? ' ✓' : ''}</span><span class="clip-chip${hasVid ? ' on' : ''}" title="Win video">🎬${hasVid ? ' ✓' : ''}</span></span>
-          <span class="clip-chev" aria-hidden="true">›</span>
-        </button>${body}
-      </div>`;
+    playerClipList.innerHTML = clipRosterNow.map((entry, i) => {
+      const has = hasPlayerClip(entry.name), hasVid = hasPlayerVideo(entry.name);
+      return `<button type="button" class="celeb-tile${has || hasVid ? ' set' : ''}" data-clip-open="${i}">
+        ${clipAvatarHtml(entry)}<span class="celeb-name">${escapeHtml(entry.name)}</span>
+        <span class="celeb-marks"><span class="${has ? 'on' : ''}" title="Voice clip">🎤</span><span class="${hasVid ? 'on' : ''}" title="Win video">🎬</span></span>
+      </button>`;
     }).join('');
+    renderClipSheet(canRecord);
+  }
+
+  // The sheet for one player: their Rummy voice clip and win video, with only the
+  // buttons that make sense right now.
+  function renderClipSheet(canRecord) {
+    const i = clipRecordingIdx !== null ? clipRecordingIdx : clipRosterNow.findIndex(p => p.name.trim().toLowerCase() === clipOpenKey);
+    clipSheet.hidden = i === -1;
+    if (i === -1) { clipSheetCard.innerHTML = ''; return; }
+    const entry = clipRosterNow[i], name = entry.name, key = name.trim().toLowerCase();
+    const has = hasPlayerClip(name), hasVid = hasPlayerVideo(name);
+    const recording = clipRecordingIdx === i;
+    clipSheetCard.innerHTML = `<div class="clip-row" data-clip-idx="${i}">
+      <div class="clip-sheet-head">${clipAvatarHtml(entry)}<b>${escapeHtml(name)}</b><button type="button" class="clip-sheet-x" data-clip-close aria-label="Close" ${recording ? 'disabled' : ''}>✕</button></div>
+      <div class="clip-sec">
+        <div class="clip-sec-top"><span class="clip-sec-ico v">🎤</span><div><span class="clip-sec-title">Voice clip</span>
+          <span class="clip-sec-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording… tap Stop when done' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(key) || 'Clip saved')}` : 'Plays when they win with Rummy')}</span></div></div>
+        <div class="clip-sec-actions">
+          ${recording ? `<button type="button" class="clip-btn rec" data-clip-action="record">■ Stop</button>` : `
+          ${canRecord ? `<button type="button" class="clip-btn ${has ? '' : 'main'}" data-clip-action="record">🎙 Record</button>` : ''}
+          <button type="button" class="clip-btn" data-clip-action="upload">⬆ Upload</button>
+          ${has ? `<button type="button" class="clip-btn main" data-clip-action="play">▶ Play</button>
+          <button type="button" class="clip-btn icon" data-clip-action="trim" title="Trim" aria-label="Trim">✂</button>
+          <button type="button" class="clip-btn icon danger" data-clip-action="remove" title="Remove clip" aria-label="Remove clip">🗑</button>` : ''}`}
+        </div>
+      </div>
+      <div class="clip-sec">
+        <div class="clip-sec-top"><span class="clip-sec-ico w">🎬</span><div><span class="clip-sec-title">Win video</span>
+          <span class="clip-sec-status${hasVid ? ' has-clip' : ''}">${hasVid ? `✓ ${escapeHtml(playerVideoNames.get(key) || 'Win video')}` : 'Plays full-screen when they win a round'}</span></div></div>
+        <div class="clip-sec-actions">
+          <button type="button" class="clip-btn ${hasVid ? '' : 'main'}" data-clip-action="video-choose" ${recording ? 'disabled' : ''}>⬆ ${hasVid ? 'Change' : 'Choose video'}</button>
+          ${hasVid ? `<button type="button" class="clip-btn main" data-clip-action="video-preview" ${recording ? 'disabled' : ''}>▶ Preview</button>
+          <button type="button" class="clip-btn icon danger" data-clip-action="video-remove" title="Remove video" aria-label="Remove video" ${recording ? 'disabled' : ''}>🗑</button>` : ''}
+        </div>
+      </div>
+      <div class="error-text clip-sheet-err">${escapeHtml(playerClipError.textContent)}</div>
+    </div>`;
   }
 
   // Plays a player's win video full screen so it can be checked from Settings.
@@ -3833,13 +3898,20 @@
   }
 
   playerClipList.addEventListener('click', (e) => {
-    const tog = e.target.closest('[data-clip-toggle]');
-    if (tog) {
-      const k = clipRosterNow[Number(tog.closest('.clip-row').dataset.clipIdx)].name.trim().toLowerCase();
-      clipOpenKey = clipOpenKey === k ? null : k;
-      renderPlayerClipList();
-      return;
-    }
+    const tile = e.target.closest('[data-clip-open]');
+    if (!tile || clipRecordingIdx !== null) return;
+    setClipMessage('');
+    clipOpenKey = clipRosterNow[Number(tile.dataset.clipOpen)].name.trim().toLowerCase();
+    renderPlayerClipList();
+  });
+  function closeClipSheet() {
+    if (clipRecordingIdx !== null) return;
+    clipOpenKey = null;
+    renderPlayerClipList();
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !clipSheet.hidden) closeClipSheet(); });
+  clipSheet.addEventListener('click', (e) => {
+    if (e.target === clipSheet || e.target.closest('[data-clip-close]')) { closeClipSheet(); return; }
     const btn = e.target.closest('[data-clip-action]');
     if (!btn || btn.disabled) return;
     const i = Number(btn.closest('.clip-row').dataset.clipIdx);
@@ -4369,7 +4441,7 @@
   const winSoundToggle = document.getElementById('winSoundToggle');
   function renderWinSoundToggle() {
     winSoundToggle.classList.toggle('on', !winMuted);
-    winSoundToggle.textContent = winMuted ? '🔇 Win sound: Off' : '🏆 Win sound: On';
+    winSoundToggle.setAttribute('aria-pressed', String(!winMuted));
   }
   renderWinSoundToggle();
   winSoundToggle.addEventListener('click', () => {
@@ -4440,7 +4512,7 @@
 
   function renderAnnounceToggle() {
     announceToggle.classList.toggle('on', announceEnabled);
-    announceToggle.textContent = announceEnabled ? '🔊 Announce: On' : '🔇 Announce: Off';
+    announceToggle.setAttribute('aria-pressed', String(announceEnabled));
   }
 
   if (!speechSupported) {
@@ -6245,6 +6317,7 @@
     document.documentElement.dataset.screen = name;
     if (name === 'home') { statusText.textContent = 'STANDBY'; renderActiveGamesList(); renderGameHistory(); renderManagePlayers(); }
     if (name === 'settings') { renderPlayerClipList(); syncFsBtn(); }
+    else if (clipOpenKey && clipRecordingIdx === null) { clipOpenKey = null; clipSheet.hidden = true; }
     if (name === 'newgame') resetSetupForm();
     if (name === 'import') resetImportForm();
     if (name === 'past') renderGameHistory();
@@ -6420,7 +6493,7 @@
     fsBtn.hidden = !canFullscreen;
     document.getElementById('fsRow').hidden = !canFullscreen;
     const on = !!document.fullscreenElement;
-    fsBtn.textContent = on ? '⤢ Exit full screen' : '⛶ Full screen';
+    fsBtn.classList.toggle('on', on);
     fsBtn.title = on ? 'Leave full screen' : 'Use the whole screen';
     fsBtn.setAttribute('aria-label', fsBtn.title);
   }
