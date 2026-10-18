@@ -1963,6 +1963,48 @@
   html.hud .hub-option { min-height: calc(34 * var(--vh)); }
   html.hud .hud-stage > .game-hub .game-meta { justify-content: flex-start; gap: 18px; }
 
+
+  /* ---- New game / Import: one calm column ---- */
+  .setup-block { margin-bottom: 22px; }
+  .setup-label { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
+  .setup-hint { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .sp-roster { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sp-chip {
+    position: relative; display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+    padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+    color: var(--white); font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .sp-chip:hover { border-color: var(--muted); }
+  .sp-chip.on { border-color: var(--orange); background: rgba(var(--orange-rgb), 0.16); }
+  .sp-av { flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--panel-2); font-weight: 800; font-size: 13px; color: var(--muted); }
+  .sp-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-seat { flex: none; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 99px; background: var(--orange); color: var(--ink-on-orange); font: 700 11px var(--font-mono); }
+  .sp-add { border-style: dashed; background: transparent; color: var(--muted); }
+  .sp-add .sp-av { background: transparent; color: var(--orange); font-size: 20px; }
+  .sp-new { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border: 1px dashed var(--border); border-radius: 14px; }
+  .sp-new[hidden] { display: none; }
+  .sp-new input[type="text"] { flex: 1; min-width: 0; }
+  .setup-dealer { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .setup-name { width: 100%; max-width: 420px; }
+  .setup-limit { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .setup-limit[hidden] { display: none; }
+  .setup-limit label { font-weight: 700; font-size: 14px; min-width: 64px; }
+  .setup-limit input { width: 110px; }
+  .presets { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .preset-chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--muted); font: 600 12px var(--font-mono); cursor: pointer; }
+  .preset-chip:hover { color: var(--white); border-color: var(--muted); }
+  .preset-chip.on { color: var(--white); border-color: var(--orange); background: rgba(var(--orange-rgb), 0.16); }
+  .setup-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .setup-adv { margin-bottom: 22px; }
+  .setup-adv > summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; }
+  .setup-adv > summary::before { content: '▸ '; }
+  .setup-adv[open] > summary::before { content: '▾ '; }
+  .setup-adv .event-points-grid { margin-top: 12px; }
+  .setup-start { width: 100%; max-width: 420px; padding: 14px 20px; font-size: 14px; }
+  :where(html.vp-portrait) .home-side { flex-wrap: wrap; }
+  :where(html.vp-portrait) .home-tile { flex: 1 1 42%; }
+
   /* ---- Quick scoring: drag a name to set the round's points ---- */
   .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
   .tv-table-row[data-player-idx]:not(.out) .tv-table-player { touch-action: none; cursor: ew-resize; }
@@ -2570,6 +2612,7 @@
     <aside class="home-side" aria-label="Options">
       <button type="button" class="home-tile" id="homeSettingsBtn"><span class="home-tile-ico">⚙</span><span class="home-tile-label">Settings</span></button>
       <button type="button" class="home-tile" id="homePastBtn"><span class="home-tile-ico">🕘</span><span class="home-tile-label">Past games</span><span class="home-tile-badge" id="homePastCount"></span></button>
+      <button type="button" class="home-tile" id="homeImportBtn"><span class="home-tile-ico">📥</span><span class="home-tile-label">Import</span></button>
       <button type="button" class="home-tile" id="homePlayersBtn"><span class="home-tile-ico">👥</span><span class="home-tile-label">Players</span><span class="home-tile-badge" id="homePlayersCount"></span></button>
     </aside>
   </section>
@@ -2643,83 +2686,90 @@
 
   <!-- NEW GAME -->
   <section class="panel sub-screen" id="setupScreen" hidden>
-    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Initialize New Game</h1></div>
-    <p class="sub">Set the player count and register call-signs to build the score matrix.</p>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>New game</h1></div>
 
-    <div class="field-group">
-      <label>Player Count (2–7)</label>
-      <div class="count-selector" id="countSelector"></div>
+    <div class="setup-block">
+      <div class="setup-label">Players <span class="setup-hint" id="setupSelCount"></span></div>
+      <div class="sp-roster" id="setupRoster"></div>
+      <div class="sp-new" id="spForm" hidden>
+        <div class="player-avatar-wrap">
+          <button type="button" class="avatar-btn" id="spAvatarBtn" title="Add a picture (optional)" aria-label="Add a picture for the new player"><span class="avatar-circle" id="spAvatar"></span></button>
+          <button type="button" class="avatar-clear-btn" id="spAvatarClear" title="Remove picture" hidden>×</button>
+        </div>
+        <input type="text" id="spName" maxlength="20" placeholder="New player's name" autocomplete="off">
+        <button type="button" class="btn-primary" id="spAddBtn" style="padding:10px 16px; font-size:12px;">Add</button>
+        <button type="button" class="btn-ghost" id="spCancelBtn" aria-label="Cancel" style="padding:10px 12px;">✕</button>
+      </div>
+      <div class="error-text" id="spError"></div>
+      <div class="setup-dealer" id="setupDealerRow" hidden><label for="setupDealer">First dealer</label><select id="setupDealer" class="theme-select"></select></div>
     </div>
 
-    <div class="field-group" id="playerFieldsWrap" hidden>
-      <label>Player Names</label>
-      <p class="sub" style="margin:-4px 0 12px; font-size:13px;">Tap a player's circle to add a profile picture (optional).</p>
-      <div class="saved-players-row" id="savedPlayersRow" hidden></div>
-      <div class="player-fields" id="playerFields"></div>
+    <div class="setup-block">
+      <input type="text" id="gameNameInput" class="setup-name" maxlength="40" placeholder="Game name (optional)">
     </div>
 
-    <div class="field-group">
-      <label>Game Name (optional)</label>
-      <input type="text" id="gameNameInput" maxlength="40" placeholder="e.g. Friday Night Rummy" style="max-width:320px;">
-    </div>
-
-    <div class="field-group">
-      <label>Game Mode</label>
+    <div class="setup-block">
       <div class="mode-toggle" id="modeToggle">
         <button type="button" class="mode-toggle-btn selected" data-mode="elimination">Elimination</button>
-        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed Matches</button>
+        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed matches</button>
       </div>
-      <p class="sub" id="modeHint" style="margin:8px 0 0; font-size:13px;"></p>
+      <div class="setup-limit" id="maxPointsField">
+        <label for="maxPointsInput">Out at</label>
+        <input type="number" id="maxPointsInput" min="1" step="1" inputmode="numeric" placeholder="200">
+        <span class="presets" data-for="maxPointsInput"></span>
+      </div>
+      <div class="setup-limit" id="totalRoundsField" hidden>
+        <label for="totalRoundsInput">Matches</label>
+        <input type="number" id="totalRoundsInput" min="1" step="1" inputmode="numeric" placeholder="10">
+        <span class="presets" data-for="totalRoundsInput"></span>
+      </div>
+      <p class="setup-note" id="modeHint"></p>
     </div>
 
-    <div class="field-group" id="maxPointsField">
-      <label>Max Points (elimination limit)</label>
-      <input type="number" id="maxPointsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 200" style="max-width:200px;">
-    </div>
-
-    <div class="field-group" id="totalRoundsField" hidden>
-      <label>Number of Matches</label>
-      <input type="number" id="totalRoundsInput" min="1" step="1" inputmode="numeric" placeholder="e.g. 10" style="max-width:200px;">
-    </div>
-
-    <div class="field-group">
-      <label>Event Points (optional — leave blank for defaults)</label>
+    <details class="setup-adv">
+      <summary>Points for Drop, Middle drop and Full count</summary>
       <div class="event-points-grid">
-        <div>
-          <span class="event-points-sublabel">Drop (D)</span>
-          <input type="number" id="dropPointsInput" min="1" step="1" inputmode="numeric" placeholder="21">
-        </div>
-        <div>
-          <span class="event-points-sublabel">Middle Drop (MD)</span>
-          <input type="number" id="mdropPointsInput" min="1" step="1" inputmode="numeric" placeholder="41">
-        </div>
-        <div>
-          <span class="event-points-sublabel">Full Count (FC)</span>
-          <input type="number" id="fullPointsInput" min="1" step="1" inputmode="numeric" placeholder="80">
-        </div>
+        <div><span class="event-points-sublabel">Drop (D)</span><input type="number" id="dropPointsInput" min="1" step="1" inputmode="numeric" placeholder="21"></div>
+        <div><span class="event-points-sublabel">Middle drop (MD)</span><input type="number" id="mdropPointsInput" min="1" step="1" inputmode="numeric" placeholder="41"></div>
+        <div><span class="event-points-sublabel">Full count (FC)</span><input type="number" id="fullPointsInput" min="1" step="1" inputmode="numeric" placeholder="80"></div>
       </div>
-    </div>
+    </details>
 
     <div class="error-text" id="setupError"></div>
+    <button class="btn-primary setup-start" id="startBtn">Start game ▹</button>
+  </section>
 
-    <button class="btn-primary" id="startBtn">Initialize Game ▹</button>
-
-    <div style="margin:26px 0; border-top:1px dashed var(--border);"></div>
-
-    <div class="field-group">
-      <label>Or Import an Existing Game (CSV)</label>
-      <p class="sub" style="margin:0 0 12px; font-size:13px;">Header row: <code>matches,player1,player2,…</code> — each following row is one round's scores. Enter Max Points above first.</p>
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <!-- Deliberately no `accept` filter — mobile file pickers key it off the
-             file's MIME/UTI tag, which varies wildly by source app and can hide
-             a perfectly valid CSV the user can see right there in the picker.
-             parseGameCsv() below gives a clear error for anything that isn't
-             actually a valid CSV, so filtering here isn't worth that risk. -->
-        <input type="file" id="importCsvInput" class="csv-file-input">
-        <button class="btn-ghost" id="importCsvBtn" type="button" style="padding:10px 18px; font-size:12px;">📥 Import &amp; Start</button>
+  <!-- IMPORT A GAME -->
+  <section class="panel sub-screen" id="importScreen" hidden>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Import a game</h1></div>
+    <p class="sub">Bring in an exported game (CSV). The first row is <code>matches,player1,player2,…</code> and each row after it is one round's scores.</p>
+    <div class="setup-block">
+      <input type="text" id="impName" class="setup-name" maxlength="40" placeholder="Game name (optional)">
+    </div>
+    <div class="setup-block">
+      <div class="mode-toggle" id="impModeToggle">
+        <button type="button" class="mode-toggle-btn selected" data-mode="elimination">Elimination</button>
+        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed matches</button>
+      </div>
+      <div class="setup-limit" id="impMaxField">
+        <label for="impMaxInput">Out at</label>
+        <input type="number" id="impMaxInput" min="1" step="1" inputmode="numeric" placeholder="200">
+        <span class="presets" data-for="impMaxInput"></span>
+      </div>
+      <div class="setup-limit" id="impRoundsField" hidden>
+        <label for="impRoundsInput">Matches</label>
+        <input type="number" id="impRoundsInput" min="1" step="1" inputmode="numeric" placeholder="10">
+        <span class="presets" data-for="impRoundsInput"></span>
       </div>
     </div>
-
+    <div class="setup-block">
+      <!-- Deliberately no `accept` filter — mobile file pickers key it off the file's MIME/UTI tag,
+           which varies wildly by source app and can hide a perfectly valid CSV. parseGameCsv()
+           gives a clear error for anything that isn't actually a valid CSV. -->
+      <input type="file" id="importCsvInput" class="csv-file-input">
+    </div>
+    <div class="error-text" id="impError"></div>
+    <button class="btn-primary setup-start" id="importCsvBtn" type="button">📥 Import &amp; start</button>
   </section>
 
   <!-- GAME -->
@@ -2978,10 +3028,6 @@
     applyTheme(currentTheme);
     try { localStorage.setItem(THEME_KEY, currentTheme); } catch (err) { /* ignore */ }
   });
-  const countSelector = document.getElementById('countSelector');
-  const playerFieldsWrap = document.getElementById('playerFieldsWrap');
-  const playerFields = document.getElementById('playerFields');
-  const savedPlayersRow = document.getElementById('savedPlayersRow');
 
   // Players saved from earlier games (name + avatar), most-recently-used first, so
   // the setup screen can offer them as tap-to-fill chips instead of retyping/re-
@@ -3007,38 +3053,6 @@
     try { localStorage.setItem(RECENT_PLAYERS_KEY, JSON.stringify(recentPlayers)); } catch (err) { /* ignore */ }
     if (typeof renderManagePlayers === 'function') renderManagePlayers();
   }
-
-  function renderSavedPlayersRow() {
-    if (recentPlayers.length === 0) {
-      savedPlayersRow.hidden = true;
-      savedPlayersRow.innerHTML = '';
-      return;
-    }
-    savedPlayersRow.hidden = false;
-    savedPlayersRow.innerHTML = recentPlayers.map((p, idx) => {
-      const avatarInner = p.avatar
-        ? `<img src="${p.avatar}" alt="">`
-        : `<span>${escapeHtml(p.name ? p.name[0].toUpperCase() : '?')}</span>`;
-      return `<button type="button" class="saved-player-chip" data-idx="${idx}" title="Fill the next empty slot with ${escapeAttr(p.name)}">
-        <span class="chip-avatar">${avatarInner}</span>
-        <span>${escapeHtml(p.name)}</span>
-      </button>`;
-    }).join('');
-  }
-
-  savedPlayersRow.addEventListener('click', (e) => {
-    const chip = e.target.closest('.saved-player-chip');
-    if (!chip) return;
-    const saved = recentPlayers[Number(chip.dataset.idx)];
-    if (!saved) return;
-    const inputs = [...playerFields.querySelectorAll('.player-name-input')];
-    const targetInput = inputs.find(inp => inp.value.trim() === '');
-    if (!targetInput) return;
-    const i = Number(targetInput.id.replace('player-input-', ''));
-    targetInput.value = saved.name;
-    playerAvatars[i] = saved.avatar || null;
-    updateAvatarPreview(i);
-  });
 
   // ---------- MANAGE PLAYERS: the saved roster, edited outside any game ----------
   // Uses the same saved-players list as the quick-fill chips (recentPlayers), so
@@ -3085,7 +3099,7 @@
 
   function refreshRosterViews() {
     renderManagePlayers();
-    renderSavedPlayersRow();
+    renderSetupRoster();
   }
 
   // Validates a roster name; returns an error message or '' if fine.
@@ -3096,14 +3110,14 @@
     return '';
   }
 
-  function pickRosterImage(onPicked) {
+  function pickRosterImage(onPicked, onError = mpMessage) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
       if (!file) return;
-      cropAvatarFile(file).then(dataUrl => { if (dataUrl) onPicked(dataUrl); }).catch(err => mpMessage(err.message || 'Could not load that image.'));
+      cropAvatarFile(file).then(dataUrl => { if (dataUrl) onPicked(dataUrl); }).catch(err => onError(err.message || 'Could not load that image.'));
     });
     input.click();
   }
@@ -3184,6 +3198,7 @@
   const fullPointsInput = document.getElementById('fullPointsInput');
   const importCsvInput = document.getElementById('importCsvInput');
   const importCsvBtn = document.getElementById('importCsvBtn');
+  const impError = document.getElementById('impError');
   const gameHistorySection = document.getElementById('gameHistorySection');
   const gameHistoryList = document.getElementById('gameHistoryList');
   const activeGamesSection = document.getElementById('activeGamesSection');
@@ -4372,15 +4387,6 @@
 
   // ---------- SETUP SCREEN ----------
 
-  for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
-    const b = document.createElement('button');
-    b.className = 'hex-btn';
-    b.textContent = n;
-    b.type = 'button';
-    b.addEventListener('click', () => selectPlayerCount(n));
-    countSelector.appendChild(b);
-  }
-
   // ---------- PICTURE CROP ----------
   // Every picture picker goes through cropAvatarFile(): pick a file, choose the
   // part to keep (a movable, resizable square), and get back a downsized JPEG
@@ -4570,7 +4576,7 @@
   // Updates one player's avatar preview in place (picker button + clear button) within
   // whichever avatar-picker form is currently showing it — the setup screen's player
   // fields by default, or the mid-game "Edit Players" form when editing there.
-  function updateAvatarPreview(i, container = playerFields) {
+  function updateAvatarPreview(i, container = playerNamesDisplay) {
     const circle = container.querySelector(`.avatar-circle[data-idx="${i}"]`);
     const clearBtn = container.querySelector(`.avatar-clear-btn[data-idx="${i}"]`);
     if (!circle) return;
@@ -4600,141 +4606,6 @@
     fileInput.click();
   }
 
-  // Shared by selectPlayerCount and moveSetupPlayer — rebuilds the setup
-  // screen's player rows (avatar, name, reorder, dealer pick) from a plain
-  // names array, since nothing is committed to `players` until Start Game.
-  function renderPlayerFieldRows(names) {
-    playerFields.innerHTML = '';
-    const n = names.length;
-
-    names.forEach((name, i) => {
-      const row = document.createElement('div');
-      row.className = 'player-field-row';
-
-      const moveWrap = document.createElement('div');
-      moveWrap.className = 'player-row-move';
-      const upBtn = document.createElement('button');
-      upBtn.type = 'button';
-      upBtn.className = 'player-move-btn';
-      upBtn.textContent = '▲';
-      upBtn.title = 'Move up';
-      upBtn.setAttribute('aria-label', 'Move up');
-      upBtn.disabled = i === 0;
-      upBtn.addEventListener('click', () => moveSetupPlayer(i, -1));
-      const downBtn = document.createElement('button');
-      downBtn.type = 'button';
-      downBtn.className = 'player-move-btn';
-      downBtn.textContent = '▼';
-      downBtn.title = 'Move down';
-      downBtn.setAttribute('aria-label', 'Move down');
-      downBtn.disabled = i === n - 1;
-      downBtn.addEventListener('click', () => moveSetupPlayer(i, 1));
-      moveWrap.appendChild(upBtn);
-      moveWrap.appendChild(downBtn);
-
-      const avatarWrap = document.createElement('div');
-      avatarWrap.className = 'player-avatar-wrap';
-
-      const avatarBtn = document.createElement('button');
-      avatarBtn.type = 'button';
-      avatarBtn.className = 'avatar-btn';
-      avatarBtn.title = 'Set profile picture';
-      avatarBtn.setAttribute('aria-label', 'Set profile picture');
-      const circle = document.createElement('span');
-      circle.className = 'avatar-circle';
-      circle.dataset.idx = i;
-      avatarBtn.appendChild(circle);
-
-      const clearBtn = document.createElement('button');
-      clearBtn.type = 'button';
-      clearBtn.className = 'avatar-clear-btn';
-      clearBtn.dataset.idx = i;
-      clearBtn.title = 'Remove picture';
-      clearBtn.textContent = '×';
-      clearBtn.hidden = true;
-      clearBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        playerAvatars[i] = null;
-        updateAvatarPreview(i);
-      });
-
-      avatarBtn.addEventListener('click', () => {
-        pickAvatarFor(i, playerFields, (msg) => { setupError.textContent = msg; });
-      });
-
-      avatarWrap.appendChild(avatarBtn);
-      avatarWrap.appendChild(clearBtn);
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'player-name-input';
-      input.placeholder = `Player ${i + 1} name`;
-      input.maxLength = 20;
-      input.value = name || '';
-      input.id = `player-input-${i}`;
-      input.addEventListener('input', () => { if (!playerAvatars[i]) updateAvatarPreview(i); });
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const next = document.getElementById(`player-input-${i + 1}`);
-          if (next) next.focus(); else startBtn.click();
-        }
-      });
-
-      const dealerBtn = document.createElement('button');
-      const isDealer = i === initialDealerIdx;
-      dealerBtn.type = 'button';
-      dealerBtn.className = 'dealer-pick-btn' + (isDealer ? ' selected' : '');
-      dealerBtn.textContent = '🃏';
-      dealerBtn.title = isDealer ? 'Deals first' : 'Set as first dealer';
-      dealerBtn.setAttribute('aria-label', dealerBtn.title);
-      dealerBtn.addEventListener('click', () => {
-        initialDealerIdx = i;
-        renderPlayerFieldRows([...playerFields.querySelectorAll('.player-name-input')].map(inp => inp.value));
-      });
-
-      row.appendChild(moveWrap);
-      row.appendChild(avatarWrap);
-      row.appendChild(input);
-      row.appendChild(dealerBtn);
-      playerFields.appendChild(row);
-      updateAvatarPreview(i);
-    });
-  }
-
-  // Swaps two adjacent setup rows — names, avatars, and (if it was pointing at
-  // either of them) the first-dealer pick all move together.
-  function moveSetupPlayer(i, dir) {
-    const names = [...playerFields.querySelectorAll('.player-name-input')].map(inp => inp.value);
-    const j = i + dir;
-    if (j < 0 || j >= names.length) return;
-    [names[i], names[j]] = [names[j], names[i]];
-    [playerAvatars[i], playerAvatars[j]] = [playerAvatars[j], playerAvatars[i]];
-    if (initialDealerIdx === i) initialDealerIdx = j;
-    else if (initialDealerIdx === j) initialDealerIdx = i;
-    renderPlayerFieldRows(names);
-  }
-
-  function selectPlayerCount(n) {
-    playerCount = n;
-    [...countSelector.children].forEach(b => b.classList.toggle('selected', Number(b.textContent) === n));
-
-    const existingNames = [...playerFields.querySelectorAll('.player-name-input')].map(i => i.value);
-    const existingAvatars = playerAvatars.slice();
-    playerAvatars = [];
-    const names = [];
-    for (let i = 0; i < n; i++) {
-      playerAvatars[i] = existingAvatars[i] || null;
-      names[i] = existingNames[i] || '';
-    }
-    initialDealerIdx = 0;
-    renderPlayerFieldRows(names);
-
-    playerFieldsWrap.hidden = false;
-    setupError.textContent = '';
-    renderSavedPlayersRow();
-  }
-
   // Reads the optional Drop / Middle Drop / Full Count inputs, falling back to the
   // defaults when left blank. Throws with a user-facing message on invalid input.
   function readEventPointsConfig() {
@@ -4756,26 +4627,111 @@
     return { dropPts, mdropPts, fullPts };
   }
 
+  // ---------- NEW GAME: pick players, name it, choose how it ends ----------
+  const setupRoster = document.getElementById('setupRoster');
+  const setupSelCount = document.getElementById('setupSelCount');
+  const spForm = document.getElementById('spForm');
+  const spAvatar = document.getElementById('spAvatar');
+  const spAvatarBtn = document.getElementById('spAvatarBtn');
+  const spAvatarClear = document.getElementById('spAvatarClear');
+  const spName = document.getElementById('spName');
+  const spAddBtn = document.getElementById('spAddBtn');
+  const spCancelBtn = document.getElementById('spCancelBtn');
+  const spError = document.getElementById('spError');
+  const setupDealerRow = document.getElementById('setupDealerRow');
+  const setupDealer = document.getElementById('setupDealer');
+  let setupSel = [];          // names picked for this game, in seat order
+  let spAvatarData = null;    // picture for the player being created inline
+
+  function spMessage(text) { spError.textContent = text || ''; }
+
+  function renderSetupRoster() {
+    const chips = recentPlayers.map(p => {
+      const idx = setupSel.indexOf(p.name);
+      const on = idx !== -1;
+      const av = p.avatar ? `<img src="${p.avatar}" alt="">` : `<span>${escapeHtml(p.name ? p.name[0].toUpperCase() : '?')}</span>`;
+      return `<button type="button" class="sp-chip${on ? ' on' : ''}" data-name="${escapeAttr(p.name)}" aria-pressed="${on}">
+        <span class="sp-av">${av}</span><span class="sp-name">${escapeHtml(p.name)}</span>${on ? `<span class="sp-seat">${idx + 1}</span>` : ''}</button>`;
+    }).join('');
+    setupRoster.innerHTML = chips + `<button type="button" class="sp-chip sp-add" id="spOpenBtn"><span class="sp-av">＋</span><span class="sp-name">New player</span></button>`;
+    setupSelCount.textContent = setupSel.length ? `${setupSel.length} picked` : `pick ${MIN_PLAYERS}–${MAX_PLAYERS}`;
+    // who deals first — only worth asking once there is a table
+    setupDealerRow.hidden = setupSel.length < MIN_PLAYERS;
+    if (initialDealerIdx >= setupSel.length) initialDealerIdx = 0;
+    setupDealer.innerHTML = setupSel.map((n, i) => `<option value="${i}"${i === initialDealerIdx ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('');
+  }
+
+  setupRoster.addEventListener('click', (e) => {
+    if (e.target.closest('#spOpenBtn')) { openSpForm(); return; }
+    const chip = e.target.closest('.sp-chip[data-name]');
+    if (!chip) return;
+    const name = chip.dataset.name;
+    const at = setupSel.indexOf(name);
+    if (at !== -1) setupSel.splice(at, 1);
+    else if (setupSel.length >= MAX_PLAYERS) { spMessage(`A game takes up to ${MAX_PLAYERS} players.`); return; }
+    else setupSel.push(name);
+    spMessage('');
+    setupError.textContent = '';
+    renderSetupRoster();
+  });
+  setupDealer.addEventListener('change', () => { initialDealerIdx = Number(setupDealer.value) || 0; });
+
+  function renderSpAvatar() {
+    spAvatar.innerHTML = spAvatarData ? `<img src="${spAvatarData}" alt="">` : `<span class="avatar-placeholder">＋</span>`;
+    spAvatarClear.hidden = !spAvatarData;
+  }
+  function openSpForm() {
+    spForm.hidden = false;
+    renderSpAvatar();
+    spName.focus();
+  }
+  function closeSpForm() {
+    spForm.hidden = true;
+    spName.value = '';
+    spAvatarData = null;
+    spMessage('');
+  }
+  spAvatarBtn.addEventListener('click', () => pickRosterImage(dataUrl => { spAvatarData = dataUrl; spMessage(''); renderSpAvatar(); }, spMessage));
+  spAvatarClear.addEventListener('click', () => { spAvatarData = null; renderSpAvatar(); });
+  spCancelBtn.addEventListener('click', closeSpForm);
+  function addSetupPlayer() {
+    const name = spName.value.trim();
+    const err = rosterNameError(name, -1);
+    if (err) { spMessage(err); return; }
+    recentPlayers.unshift({ name, avatar: spAvatarData || null });
+    if (recentPlayers.length > MAX_RECENT_PLAYERS) recentPlayers.length = MAX_RECENT_PLAYERS;
+    if (!persistRoster()) { recentPlayers.shift(); spMessage("Could not save — this device's storage is full. Try a smaller picture."); return; }
+    if (setupSel.length < MAX_PLAYERS) setupSel.push(name);    // a player you just made is a player you want
+    closeSpForm();
+    refreshRosterViews();
+  }
+  spAddBtn.addEventListener('click', addSetupPlayer);
+  spName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSetupPlayer(); } });
+
+  function resetSetupForm() {
+    setupSel = [];
+    initialDealerIdx = 0;
+    closeSpForm();
+    gameNameInput.value = '';
+    maxPointsInput.value = '';
+    totalRoundsInput.value = '';
+    dropPointsInput.value = '';
+    mdropPointsInput.value = '';
+    fullPointsInput.value = '';
+    setupError.textContent = '';
+    setSetupMode('elimination');
+    renderSetupRoster();
+  }
+
   startBtn.addEventListener('click', () => {
     setupError.textContent = '';
     if (activeGamesList.length >= MAX_ACTIVE_GAMES) {
-      setupError.textContent = `You already have ${MAX_ACTIVE_GAMES} active games — resume or end one above before starting another.`;
+      setupError.textContent = `You already have ${MAX_ACTIVE_GAMES} active games — end one before starting another.`;
       return;
     }
-    if (!playerCount) {
-      setupError.textContent = 'Select a player count first.';
-      return;
-    }
-    const inputs = [...playerFields.querySelectorAll('.player-name-input')];
-    const names = inputs.map(i => i.value.trim());
-
-    if (names.some(n => n === '')) {
-      setupError.textContent = 'Every player needs a name.';
-      return;
-    }
-    const lower = names.map(n => n.toLowerCase());
-    if (new Set(lower).size !== lower.length) {
-      setupError.textContent = 'Player names must be unique.';
+    const names = setupSel.slice();
+    if (names.length < MIN_PLAYERS) {
+      setupError.textContent = `Pick at least ${MIN_PLAYERS} players — or tap ＋ New player to add one.`;
       return;
     }
 
@@ -4795,14 +4751,16 @@
       return;
     }
 
+    playerAvatars = names.map(n => (recentPlayers.find(p => p.name === n) || {}).avatar || null);
     rememberPlayers(names, playerAvatars);
     players = names;
+    playerCount = names.length;
     matches = [];
     matchEvents = [];
     dealerIdx = Math.max(0, Math.min(initialDealerIdx, players.length - 1));
     forfeited = players.map(() => null);
     adjustments = [];
-    currentGameId = null; // "Initialize New Game" always starts a fresh slot
+    currentGameId = null; // a new game always starts a fresh slot
     photoPositions = {};
     gameName = gameNameInput.value.trim();
     gameOverCelebrated = false;
@@ -5294,18 +5252,8 @@
     editErrorMsg = '';
     renamingPlayers = false;
     renameError = '';
-    [...countSelector.children].forEach(b => b.classList.remove('selected'));
-    playerFields.innerHTML = '';
-    playerFieldsWrap.hidden = true;
-    maxPointsInput.value = '';
-    totalRoundsInput.value = '';
-    setSetupMode('elimination');
-    gameNameInput.value = '';
-    dropPointsInput.value = '';
-    mdropPointsInput.value = '';
-    fullPointsInput.value = '';
-    importCsvInput.value = '';
-    setupError.textContent = '';
+    resetSetupForm();
+    resetImportForm();
     showScreen('home');
   }
 
@@ -6213,7 +6161,8 @@
   // ---------- SCREENS ----------
   // home (active games + options) -> game (its three options) / settings / past games /
   // players / new game. Back goes to where the screen was opened from.
-  const SCREENS = { home: homeScreen, newgame: setupScreen, settings: settingsScreen, past: pastScreen, players: playersScreen, game: gameScreen };
+  const importScreen = document.getElementById('importScreen');
+  const SCREENS = { home: homeScreen, newgame: setupScreen, import: importScreen, settings: settingsScreen, past: pastScreen, players: playersScreen, game: gameScreen };
   let currentScreen = 'home';
   let screenReturn = 'home';
   let gameView = 'hub';      // hub | players | points | tv
@@ -6227,6 +6176,8 @@
     document.documentElement.dataset.screen = name;
     if (name === 'home') { statusText.textContent = 'STANDBY'; renderActiveGamesList(); renderGameHistory(); renderManagePlayers(); }
     if (name === 'settings') { renderPlayerClipList(); syncFsBtn(); }
+    if (name === 'newgame') resetSetupForm();
+    if (name === 'import') resetImportForm();
     if (name === 'past') renderGameHistory();
     if (name === 'players') renderManagePlayers();
     if (name === 'game') syncHud();
@@ -6241,6 +6192,7 @@
   document.getElementById('homeSettingsBtn').addEventListener('click', () => showScreen('settings', { from: 'home' }));
   document.getElementById('homePastBtn').addEventListener('click', () => showScreen('past', { from: 'home' }));
   document.getElementById('homePlayersBtn').addEventListener('click', () => showScreen('players', { from: 'home' }));
+  document.getElementById('homeImportBtn').addEventListener('click', () => showScreen('import', { from: 'home' }));
 
   // The TV Mode option reuses the TV Mode screen itself, placed inside the middle area
   // and sized to it (the TV views measure in --vw/--vh, so giving the element its own
@@ -6859,14 +6811,31 @@
 
   switchModeBtn.addEventListener('click', promptSwitchMode);
 
+  // quick picks beside each limit field (Out at … / Matches …)
+  const PRESETS = { maxPointsInput: [101, 150, 200, 250], impMaxInput: [101, 150, 200, 250], totalRoundsInput: [5, 10, 15, 20], impRoundsInput: [5, 10, 15, 20] };
+  function renderPresets() {
+    document.querySelectorAll('.presets[data-for]').forEach(box => {
+      const input = document.getElementById(box.dataset.for);
+      box.innerHTML = (PRESETS[box.dataset.for] || []).map(n => `<button type="button" class="preset-chip${String(n) === input.value ? ' on' : ''}" data-v="${n}">${n}</button>`).join('');
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.preset-chip');
+    if (!chip) return;
+    document.getElementById(chip.parentElement.dataset.for).value = chip.dataset.v;
+    renderPresets();
+  });
+  ['maxPointsInput', 'totalRoundsInput', 'impMaxInput', 'impRoundsInput'].forEach(id => document.getElementById(id).addEventListener('input', renderPresets));
+
   function setSetupMode(mode) {
     setupMode = mode;
     [...modeToggle.children].forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
     maxPointsField.hidden = mode !== 'elimination';
     totalRoundsField.hidden = mode !== 'rounds';
     modeHint.textContent = mode === 'rounds'
-      ? 'Play a set number of matches — no one is eliminated on points; the lowest total at the end wins.'
-      : 'Players are out once they reach the max points — the last player standing wins.';
+      ? 'A set number of matches — the lowest total at the end wins.'
+      : 'Players are out once they reach the limit — the last one standing wins.';
+    renderPresets();
   }
   setSetupMode('elimination');
 
@@ -6877,14 +6846,14 @@
 
   // Reads the setup screen's mode + its required setting — throws a
   // user-facing message if that setting is missing or invalid.
-  function readModeConfig() {
-    if (setupMode === 'rounds') {
-      const n = parsePositiveInt(totalRoundsInput.value);
+  function readModeConfig(mode = setupMode, maxEl = maxPointsInput, roundsEl = totalRoundsInput) {
+    if (mode === 'rounds') {
+      const n = parsePositiveInt(roundsEl.value);
       if (n === null || Number.isNaN(n)) throw new Error('Enter the number of matches to play (a positive whole number).');
       return { gameMode: 'rounds', maxPoints: null, totalRounds: n };
     }
-    const n = parsePositiveInt(maxPointsInput.value);
-    if (n === null || Number.isNaN(n)) throw new Error('Enter a valid max points limit (a positive whole number).');
+    const n = parsePositiveInt(maxEl.value);
+    if (n === null || Number.isNaN(n)) throw new Error('Enter the points limit (a positive whole number).');
     return { gameMode: 'elimination', maxPoints: n, totalRounds: null };
   }
 
@@ -6911,32 +6880,50 @@
 
   // ---------- IMPORT & START ----------
 
+  // ---------- IMPORT A GAME (its own screen) ----------
+  const impModeToggle = document.getElementById('impModeToggle');
+  const impMaxField = document.getElementById('impMaxField');
+  const impRoundsField = document.getElementById('impRoundsField');
+  const impMaxInput = document.getElementById('impMaxInput');
+  const impRoundsInput = document.getElementById('impRoundsInput');
+  const impName = document.getElementById('impName');
+  let impMode = 'elimination';
+  function setImpMode(mode) {
+    impMode = mode;
+    [...impModeToggle.children].forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    impMaxField.hidden = mode !== 'elimination';
+    impRoundsField.hidden = mode !== 'rounds';
+    renderPresets();
+  }
+  impModeToggle.addEventListener('click', (e) => { const b = e.target.closest('.mode-toggle-btn'); if (b) setImpMode(b.dataset.mode); });
+  function resetImportForm() {
+    impName.value = '';
+    impMaxInput.value = '';
+    impRoundsInput.value = '';
+    importCsvInput.value = '';
+    impError.textContent = '';
+    setImpMode('elimination');
+  }
+
   importCsvBtn.addEventListener('click', () => {
-    setupError.textContent = '';
+    impError.textContent = '';
     if (activeGamesList.length >= MAX_ACTIVE_GAMES) {
-      setupError.textContent = `You already have ${MAX_ACTIVE_GAMES} active games — resume or end one above before importing another.`;
+      impError.textContent = `You already have ${MAX_ACTIVE_GAMES} active games — end one before importing another.`;
       return;
     }
     const file = importCsvInput.files[0];
     if (!file) {
-      setupError.textContent = 'Choose a CSV file to import first.';
+      impError.textContent = 'Choose a CSV file to import first.';
       return;
     }
     let modeCfg;
     try {
-      modeCfg = readModeConfig();
+      modeCfg = readModeConfig(impMode, impMaxInput, impRoundsInput);
     } catch (err) {
-      setupError.textContent = err.message;
+      impError.textContent = err.message;
       return;
     }
-
-    let eventPts;
-    try {
-      eventPts = readEventPointsConfig();
-    } catch (err) {
-      setupError.textContent = err.message;
-      return;
-    }
+    const eventPts = { dropPts: DEFAULT_DROP_POINTS, mdropPts: DEFAULT_MDROP_POINTS, fullPts: DEFAULT_FULL_POINTS };
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -6948,9 +6935,9 @@
         dealerIdx = 0; // CSV rows carry no dealer info
         forfeited = players.map(() => null);
         adjustments = [];
-        currentGameId = null; // "Import & Start" always starts a fresh slot
+        currentGameId = null; // an import always starts a fresh slot
         photoPositions = {};
-        gameName = gameNameInput.value.trim();
+        gameName = impName.value.trim();
         gameOverCelebrated = false;
         ({ gameMode, maxPoints, totalRounds } = modeCfg);
         playerCount = players.length;
@@ -6970,10 +6957,10 @@
         setGameView('tv');
         openGameFullscreen();
       } catch (err) {
-        setupError.textContent = err.message || 'Could not parse that CSV file.';
+        impError.textContent = err.message || 'Could not parse that CSV file.';
       }
     };
-    reader.onerror = () => { setupError.textContent = 'Could not read that file.'; };
+    reader.onerror = () => { impError.textContent = 'Could not read that file.'; };
     reader.readAsText(file);
   });
 
