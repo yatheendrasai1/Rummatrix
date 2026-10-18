@@ -1,7 +1,7 @@
 // Rummatrix service worker: lets the app install and open offline.
 // - the page itself is fetched network-first (so updates show up), falling back to the saved copy
 // - icons, sounds and fonts are served from the cache and refreshed in the background
-const CACHE = 'rummatrix-v6';
+const CACHE = 'rummatrix-v7';
 const PRECACHE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon.svg', 'fonts/fonts.css',
   'fonts/Bangers-FeVQS0BTqb0h60ACH55Q2A.woff2',
   'fonts/Inter-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2',
