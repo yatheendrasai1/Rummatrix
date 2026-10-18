@@ -2054,43 +2054,79 @@
 
 
   /* ---- New game / Import: one calm column ---- */
-  .setup-block { margin-bottom: 22px; }
-  .setup-label { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
-  .setup-hint { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
-  .sp-roster { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* New game + Import: numbered colourful step cards, avatar tiles, big mode cards */
+  .ng .sub-head { margin-bottom: 14px; }
+  .ng-intro { margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
+  .setup-block { margin-bottom: 14px; }
+  .ng-card { --acc: #8f6bff; position: relative; padding: 14px 14px 16px; border-radius: 20px; background: var(--panel-2); border: 1px solid var(--border); border-top: 4px solid var(--acc); }
+  .ng-c2 { --acc: #ff8a3a; }
+  .ng-c3 { --acc: #2fc795; }
+  .setup-label { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-weight: 800; font-size: 16px; }
+  .ng-step { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--acc, var(--orange)); color: #fff; font-size: 13px; font-weight: 800; }
+  .setup-hint { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+  .sp-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
   .sp-chip {
-    position: relative; display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
-    padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
-    color: var(--white); font: inherit; font-size: 14px; cursor: pointer;
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0;
+    padding: 10px 4px 8px; border-radius: 16px; border: 2px solid transparent; background: var(--panel);
+    color: var(--white); font: 600 12px var(--font-body, inherit); cursor: pointer;
   }
-  .sp-chip:hover { border-color: var(--muted); }
-  .sp-chip.on { border-color: var(--orange); background: rgba(var(--orange-rgb), 0.16); }
-  .sp-av { flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--panel-2); font-weight: 800; font-size: 13px; color: var(--muted); }
+  .sp-chip:hover { border-color: var(--border); }
+  .sp-chip.on { border-color: var(--acc); background: rgba(143,107,255,0.14); }
+  .sp-av { flex: none; width: 46px; height: 46px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #fff; background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .sp-chip:nth-child(5n+2) .sp-av { background: linear-gradient(135deg, #3fd6a2, #12a37a); }
+  .sp-chip:nth-child(5n+3) .sp-av { background: linear-gradient(135deg, #ffa24c, #ff6a2b); }
+  .sp-chip:nth-child(5n+4) .sp-av { background: linear-gradient(135deg, #5db4ff, #3a6df0); }
+  .sp-chip:nth-child(5n+5) .sp-av { background: linear-gradient(135deg, #ff7aa8, #e0448a); }
+  .sp-chip:not(.on):not(.sp-add) .sp-av { filter: saturate(0.35) brightness(0.8); }
   .sp-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .sp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sp-seat { flex: none; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 99px; background: var(--orange); color: var(--ink-on-orange); font: 700 11px var(--font-mono); }
-  .sp-add { border-style: dashed; background: transparent; color: var(--muted); }
-  .sp-add .sp-av { background: transparent; color: var(--orange); font-size: 20px; }
-  .sp-new { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border: 1px dashed var(--border); border-radius: 14px; }
+  .sp-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-seat { position: absolute; top: 4px; right: 4px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 99px; background: var(--acc); color: #fff; font: 800 12px var(--font-body, inherit); }
+  .sp-chip.sp-add { border: 2px dashed var(--border); background: transparent; color: var(--muted); }
+  .sp-chip.sp-add .sp-av { background: linear-gradient(135deg, #ffa24c, #ff6a2b); font-size: 24px; }
+  .sp-new { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 16px; background: var(--panel); }
   .sp-new[hidden] { display: none; }
   .sp-new input[type="text"] { flex: 1; min-width: 0; }
   .setup-dealer { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--muted); }
-  .setup-name { width: 100%; max-width: 420px; }
+  .setup-dealer[hidden] { display: none; }
+
+  .ng .mode-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ng .mode-toggle-btn {
+    display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ico t" "ico s"; align-items: center; column-gap: 10px; text-align: left;
+    padding: 12px; border: 0; border-radius: 16px; background: var(--panel); color: var(--white);
+    font: inherit; text-transform: none; letter-spacing: 0; cursor: pointer;
+  }
+  .ng .mode-toggle-btn:hover { color: var(--white); filter: brightness(1.1); }
+  .ng .mode-toggle-btn .mt-ico { grid-area: ico; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,0.08); font-size: 20px; }
+  .ng .mode-toggle-btn b { grid-area: t; font-size: 14px; }
+  .ng .mode-toggle-btn small { grid-area: s; font-size: 11px; color: var(--muted); }
+  .ng .mode-toggle-btn.selected { background: linear-gradient(135deg, #ffa24c, #ff6a2b); color: #fff; }
+  .ng .mode-toggle-btn.selected[data-mode="rounds"] { background: linear-gradient(135deg, #5db4ff, #3a6df0); }
+  .ng .mode-toggle-btn.selected small { color: rgba(255,255,255,0.9); }
+  .ng .mode-toggle-btn.selected .mt-ico { background: rgba(255,255,255,0.25); }
+  .setup-name { width: 100%; }
   .setup-limit { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
   .setup-limit[hidden] { display: none; }
-  .setup-limit label { font-weight: 700; font-size: 14px; min-width: 64px; }
-  .setup-limit input { width: 110px; }
-  .presets { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  .preset-chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--muted); font: 600 12px var(--font-mono); cursor: pointer; }
-  .preset-chip:hover { color: var(--white); border-color: var(--muted); }
-  .preset-chip.on { color: var(--white); border-color: var(--orange); background: rgba(var(--orange-rgb), 0.16); }
-  .setup-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
-  .setup-adv { margin-bottom: 22px; }
+  .setup-limit label { font-weight: 700; font-size: 14px; }
+  .setup-limit input { width: 90px; font-size: 16px !important; font-weight: 700; text-align: center; border-radius: 12px !important; }
+  .preset-chip { min-width: 48px; padding: 8px 12px; border-radius: 99px; border: 0; background: var(--panel); color: var(--white); font: 700 13px var(--font-body, inherit); cursor: pointer; }
+  .preset-chip:hover { filter: brightness(1.2); }
+  .preset-chip.on { background: var(--acc, var(--orange)); color: #fff; }
+  .setup-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+  .setup-adv { margin: 0 0 14px; padding: 0 4px; }
   .setup-adv > summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; }
-  .setup-adv > summary::before { content: '▸ '; }
-  .setup-adv[open] > summary::before { content: '▾ '; }
+  .setup-adv > summary::-webkit-details-marker { display: none; }
+  .setup-adv > summary::before { content: '⚙ '; }
   .setup-adv .event-points-grid { margin-top: 12px; }
-  .setup-start { width: 100%; max-width: 420px; padding: 14px 20px; font-size: 14px; }
+  .setup-start {
+    width: 100%; padding: 16px 20px !important; border: 0 !important; border-radius: 99px !important;
+    background: linear-gradient(135deg, #ffa24c, #ff6a2b) !important; color: #fff !important; font: 800 17px var(--font-body, inherit) !important; letter-spacing: 0.02em; text-transform: none !important;
+    box-shadow: 0 8px 24px rgba(255,106,43,0.35);
+  }
+  :where(html.vp-portrait) .setup-start { position: sticky; bottom: calc(10px + var(--safe-bottom, 0px)); z-index: 5; }
+  .ng .setup-limit label, .ng .setup-dealer label { font: 700 14px var(--font-body, inherit); text-transform: none; letter-spacing: 0; color: var(--white); }
+  .csv-file-input { width: 100%; color: var(--muted); font-size: 13px; }
+  .csv-file-input::file-selector-button { margin-right: 12px; padding: 10px 16px; border: 0; border-radius: 99px; background: linear-gradient(135deg, #8f6bff, #5b3fe0); color: #fff; font: 700 13px var(--font-body, inherit); cursor: pointer; }
 
   /* ---- Quick scoring: drag a name to set the round's points ---- */
   .tv-table-row[data-player-idx]:not(.out) { cursor: pointer; }
@@ -2837,11 +2873,11 @@
   </div>
 
   <!-- NEW GAME -->
-  <section class="panel sub-screen" id="setupScreen" hidden>
+  <section class="panel sub-screen ng" id="setupScreen" hidden>
     <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>New game</h1></div>
 
-    <div class="setup-block">
-      <div class="setup-label">Players <span class="setup-hint" id="setupSelCount"></span></div>
+    <div class="setup-block ng-card ng-c1">
+      <div class="setup-label"><span class="ng-step">1</span>Who's playing? <span class="setup-hint" id="setupSelCount"></span></div>
       <div class="sp-roster" id="setupRoster"></div>
       <div class="sp-new" id="spForm" hidden>
         <div class="player-avatar-wrap">
@@ -2856,14 +2892,11 @@
       <div class="setup-dealer" id="setupDealerRow" hidden><label for="setupDealer">First dealer</label><select id="setupDealer" class="theme-select"></select></div>
     </div>
 
-    <div class="setup-block">
-      <input type="text" id="gameNameInput" class="setup-name" maxlength="40" placeholder="Game name (optional)">
-    </div>
-
-    <div class="setup-block">
+    <div class="setup-block ng-card ng-c2">
+      <div class="setup-label"><span class="ng-step">2</span>How do you play?</div>
       <div class="mode-toggle" id="modeToggle">
-        <button type="button" class="mode-toggle-btn selected" data-mode="elimination">Elimination</button>
-        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed matches</button>
+        <button type="button" class="mode-toggle-btn selected" data-mode="elimination"><span class="mt-ico">🔥</span><b>Elimination</b><small>Out at a points limit</small></button>
+        <button type="button" class="mode-toggle-btn" data-mode="rounds"><span class="mt-ico">🎯</span><b>Fixed matches</b><small>Lowest total wins</small></button>
       </div>
       <div class="setup-limit" id="maxPointsField">
         <label for="maxPointsInput">Out at</label>
@@ -2878,6 +2911,11 @@
       <p class="setup-note" id="modeHint"></p>
     </div>
 
+    <div class="setup-block ng-card ng-c3">
+      <div class="setup-label"><span class="ng-step">3</span>Name it <span class="setup-hint">optional</span></div>
+      <input type="text" id="gameNameInput" class="setup-name" maxlength="40" placeholder="e.g. Friday night">
+    </div>
+
     <details class="setup-adv">
       <summary>Points for Drop, Middle drop and Full count</summary>
       <div class="event-points-grid">
@@ -2888,20 +2926,25 @@
     </details>
 
     <div class="error-text" id="setupError"></div>
-    <button class="btn-primary setup-start" id="startBtn">Start game ▹</button>
+    <button class="btn-primary setup-start" id="startBtn">Let's play ▸</button>
   </section>
 
   <!-- IMPORT A GAME -->
-  <section class="panel sub-screen" id="importScreen" hidden>
+  <section class="panel sub-screen ng" id="importScreen" hidden>
     <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Import a game</h1></div>
-    <p class="sub">Bring in an exported game (CSV). The first row is <code>matches,player1,player2,…</code> and each row after it is one round's scores.</p>
-    <div class="setup-block">
-      <input type="text" id="impName" class="setup-name" maxlength="40" placeholder="Game name (optional)">
+    <p class="ng-intro">Bring back a game you exported as CSV — one row per round.</p>
+    <div class="setup-block ng-card ng-c1">
+      <div class="setup-label"><span class="ng-step">1</span>Pick the file</div>
+      <!-- Deliberately no `accept` filter — mobile file pickers key it off the file's MIME/UTI tag,
+           which varies wildly by source app and can hide a perfectly valid CSV. parseGameCsv()
+           gives a clear error for anything that isn't actually a valid CSV. -->
+      <input type="file" id="importCsvInput" class="csv-file-input">
     </div>
-    <div class="setup-block">
+    <div class="setup-block ng-card ng-c2">
+      <div class="setup-label"><span class="ng-step">2</span>How was it played?</div>
       <div class="mode-toggle" id="impModeToggle">
-        <button type="button" class="mode-toggle-btn selected" data-mode="elimination">Elimination</button>
-        <button type="button" class="mode-toggle-btn" data-mode="rounds">Fixed matches</button>
+        <button type="button" class="mode-toggle-btn selected" data-mode="elimination"><span class="mt-ico">🔥</span><b>Elimination</b><small>Out at a points limit</small></button>
+        <button type="button" class="mode-toggle-btn" data-mode="rounds"><span class="mt-ico">🎯</span><b>Fixed matches</b><small>Lowest total wins</small></button>
       </div>
       <div class="setup-limit" id="impMaxField">
         <label for="impMaxInput">Out at</label>
@@ -2914,11 +2957,9 @@
         <span class="presets" data-for="impRoundsInput"></span>
       </div>
     </div>
-    <div class="setup-block">
-      <!-- Deliberately no `accept` filter — mobile file pickers key it off the file's MIME/UTI tag,
-           which varies wildly by source app and can hide a perfectly valid CSV. parseGameCsv()
-           gives a clear error for anything that isn't actually a valid CSV. -->
-      <input type="file" id="importCsvInput" class="csv-file-input">
+    <div class="setup-block ng-card ng-c3">
+      <div class="setup-label"><span class="ng-step">3</span>Name it <span class="setup-hint">optional</span></div>
+      <input type="text" id="impName" class="setup-name" maxlength="40" placeholder="e.g. Friday night">
     </div>
     <div class="error-text" id="impError"></div>
     <button class="btn-primary setup-start" id="importCsvBtn" type="button">📥 Import &amp; start</button>
@@ -4932,8 +4973,8 @@
       return `<button type="button" class="sp-chip${on ? ' on' : ''}" data-name="${escapeAttr(p.name)}" aria-pressed="${on}">
         <span class="sp-av">${av}</span><span class="sp-name">${escapeHtml(p.name)}</span>${on ? `<span class="sp-seat">${idx + 1}</span>` : ''}</button>`;
     }).join('');
-    setupRoster.innerHTML = chips + `<button type="button" class="sp-chip sp-add" id="spOpenBtn"><span class="sp-av">＋</span><span class="sp-name">New player</span></button>`;
-    setupSelCount.textContent = setupSel.length ? `${setupSel.length} picked` : `pick ${MIN_PLAYERS}–${MAX_PLAYERS}`;
+    setupRoster.innerHTML = chips + `<button type="button" class="sp-chip sp-add" id="spOpenBtn"><span class="sp-av">＋</span><span class="sp-name">New</span></button>`;
+    setupSelCount.textContent = setupSel.length ? `${setupSel.length} picked` : `tap ${MIN_PLAYERS}–${MAX_PLAYERS} players`;
     // who deals first — only worth asking once there is a table
     setupDealerRow.hidden = setupSel.length < MIN_PLAYERS;
     if (initialDealerIdx >= setupSel.length) initialDealerIdx = 0;
