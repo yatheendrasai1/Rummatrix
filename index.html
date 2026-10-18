@@ -1952,6 +1952,7 @@
   .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .settings-row:last-child { border-bottom: 0; }
   .settings-row[hidden] { display: none; }
+  .settings-row .announce-toggle { white-space: nowrap; flex: none; }
   :where(html.vp-w700) .settings-cards { grid-template-columns: minmax(0, 1fr); }
   #pastEmpty[hidden] { display: none; }
 
@@ -2561,21 +2562,27 @@
      just moved on top of the score grid instead of navigating away. */
   /* Voice Settings: per-player Rummy voice clips. */
   #voiceSettingsSection { margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--border); }
-  .clip-row {
-    display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap;
-    padding: 10px 0; border-bottom: 1px solid var(--border);
-  }
-  .clip-row:last-of-type { border-bottom: none; }
-  .clip-row-player { display: flex; align-items: center; gap: 8px; flex: 1 1 140px; min-width: 0; color: var(--white); font-weight: 600; }
+  .clip-hint { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .clip-row { border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); margin-bottom: 8px; overflow: hidden; }
+  .clip-row.open { border-color: var(--orange); }
+  .clip-row-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: none; border: 0; color: var(--white); font: inherit; text-align: left; cursor: pointer; }
+  .clip-row-player { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; font-weight: 600; }
   .clip-row-player span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .clip-row-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); flex: 1 1 130px; min-width: 0; overflow-wrap: anywhere; }
-  .clip-row-status.has-clip { color: var(--green); }
-  .clip-row-status.recording { color: var(--orange); }
-  .clip-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .clip-row-actions button { font-size: 11px; padding: 7px 11px; }
-  .clip-row-video { flex: 1 1 100%; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding-left: 4px; }
-  .clip-row-video .clip-row-status { flex: 1 1 160px; }
-  .clip-row-video button { font-size: 11px; padding: 7px 11px; }
+  .clip-chips { display: flex; gap: 6px; flex: none; }
+  .clip-chip { padding: 3px 9px; border-radius: 99px; border: 1px solid var(--border); font-size: 12px; color: var(--muted); opacity: 0.7; }
+  .clip-chip.on { color: var(--green); border-color: var(--green); opacity: 1; }
+  .clip-chip.rec { color: var(--orange); border-color: var(--orange); opacity: 1; }
+  .clip-chev { flex: none; color: var(--muted); transition: transform 0.15s; }
+  .clip-row.open .clip-chev { transform: rotate(90deg); }
+  .clip-row-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 4px 12px 12px; }
+  .clip-sec { background: var(--panel); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .clip-sec-title { font-weight: 600; font-size: 13px; }
+  .clip-sec-status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .clip-sec-status.has-clip { color: var(--green); }
+  .clip-sec-status.recording { color: var(--orange); }
+  .clip-sec-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .clip-sec-actions button { font-size: 12px; padding: 8px 12px; }
+  :where(html.vp-w600) .clip-row-body { grid-template-columns: minmax(0, 1fr); }
 
   .tv-add-modal {
     position: absolute;
@@ -2680,8 +2687,8 @@
         <div class="settings-row"><span>Round-won celebration sound</span><button type="button" class="announce-toggle" id="winSoundToggle" title="Mute or unmute the round-won celebration sound">🏆 Win sound: On</button></div>
       </div>
       <div class="settings-card wide" id="voiceSettingsSection">
-        <h2>Voice clips &amp; win videos</h2>
-      <p class="sub" style="margin:0 0 10px; font-size:13px;">Give each player a voice clip — it plays 1 second after they win a round with Rummy — and, if you like, a win video from this device that plays full-screen, start to finish, as their round-won celebration. Record up to 10 seconds, or upload an audio file — you can trim either (or a saved clip, with ✂ Trim). Saved clips stay under 3 MB.</p>
+        <h2>Players’ voice &amp; win video</h2>
+      <p class="clip-hint">Tap a player to set their Rummy voice clip and win video.</p>
       <div id="playerClipList"></div>
       <div class="error-text" id="playerClipError"></div>
       <input type="file" id="clipFileInput" accept="audio/*" hidden>
@@ -3708,6 +3715,7 @@
   let clipRecordingIdx = null;   // player index being recorded
   let clipRecordTimer = null;
   let clipUploadIdx = null;      // player index awaiting a chosen file
+  let clipOpenKey = null;        // lower-cased name of the expanded player row
 
   function setClipMessage(text) {
     playerClipError.style.color = '';
@@ -3740,25 +3748,37 @@
     const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
     playerClipList.innerHTML = clipRosterNow.map(({ name }, i) => {
       const entry = clipRosterNow[i];
+      const key = name.trim().toLowerCase();
       const has = hasPlayerClip(name);
+      const hasVid = hasPlayerVideo(name);
       const recording = clipRecordingIdx === i;
       const busyElsewhere = clipRecordingIdx !== null && !recording;
-      return `<div class="clip-row" data-clip-idx="${i}">
-        <span class="clip-row-player">${clipAvatarHtml(entry)}<span>${escapeHtml(name)}</span></span>
-        <span class="clip-row-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(name.trim().toLowerCase()) || 'Clip saved')}` : 'No clip')}</span>
-        <span class="clip-row-actions">
-          ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
-          <button type="button" class="btn-ghost" data-clip-action="upload" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ Upload</button>
-          <button type="button" class="btn-ghost" data-clip-action="play" ${has ? '' : 'disabled'}>▶ Play</button>
-          <button type="button" class="btn-ghost" data-clip-action="trim" ${has && clipRecordingIdx === null ? '' : 'disabled'}>✂ Trim</button>
-          <button type="button" class="btn-ghost danger" data-clip-action="remove" ${has ? '' : 'disabled'}>🗑 Remove</button>
-        </span>
-        <span class="clip-row-video">
-          <span class="clip-row-status${hasPlayerVideo(name) ? ' has-clip' : ''}">🎬 ${hasPlayerVideo(name) ? `✓ ${escapeHtml(playerVideoNames.get(name.trim().toLowerCase()) || 'Win video')}` : 'No win video'}</span>
-          <button type="button" class="btn-ghost" data-clip-action="video-choose" ${clipRecordingIdx !== null ? 'disabled' : ''}>${hasPlayerVideo(name) ? '🎬 Change video' : '🎬 Choose video'}</button>
-          <button type="button" class="btn-ghost" data-clip-action="video-preview" ${hasPlayerVideo(name) ? '' : 'disabled'}>▶ Preview celebration</button>
-          <button type="button" class="btn-ghost danger" data-clip-action="video-remove" ${hasPlayerVideo(name) ? '' : 'disabled'}>🗑 Remove video</button>
-        </span>
+      const open = clipOpenKey === key || recording;
+      const body = !open ? '' : `<div class="clip-row-body">
+        <div class="clip-sec">
+          <div class="clip-sec-title">🎤 Voice clip</div>
+          <div class="clip-sec-status${recording ? ' recording' : (has ? ' has-clip' : '')}">${recording ? '● Recording…' : (has ? `✓ ${escapeHtml(playerClipFileNames.get(key) || 'Clip saved')}` : 'Plays after a Rummy win')}</div>
+          <div class="clip-sec-actions">
+            ${canRecord ? `<button type="button" class="btn-ghost" data-clip-action="record" ${busyElsewhere ? 'disabled' : ''}>${recording ? '■ Stop' : '● Record'}</button>` : ''}
+            ${recording ? '' : `<button type="button" class="btn-ghost" data-clip-action="upload" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ ${has ? 'Replace' : 'Upload'}</button>`}
+            ${has && !recording ? `<button type="button" class="btn-ghost" data-clip-action="play">▶ Play</button><button type="button" class="btn-ghost" data-clip-action="trim">✂ Trim</button><button type="button" class="btn-ghost danger" data-clip-action="remove" aria-label="Remove clip">🗑</button>` : ''}
+          </div>
+        </div>
+        <div class="clip-sec">
+          <div class="clip-sec-title">🎬 Win video</div>
+          <div class="clip-sec-status${hasVid ? ' has-clip' : ''}">${hasVid ? `✓ ${escapeHtml(playerVideoNames.get(key) || 'Win video')}` : 'Plays full-screen on a win'}</div>
+          <div class="clip-sec-actions">
+            <button type="button" class="btn-ghost" data-clip-action="video-choose" ${clipRecordingIdx !== null ? 'disabled' : ''}>⬆ ${hasVid ? 'Replace' : 'Choose'}</button>
+            ${hasVid ? `<button type="button" class="btn-ghost" data-clip-action="video-preview">▶ Preview</button><button type="button" class="btn-ghost danger" data-clip-action="video-remove" aria-label="Remove video">🗑</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+      return `<div class="clip-row${open ? ' open' : ''}" data-clip-idx="${i}">
+        <button type="button" class="clip-row-head" data-clip-toggle aria-expanded="${open}">
+          <span class="clip-row-player">${clipAvatarHtml(entry)}<span>${escapeHtml(name)}</span></span>
+          <span class="clip-chips"><span class="clip-chip${recording ? ' rec' : (has ? ' on' : '')}" title="Voice clip">🎤${has ? ' ✓' : ''}</span><span class="clip-chip${hasVid ? ' on' : ''}" title="Win video">🎬${hasVid ? ' ✓' : ''}</span></span>
+          <span class="clip-chev" aria-hidden="true">›</span>
+        </button>${body}
       </div>`;
     }).join('');
   }
@@ -3813,6 +3833,13 @@
   }
 
   playerClipList.addEventListener('click', (e) => {
+    const tog = e.target.closest('[data-clip-toggle]');
+    if (tog) {
+      const k = clipRosterNow[Number(tog.closest('.clip-row').dataset.clipIdx)].name.trim().toLowerCase();
+      clipOpenKey = clipOpenKey === k ? null : k;
+      renderPlayerClipList();
+      return;
+    }
     const btn = e.target.closest('[data-clip-action]');
     if (!btn || btn.disabled) return;
     const i = Number(btn.closest('.clip-row').dataset.clipIdx);
