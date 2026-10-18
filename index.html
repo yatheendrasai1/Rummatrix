@@ -193,7 +193,6 @@
   :root[data-theme="slate"] .hud-bar { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset; }
   :root[data-theme="slate"] .summary-card,
   :root[data-theme="slate"] .entry-row,
-  :root[data-theme="slate"] .history-item,
   :root[data-theme="slate"] .collapsible-section { border-radius: 12px; }
   :root[data-theme="slate"] .btn-primary,
   :root[data-theme="slate"] .btn-ghost,
@@ -730,7 +729,6 @@
   .game-name-display { display: flex; align-items: center; gap: 6px; min-width: 0; }
   #gameNameDisplay { color: var(--white); font-family: var(--font-body); font-weight: 700; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #gameNameDisplay.untitled { color: var(--muted); font-weight: 400; font-style: italic; }
-  .history-game-name { color: var(--white); font-weight: 700; }
 
   .summary-meta {
     font-family: var(--font-mono);
@@ -866,27 +864,55 @@
     100% { transform: translate(var(--confetti-drift, 0px), calc(108 * var(--vh))) rotate(calc(var(--confetti-rotate, 0deg) + 540deg)); opacity: 0.85; }
   }
 
-  .history-item {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    padding: 12px 14px;
-    margin-bottom: 10px;
-  }
-  .history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .history-head h2 { margin-bottom: 0; }
-  .history-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 12px 0; padding: 10px 14px; background: var(--panel); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 13px; }
+  /* Past games: stat strip, colourful result cards, and a result sheet */
+  .past-select-btn { margin-left: auto; flex: none; padding: 8px 14px !important; font-size: 11px !important; }
+  #pastScreen .sub-head h1 { white-space: nowrap; }
+  .past-rank-row .player-avatar-placeholder { border: 0; color: #fff; font-weight: 800; background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .past-rank-row.win .player-avatar-placeholder { background: rgba(0,0,0,0.25); }
+  .past-select-btn[hidden] { display: none; }
+  .past-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 16px; text-align: center; color: var(--muted); }
+  .past-empty[hidden] { display: none; }
+  .past-empty span { font-size: 44px; }
+  .past-empty b { color: var(--white); font-size: 17px; }
+  .past-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .past-stat { border-radius: 18px; padding: 12px 14px; color: #fff; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .past-stat b { font-size: 22px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .past-stat span { font-size: 12px; opacity: 0.9; }
+  .past-stat:nth-child(1) { background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .past-stat:nth-child(2) { background: linear-gradient(135deg, #ffa24c, #ff6a2b); }
+  .past-stat:nth-child(3) { background: linear-gradient(135deg, #3fd6a2, #12a37a); }
+  .past-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .history-item { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 0; border-radius: 20px; color: #fff; text-align: left; font: inherit; cursor: pointer; background: linear-gradient(135deg, #5db4ff, #3a6df0); }
+  .history-item:nth-child(4n+2) { background: linear-gradient(135deg, #ff7aa8, #e0448a); }
+  .history-item:nth-child(4n+3) { background: linear-gradient(135deg, #3fd6a2, #12a37a); }
+  .history-item:nth-child(4n+4) { background: linear-gradient(135deg, #8f6bff, #5b3fe0); }
+  .history-item::after { content: ''; position: absolute; width: 110px; height: 110px; right: -34px; bottom: -48px; border-radius: 50%; background: rgba(255,255,255,0.13); pointer-events: none; }
+  .history-item:hover { filter: brightness(1.06); }
+  .history-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .history-game-name { font-weight: 800; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .history-date { font-size: 11px; opacity: 0.85; flex: none; }
+  .history-winner { font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+  .history-winner small { display: block; font-size: 11px; font-weight: 600; opacity: 0.85; letter-spacing: 0.05em; text-transform: uppercase; }
+  .history-meta { font-size: 12px; opacity: 0.9; }
+  .history-item .gc-avatars { padding-left: 8px; }
+  .history-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; padding: 10px 12px; background: var(--panel-2); border-radius: 16px; font-size: 13px; }
   .history-toolbar[hidden] { display: none; }
+  .history-toolbar .clip-btn { flex: none; min-height: 38px; }
   .history-select-all { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--white); }
   .history-count { color: var(--muted); margin-right: auto; }
-  .history-delete-btn:not(:disabled) { color: #ff6b6b; border-color: #ff6b6b; }
-  .history-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .history-item.selectable { cursor: pointer; display: flex; align-items: flex-start; gap: 12px; }
-  .history-item.selectable.selected { border-color: var(--green); background: rgba(var(--green-rgb), 0.08); }
-  .history-item .history-pick { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--green); cursor: pointer; }
-  .history-item-body { flex: 1; min-width: 0; }
-  .history-row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .history-date { font-family: var(--font-mono); color: var(--muted); font-size: 12px; letter-spacing: 0.5px; }
-  .history-meta { font-family: var(--font-mono); font-size: 13px; color: var(--white); margin-top: 4px; }
+  .history-item.selectable { opacity: 0.55; }
+  .history-item.selectable.selected { opacity: 1; box-shadow: inset 0 0 0 3px #fff; }
+  .history-item .history-pick { position: absolute; top: 12px; right: 12px; z-index: 1; width: 22px; height: 22px; accent-color: #fff; cursor: pointer; }
+  .history-item.selectable .history-date { margin-right: 28px; }
+  .past-rank { display: flex; flex-direction: column; gap: 6px; }
+  .past-rank-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: var(--panel-2); }
+  .past-rank-row.win { background: linear-gradient(135deg, #ffcf5a, #ff9d2b); color: #2a1a00; }
+  .past-rank-pos { width: 26px; text-align: center; font-weight: 800; flex: none; }
+  .past-rank-row .player-avatar { width: 34px; height: 34px; flex: none; }
+  .past-rank-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .past-rank-pts { font-family: var(--font-mono); font-weight: 700; }
+  .past-rank-row.out .past-rank-name, .past-rank-row.out .past-rank-pts { opacity: 0.55; }
+  .past-sheet-sub { font-size: 12px; color: var(--muted); margin-top: -6px; }
 
   /* summary cards — big photo on the left, info stacked on the right */
   .summary-card {
@@ -2766,22 +2792,24 @@
 
   <!-- PAST GAMES -->
   <section class="panel sub-screen" id="pastScreen" hidden>
-    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Past games</h1></div>
-    <p class="empty-note" id="pastEmpty">No games have been ended yet.</p>
-    <div class="board-section" id="gameHistorySection" hidden>
-      <div class="history-head">
-        <h2>Played Games</h2>
-        <button type="button" class="btn-ghost" id="historyManageBtn" title="Select ended games to delete from this device" style="font-size:10px; padding:5px 10px;">🗑 Clear…</button>
-      </div>
+    <div class="sub-head"><button type="button" class="btn-ghost sub-back" data-back>‹ Back</button><h1>Past games</h1>
+      <button type="button" class="btn-ghost past-select-btn" id="historyManageBtn" title="Select games to delete from this device">Select</button></div>
+    <div class="past-empty" id="pastEmpty"><span>🃏</span><b>No finished games yet</b><small>End a game and it shows up here with its winner.</small></div>
+    <div id="gameHistorySection" hidden>
+      <div class="past-stats" id="pastStats"></div>
       <div class="history-toolbar" id="historyToolbar" hidden>
-        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> Select all</label>
+        <label class="history-select-all"><input type="checkbox" id="historySelectAll"> All</label>
         <span class="history-count" id="historyCount">0 selected</span>
-        <button type="button" class="btn-ghost history-delete-btn" id="historyDeleteBtn" disabled style="font-size:10px; padding:5px 10px;">Delete selected</button>
-        <button type="button" class="btn-ghost" id="historyCancelBtn" style="font-size:10px; padding:5px 10px;">Cancel</button>
+        <button type="button" class="clip-btn danger history-delete-btn" id="historyDeleteBtn" disabled>🗑 Delete</button>
+        <button type="button" class="clip-btn icon" id="historyCancelBtn" title="Cancel" aria-label="Cancel">✕</button>
       </div>
-      <div id="gameHistoryList"></div>
+      <div id="gameHistoryList" class="past-grid"></div>
     </div>
   </section>
+
+  <div class="clip-sheet" id="pastSheet" hidden>
+    <div class="clip-sheet-card" id="pastSheetCard" role="dialog" aria-modal="true" aria-label="Game result"></div>
+  </div>
 
   <!-- PLAYERS -->
   <section class="panel sub-screen" id="playersScreen" hidden>
@@ -6429,6 +6457,7 @@
     if (name === 'settings') { renderPlayerClipList(); syncFsBtn(); }
     else if (clipOpenKey && clipRecordingIdx === null) { clipOpenKey = null; clipSheet.hidden = true; }
     if (name !== 'players' && mpSheetMode !== null) { mpSheetMode = null; renderMpSheet(); }
+    if (name !== 'past' && pastSheetIdx !== null) { pastSheetIdx = null; renderPastSheet(); }
     if (name === 'newgame') resetSetupForm();
     if (name === 'import') resetImportForm();
     if (name === 'past') renderGameHistory();
@@ -7413,20 +7442,69 @@
     gameHistorySection.hidden = false;
     historyManageBtn.hidden = historySelecting;
     historyToolbar.hidden = !historySelecting;
+    const wins = new Map();
+    gameHistory.forEach(g => { if (g.winner) g.winner.split(' & ').forEach(n => wins.set(n, (wins.get(n) || 0) + 1)); });
+    let top = null;
+    wins.forEach((n, name) => { if (!top || n > top.n) top = { name, n }; });
+    const rounds = gameHistory.reduce((sum, g) => sum + g.matches.length, 0);
+    document.getElementById('pastStats').innerHTML =
+      `<div class="past-stat"><b>${gameHistory.length}</b><span>games played</span></div>`
+      + `<div class="past-stat"><b>${top ? escapeHtml(top.name) : '—'}</b><span>${top ? `👑 ${top.n} win${top.n === 1 ? '' : 's'}` : 'top winner'}</span></div>`
+      + `<div class="past-stat"><b>${rounds}</b><span>rounds dealt</span></div>`;
     gameHistoryList.innerHTML = gameHistory.map((g, idx) => {
-      const winnerText = g.winner ? `🏆 ${escapeHtml(g.winner)}` : '—';
-      const body = `<div class="history-row-top">
-          <span class="history-date">${g.gameName ? `<span class="history-game-name">${escapeHtml(g.gameName)}</span> · ` : ''}${escapeHtml(g.endedAt)}</span>
-          ${historySelecting ? '' : `<button type="button" class="btn-ghost history-export-btn" data-history-index="${idx}" style="font-size:10px; padding:5px 10px;">⬇ Export</button>`}
-        </div>
-        <div class="history-meta">Players: ${g.players.map(escapeHtml).join(', ')}</div>
-        <div class="history-meta">Rounds: ${g.matches.length} · ${g.gameMode === 'rounds' ? `Fixed Matches: ${g.totalRounds}` : `Max Points: ${g.maxPoints}`} · Winner: ${winnerText}</div>`;
-      return historySelecting
-        ? `<div class="history-item selectable" data-history-index="${idx}"><input type="checkbox" class="history-pick" aria-label="Select this game"><div class="history-item-body">${body}</div></div>`
-        : `<div class="history-item" data-history-index="${idx}">${body}</div>`;
+      const avatars = g.players.slice(0, 6).map(name => {
+        const rp = recentPlayers.find(p => p.name === name);
+        return rp && rp.avatar ? `<img class="gc-av" src="${rp.avatar}" alt="">` : `<span class="gc-av gc-av-initial">${escapeHtml((name || '?')[0].toUpperCase())}</span>`;
+      }).join('') + (g.players.length > 6 ? `<span class="gc-av gc-av-initial">+${g.players.length - 6}</span>` : '');
+      const day = String(g.endedAt || '').split(',')[0];
+      const body = `${historySelecting ? '<input type="checkbox" class="history-pick" aria-label="Select this game">' : ''}
+        <div class="history-top"><span class="history-game-name">${escapeHtml(g.gameName || `Game ${idx + 1}`)}</span><span class="history-date">${escapeHtml(day)}</span></div>
+        <div class="history-winner"><small>Winner</small>${g.winner ? `🏆 ${escapeHtml(g.winner)}` : 'No winner'}</div>
+        <div class="gc-avatars">${avatars}</div>
+        <div class="history-meta">${g.matches.length} round${g.matches.length === 1 ? '' : 's'} · ${g.gameMode === 'rounds' ? `${g.totalRounds} matches` : `max ${g.maxPoints}`}</div>`;
+      return `<div class="history-item${historySelecting ? ' selectable' : ''}" role="button" tabindex="0" data-history-index="${idx}">${body}</div>`;
     }).reverse().join('');
     if (historySelecting) syncHistoryToolbar();
+    renderPastSheet();
   }
+
+  // Tapping a past game opens its final standings, with Export and Delete.
+  const pastSheet = document.getElementById('pastSheet');
+  const pastSheetCard = document.getElementById('pastSheetCard');
+  let pastSheetIdx = null;
+  function renderPastSheet() {
+    const g = pastSheetIdx === null ? null : gameHistory[pastSheetIdx];
+    pastSheet.hidden = !g;
+    if (!g) { pastSheetIdx = null; pastSheetCard.innerHTML = ''; return; }
+    const totals = computeTotalsForSnapshot(g);
+    const out = computeOutFlagsForSnapshot(g, totals);
+    const winners = String(g.winner || '').split(' & ');
+    const order = g.players.map((name, i) => ({ name, total: totals[i], out: out[i] }))
+      .sort((a, b) => (a.out - b.out) || (a.total - b.total));
+    const medal = ['🥇', '🥈', '🥉'];
+    pastSheetCard.innerHTML = `<div class="clip-sheet-head"><b>${escapeHtml(g.gameName || `Game ${pastSheetIdx + 1}`)}</b><button type="button" class="clip-sheet-x" data-past-close aria-label="Close">✕</button></div>
+      <div class="past-sheet-sub">${escapeHtml(g.endedAt || '')} · ${g.matches.length} round${g.matches.length === 1 ? '' : 's'} · ${g.gameMode === 'rounds' ? `${g.totalRounds} matches` : `max ${g.maxPoints}`}</div>
+      <div class="past-rank">${order.map((p, r) => {
+        const rp = recentPlayers.find(x => x.name === p.name) || { name: p.name, avatar: null };
+        return `<div class="past-rank-row${winners.includes(p.name) ? ' win' : ''}${p.out ? ' out' : ''}"><span class="past-rank-pos">${p.out ? '✕' : (medal[r] || r + 1)}</span>${clipAvatarHtml(rp)}<span class="past-rank-name">${escapeHtml(p.name)}</span><span class="past-rank-pts">${p.total}</span></div>`;
+      }).join('')}</div>
+      <div class="mp-actions"><button type="button" class="clip-btn main" data-past-export>⬇ Export CSV</button><button type="button" class="clip-btn icon danger" data-past-delete title="Delete this game" aria-label="Delete this game">🗑</button></div>`;
+  }
+  pastSheet.addEventListener('click', (e) => {
+    if (e.target === pastSheet || e.target.closest('[data-past-close]')) { pastSheetIdx = null; renderPastSheet(); return; }
+    const g = gameHistory[pastSheetIdx];
+    if (!g) return;
+    if (e.target.closest('[data-past-export]')) {
+      downloadCsv(`${csvBaseName(g.gameName) || `rummy-game-${pastSheetIdx + 1}`}.csv`, matchesToCsv(g.players, g.matches));
+    } else if (e.target.closest('[data-past-delete]')) {
+      if (!confirm('Delete this game from this device?\nThis can\'t be undone — export first if you want to keep a copy.')) return;
+      gameHistory.splice(pastSheetIdx, 1);
+      saveGameHistory();
+      pastSheetIdx = null;
+      renderGameHistory();
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pastSheet.hidden) { pastSheetIdx = null; renderPastSheet(); } });
 
   historyManageBtn.addEventListener('click', () => setHistorySelecting(true));
   historyCancelBtn.addEventListener('click', () => setHistorySelecting(false));
@@ -7456,12 +7534,13 @@
       syncHistoryToolbar();
       return;
     }
-    const btn = e.target.closest('.history-export-btn');
-    if (!btn) return;
-    const idx = Number(btn.dataset.historyIndex);
-    const g = gameHistory[idx];
-    if (!g) return;
-    downloadCsv(`${csvBaseName(g.gameName) || `rummy-game-${idx + 1}`}.csv`, matchesToCsv(g.players, g.matches));
+    const card = e.target.closest('.history-item');
+    if (!card) return;
+    pastSheetIdx = Number(card.dataset.historyIndex);
+    renderPastSheet();
+  });
+  gameHistoryList.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('history-item')) { e.preventDefault(); e.target.click(); }
   });
 
   // ---------- INLINE MATCH EDITING ----------
